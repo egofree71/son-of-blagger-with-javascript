@@ -1,6 +1,6 @@
 **Project description :**
 
-Son of blagger is a platform game made in 1983 for the commodore 64. It was written by Anthony Crowther (c.f http://www.the-commo...ther/Page1.html)
+Son of blagger is a platform game made in 1983 for the commodore 64. It was written by Anthony Crowther (c.f http://tinyurl.com/p9zmthp)
 Anthony Crowther was a famous programmer at that time, as very often he was writing alone his games (doing programming, graphics and music). He was also a very prolific programmer, as he could write games in a few weeks. I was a fan of Anthony Crowther and i decided to make a remake of 'Son of blagger'.
 As i wanted the remake to look and behave as much as possible as the original game, i spent a lot of time doing reverse engineering of the C64 executable. I updated the graphics by smoothing them and adding light and shadow effects. This is the first trime i tried to program a game.
 
