@@ -3,7 +3,7 @@ import { LevelConstants } from "./levelConstants.js";
 import { ScreenManager } from "./screenManager.js";
 import { EndGameSequence } from "./endGameSequence.js";
 
-window.GameController =
+export const GameController =
 {
     // The current game state.
     gameState : null,
@@ -193,3 +193,9 @@ window.GameController =
         Player.update();
     }
 };
+
+
+// Keep the controller available globally while the remaining runtime objects
+// are migrated progressively to explicit ES module imports and to preserve
+// convenient browser-console debugging.
+window.GameController = GameController;

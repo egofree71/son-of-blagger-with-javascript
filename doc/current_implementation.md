@@ -26,7 +26,7 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are also exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, and `EndGameSequence` are also exported/imported explicitly while still mirrored on `window` during the transition period. Most gameplay owner objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are also exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, and `EndGameSequence` are also exported/imported explicitly. Core orchestration modules such as `GameInitializer` and `GameController` are now imported explicitly by the Phaser lifecycle bootstrap while still mirrored on `window` during the transition period. Most remaining gameplay owner objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
 
 ## Running the game locally
 
@@ -111,8 +111,8 @@ Most gameplay owner objects still register themselves on `window`. This keeps th
 The project is organized around a mix of ES module exports and global gameplay objects defined under `src/js`:
 
 - `AssetLoader`: Phaser asset preloading. Exported as an ES module and mirrored on `window` during the transition period.
-- `GameInitializer`: runtime startup after asset loading.
-- `GameController`: high-level game state orchestration.
+- `GameInitializer`: runtime startup after asset loading. Exported as an ES module and mirrored on `window` during the transition period.
+- `GameController`: high-level game state orchestration. Exported as an ES module and mirrored on `window` during the transition period.
 - `ScreenManager`: title, help, and game-over screens. Exported as an ES module and mirrored on `window` during the transition period.
 - `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
@@ -236,7 +236,7 @@ The asset keys and sprite dimensions are part of the current runtime contract. O
 
 ## `src/js/main.js`
 
-`main.js` is now intentionally small. It owns the Phaser lifecycle entry points and the shared Phaser globals.
+`main.js` is now intentionally small. It owns the Phaser lifecycle entry points and the shared Phaser globals. It imports `AssetLoader`, `GameInitializer`, and `GameController` explicitly instead of relying on their global mirrors.
 
 Main responsibilities:
 
@@ -259,7 +259,7 @@ These are still part of the current architecture and should be treated as shared
 
 ## `src/js/gameInitializer.js`
 
-`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback.
+`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameInitializer` during the migration.
 
 Main responsibilities:
 
@@ -277,7 +277,7 @@ Main responsibilities:
 
 ## `src/js/gameController.js`
 
-`GameController` is the high-level state orchestrator.
+`GameController` is the high-level state orchestrator. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameController` during the migration.
 
 Main data:
 
