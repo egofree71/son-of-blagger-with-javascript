@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 7**.
+Document updated after **refactoring step 8**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -56,6 +56,7 @@ The logical order is:
 <script src="js/playerStates.js"></script>
 <script src="js/monsterConstants.js"></script>
 <script src="js/levelConstants.js"></script>
+<script src="js/hudConstants.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/player.js"></script>
@@ -185,6 +186,25 @@ LevelConstants.END_GAME_SCORE_INCREMENT
 ```
 
 Some constants represent conventions coming from the Tiled map, such as the `level` property or the `end level` object layer. These values must stay synchronized with the map data. Others are preserved timing, positioning or scoring values from the previous implementation.
+
+### `js/hudConstants.js`
+
+Centralized list of constants used by `HUD.js`.
+
+This file was added in refactoring step 8. It does not change HUD behavior. It only gives names to raw values used by `HUD.js`, such as:
+
+```js
+HudConstants.CHAR_WIDTH
+HudConstants.AIR_DECREASE_DELAY
+HudConstants.BONUS_MAN_COLOR_DELAY
+HudConstants.BONUS_MAN_SPRITE_KEY
+HudConstants.LABEL_AIR
+HudConstants.LABEL_HI_SCORE
+HudConstants.COLOR_AIR_BLUE
+HudConstants.COLOR_GREY
+```
+
+The constants cover HUD layout positions, label strings, colors, digit formatting, air bar drawing values, bonus man color animation timing, and the retro font configuration. The existing air depletion timing, bonus man animation, text positions, and bar dimensions are preserved.
 
 ### `js/gameController.js`
 
@@ -378,6 +398,8 @@ Responsibilities:
 - display the hi-score;
 - manage the bonus man;
 - gradually decrease the air during gameplay.
+
+Since refactoring step 8, repeated raw strings and magic values used by `HUD.js` have been moved to `HudConstants`. This includes HUD text labels, text positions, colors, air depletion timing, bonus man animation timing, digit formatting, and the retro font configuration.
 
 The air bar is decremented in:
 
@@ -612,6 +634,12 @@ Level-related Tiled layer names, some sprite keys, level reveal steps, air value
 js/levelConstants.js
 ```
 
+HUD labels, colors, layout positions, air timing, bonus man animation timing, and display formatting values are centralized in:
+
+```text
+js/hudConstants.js
+```
+
 This currently covers values such as:
 
 ```js
@@ -627,6 +655,9 @@ LevelConstants.OBJECT_LAYER_END_LEVEL
 LevelConstants.TILE_KEY_INDEX
 LevelConstants.DEFAULT_AIR_LEVEL
 LevelConstants.END_GAME_SCORE_INCREMENT
+HudConstants.AIR_DECREASE_DELAY
+HudConstants.LABEL_HI_SCORE
+HudConstants.COLOR_AIR_BLUE
 ```
 
 Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or screen names. Those should be cleaned up carefully and only when the meaning is clear.
@@ -740,6 +771,24 @@ doc/current_implementation.md
 
 Goal: remove raw strings and magic values from `level.js` for Tiled layer/property names, the key tile index, sprite keys used by level screens, air and lives reset values, progressive level reveal values, end-level positioning, and end-game scoring/timing values. The level loading, monster reveal, level reveal and end-game behavior remain unchanged.
 
+### Step 8 — Centralize HUD constants
+
+Created:
+
+```text
+js/hudConstants.js
+```
+
+Updated:
+
+```text
+js/HUD.js
+index.html
+doc/current_implementation.md
+```
+
+Goal: remove raw strings and magic values from `HUD.js` for HUD labels, text positions, colors, air bar drawing, air depletion timing, bonus man animation timing, digit formatting, and retro font configuration. The HUD display, air depletion behavior, and bonus man animation remain unchanged.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -757,10 +806,10 @@ It would describe layers, expected properties, tile types, `player` objects, `en
 `PlayerStates` centralizes direction and animation strings used by `player.js`.
 `MonsterConstants` centralizes direction, property name, animation and speed values used by `monster.js`.
 `LevelConstants` centralizes the first batch of raw strings and magic values used by `level.js`.
+`HudConstants` centralizes labels, colors, positions, formatting values, and timing values used by `HUD.js`.
 
 A future step could continue with:
 
-- HUD constants;
 - utility collision constants;
 - raw tile names still used by `util.js` or `player.js`;
 - asset keys still hard-coded in `main.js`;
@@ -782,7 +831,7 @@ This is a small but important cleanup before a possible TypeScript migration.
 
 ### 4. Isolate HUD logic
 
-The HUD still mixes display, air depletion, and death logic when the air reaches zero.
+HUD constants are now centralized, but the HUD still mixes display, air depletion, and death logic when the air reaches zero.
 
 Eventually, this could be split into:
 
