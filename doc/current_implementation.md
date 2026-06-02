@@ -58,6 +58,7 @@ Current logical order:
 <script src="js/hudConstants.js"></script>
 <script src="js/levelRevealSequence.js"></script>
 <script src="js/assetLoader.js"></script>
+<script src="js/gameInitializer.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/collisionDetector.js"></script>
@@ -83,6 +84,7 @@ If a file uses a global object before that object is loaded, the game will fail 
 The project is organized around a set of global objects:
 
 - `AssetLoader`: Phaser asset preloading.
+- `GameInitializer`: runtime startup after asset loading.
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
 - `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
@@ -201,18 +203,13 @@ The asset keys and sprite dimensions are part of the current runtime contract. O
 
 ## `js/main.js`
 
+`main.js` is now intentionally small. It owns the Phaser lifecycle entry points and the shared Phaser globals.
+
 Main responsibilities:
 
 - create the Phaser instance;
 - delegate asset preloading to `AssetLoader`;
-- create the Tiled map and main layer in `create()`;
-- initialize Arcade Physics;
-- create animated tile sprites where needed;
-- create and initialize the player;
-- initialize the monster group;
-- initialize the HUD;
-- create the black rectangles used by screen and reveal sequences;
-- set the initial game state;
+- delegate runtime startup to `GameInitializer`;
 - delegate each frame to `GameController.update()`.
 
 Important globals created here:
@@ -226,6 +223,24 @@ vanishingPlatformGroup
 ```
 
 These are still part of the current architecture and should be treated as shared runtime context.
+
+## `js/gameInitializer.js`
+
+`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback.
+
+Main responsibilities:
+
+- configure Phaser scaling and page alignment;
+- start Arcade Physics;
+- create the Tiled map and main layer;
+- create animated tile sprites where needed;
+- initialize runtime groups;
+- create and initialize the player and monster support groups;
+- create cursor-key input;
+- load the hi-score from `localStorage`;
+- initialize the HUD;
+- create the black rectangles used by screen and reveal sequences;
+- set the initial game state.
 
 ## `js/gameController.js`
 
