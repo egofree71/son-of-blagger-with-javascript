@@ -72,6 +72,9 @@ Current logical order:
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
 <script src="js/levelObjectLoader.js"></script>
+<script src="js/levelTransitionPlayerMover.js"></script>
+<script src="js/levelTransitionVisualEffects.js"></script>
+<script src="js/levelTransitionAirScore.js"></script>
 <script src="js/levelTransition.js"></script>
 <script src="js/level.js"></script>
 <script src="js/endGameSequence.js"></script>
@@ -93,6 +96,9 @@ The project is organized around a set of global objects:
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
+- `LevelTransitionPlayerMover`: target capture and player movement during the end-level transition.
+- `LevelTransitionVisualEffects`: background flash, monster hiding, and reverse explosion effects used by the end-level transition.
+- `LevelTransitionAirScore`: air-to-score conversion and air refill used by the end-level transition.
 - `EndGameSequence`: final congratulations sequence.
 - `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
 - `PlayerMovement`: high-level frame-by-frame movement orchestration for the player.
@@ -372,11 +378,13 @@ Main data:
 
 The same upper rectangle is also reused as a black background by some non-gameplay screens. This is a legacy-style shared object, but it keeps the current rendering simple.
 
-## `js/levelTransition.js`
+## End-level transition files
 
-`LevelTransition` handles the transition after a level has been completed.
+The end-level transition is split across a small orchestrator and focused helper objects.
 
-It is a small frame-by-frame state machine.
+### `js/levelTransition.js`
+
+`LevelTransition` handles the transition after a level has been completed. It owns the frame-by-frame state machine and decides which phase should run.
 
 Current phases:
 
@@ -396,7 +404,39 @@ Important behavior:
 - the air bar is refilled before gameplay resumes;
 - `Level.bonusMan` is enabled for the next level.
 
-The transition uses existing coordinate conventions between Tiled and Phaser, especially the player vertical offset.
+### `js/levelTransitionPlayerMover.js`
+
+`LevelTransitionPlayerMover` owns the player positioning work used during the transition.
+
+Responsibilities:
+
+- read the next level player spawn position from the Tiled map;
+- apply the preserved Tiled-to-Phaser vertical offset;
+- run the one-pixel alignment phase;
+- move the player toward the target position using tile-sized steps.
+
+The unusual rule where the one-pixel alignment phase stops as soon as one axis is aligned is part of the current gameplay behavior and should be changed only deliberately.
+
+### `js/levelTransitionVisualEffects.js`
+
+`LevelTransitionVisualEffects` owns the visual effects used by the transition.
+
+Responsibilities:
+
+- flash the background red;
+- restore the normal gray background;
+- hide the monsters from the completed level;
+- play reverse explosions at the monsters' last positions.
+
+### `js/levelTransitionAirScore.js`
+
+`LevelTransitionAirScore` owns the score and air-bar rules used by the transition.
+
+Responsibilities:
+
+- convert remaining air into score one frame at a time;
+- clear the air display when conversion is finished;
+- refill the air bar before the next level starts.
 
 ## `js/endGameSequence.js`
 

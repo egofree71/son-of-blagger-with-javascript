@@ -1,18 +1,14 @@
 /**
- * Handles the transition played when the player completes a level.
+ * Orchestrates the transition played when the player completes a level.
  *
- * This object is intentionally kept in the same "old-school" style as the rest
- * of the project: one global object literal, updated once per frame by
- * GameController through Level.goToNext().
+ * The sequence is a frame-by-frame state machine. It delegates focused work to
+ * smaller helpers:
+ * - LevelTransitionPlayerMover handles target capture and player movement;
+ * - LevelTransitionVisualEffects handles background and monster effects;
+ * - LevelTransitionAirScore handles air-to-score conversion and air refill.
  *
- * The goal of this first refactoring step is deliberately modest:
- * - move the end-level sequence out of Level.js;
- * - keep the exact same gameplay behaviour and timings;
- * - make the sequence easier to read before any Phaser or TypeScript migration.
- *
- * The transition is a small state machine. The original code used numeric
- * values in Level.stepEndLevel. Here the numeric values are still preserved,
- * but they are named so each phase explains what it does.
+ * The sequence order and timings are intentionally preserved because this code
+ * is part of the original gameplay feel.
  */
 var LevelTransition =
 {
@@ -41,7 +37,6 @@ var LevelTransition =
     PHASE_LOAD_NEXT_LEVEL : 8,
 
     // Delay, in frames, between each 16-pixel movement during the long player movement phase.
-    // This keeps the transition speed identical to the previous counterEndLevel = 4 behaviour.
     MOVE_DELAY : 4,
 
     // Current phase of the transition state machine.
@@ -50,30 +45,18 @@ var LevelTransition =
     // Generic frame counter used by the tile-sized movement phase.
     counter : 4,
 
-    // Target player position in the next level.
-    // These coordinates are calculated once at the beginning of the transition.
-    nextPlayerPositionX : 0,
-    nextPlayerPositionY : 0,
-
-    /**
-     * Resets the transition to its initial state.
-     *
-     * This is called after the next level has been loaded, so the object is ready
-     * for the next time the player reaches a safe.
-     */
     reset : function()
     {
         this.phase = this.PHASE_PREPARE_NEXT_LEVEL;
         this.counter = this.MOVE_DELAY;
-        this.nextPlayerPositionX = 0;
-        this.nextPlayerPositionY = 0;
+        LevelTransitionPlayerMover.reset();
     },
 
     /**
      * Advances the transition by one frame.
      *
-     * GameController calls Level.goToNext() while the game state is GameStates.END_LEVEL.
-     * Level.goToNext() delegates to this method.
+     * GameController calls Level.goToNext() while the game state is
+     * GameStates.END_LEVEL. Level.goToNext() delegates to this method.
      */
     update : function()
     {
@@ -114,51 +97,24 @@ var LevelTransition =
     },
 
     /**
-     * Moves the logical level index to the next level and retrieves the matching
-     * player spawn object from the Tiled map.
-     *
-     * The player Y offset is preserved from the original code. It compensates for
-     * the difference between the Tiled object position and the Phaser body/sprite
-     * position used by the player.
+     * Moves the logical level index to the next level and captures the next
+     * player spawn position from the Tiled map.
      */
     prepareNextLevel : function()
     {
         Level.level++;
-
-        var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
-        this.nextPlayerPositionX = results[0].x;
-        this.nextPlayerPositionY = results[0].y - LevelConstants.PLAYER_TILED_Y_OFFSET;
-
+        LevelTransitionPlayerMover.captureTargetFromTiledMap(Level.level);
         this.phase = this.PHASE_HIDE_MONSTERS;
     },
 
     /**
-     * Ends the current level visually:
-     * - turn the background red;
-     * - hide all monsters from the completed level;
-     * - play a reverse explosion where each monster was.
-     *
-     * This keeps the little visual flourish from the original transition, but
-     * isolates it from Level.js.
+     * Ends the completed level visually before the player starts moving.
      */
     hideMonsters : function()
     {
-        game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
-
-        // Hide monsters from the completed level.
-        for (var i = 0; i < Level.monsters.length; i++)
-            Level.monsters[i].sprite.visible = false;
-
-        // Remove any previous reverse explosion sprites before creating new ones.
-        Level.reverseExplosions.removeAll(true);
-
-        // Display one reverse explosion at the last position of each monster.
-        for (var j = 0; j < Level.monsters.length; j++)
-        {
-            var reverseExplosion = Level.reverseExplosions.create(Level.monsters[j].sprite.body.x, Level.monsters[j].sprite.body.y, LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.add(LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.play(LevelConstants.SPRITE_REVERSE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
-        }
+        LevelTransitionVisualEffects.flashBackground();
+        LevelTransitionVisualEffects.hideCompletedLevelMonsters();
+        LevelTransitionVisualEffects.playReverseExplosions();
 
         this.phase = this.PHASE_RESTORE_BACKGROUND;
     },
@@ -166,165 +122,76 @@ var LevelTransition =
     /**
      * Restores the normal background color.
      *
-     * The old code had a counter here, but it also advanced to the next step in
-     * the same update. In practice there was no real wait, so this method keeps
-     * the effective behaviour: restore the color and continue immediately.
+     * The original code had a counter here, but it also advanced to the next
+     * step in the same update. In practice there was no real wait, so this
+     * method keeps the effective behaviour: restore the color and continue.
      */
     restoreBackground : function()
     {
-        game.stage.backgroundColor = LevelConstants.STAGE_COLOR_NORMAL;
+        LevelTransitionVisualEffects.restoreBackground();
         this.phase = this.PHASE_FINE_ALIGN_PLAYER;
     },
 
     /**
-     * Performs a precise one-pixel alignment before the larger tile-based move.
-     *
-     * The transition first moves the player on the axis where the distance is
-     * smaller. Once either the X axis or the Y axis is aligned, the sequence can
-     * continue to the score conversion phase.
-     *
-     * This slightly unusual "stop when one axis is aligned" rule is intentional:
-     * it preserves the original behaviour of the game.
+     * Performs the precise one-pixel alignment phase before the tile-step move.
      */
     fineAlignPlayer : function()
     {
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
-
-        // Preserve the original behaviour: leave this phase as soon as one axis is aligned.
-        if (verticalDistance == 0 || horizontalDistance == 0)
-        {
+        if (LevelTransitionPlayerMover.fineAlignOneAxis())
             this.phase = this.PHASE_CONVERT_AIR_TO_SCORE;
-            return;
-        }
-
-        // Move along the axis which has the smaller remaining distance.
-        if (Math.abs(verticalDistance) < Math.abs(horizontalDistance))
-        {
-            if (verticalDistance > 0)
-                Player.playerSprite.body.y -= 1;
-            else
-                Player.playerSprite.body.y += 1;
-        }
-        else
-        {
-            if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= 1;
-            else
-                Player.playerSprite.body.x += 1;
-        }
     },
 
     /**
-     * Converts the remaining air into score.
-     *
-     * Every frame, the air bar is reduced and the score is increased using the preserved transition constants.
-     * Once air reaches zero, the air display is cleared and the player starts
-     * moving toward the next-level spawn.
+     * Converts remaining air into score, one frame at a time.
      */
     convertAirToScore : function()
     {
-        if (Level.airLevel > 0)
-        {
-            Level.airLevel -= LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
-            GameController.score += LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
-            HUD.displayScore();
-            HUD.displayAirLevel();
-        }
-        else
-        {
-            HUD.clearAirLevel();
+        if (LevelTransitionAirScore.convertRemainingAir())
             this.phase = this.PHASE_MOVE_PLAYER_TO_NEXT_LEVEL;
-        }
 
         // Prepare the frame delay used by the following movement phase.
         this.counter = this.MOVE_DELAY;
     },
 
     /**
-     * Moves the player toward the next-level spawn.
-     *
-     * This is the visible "travel" part of the transition. The player is moved
-     * every MOVE_DELAY frames, by one tile-sized step at a time, which corresponds to the
-     * tile size used by the map.
-     *
-     * If the remaining distance is smaller than one tile-sized step, the player is snapped
-     * exactly to the target position to avoid overshooting.
+     * Moves the player toward the next-level spawn at the preserved transition speed.
      */
     movePlayerToNextLevel : function()
+    {
+        if (!this.isTileMoveFrame())
+            return;
+
+        if (LevelTransitionPlayerMover.moveOneTileStepTowardTarget())
+            this.phase = this.PHASE_REFILL_AIR;
+    },
+
+    /**
+     * Keeps the original delay between tile-sized player movement steps.
+     *
+     * @returns {boolean} true when this frame should move the player.
+     */
+    isTileMoveFrame : function()
     {
         this.counter -= 1;
 
         if (this.counter > 0)
-            return;
+            return false;
 
         this.counter = this.MOVE_DELAY;
-
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
-
-        if (verticalDistance == 0 && horizontalDistance == 0)
-        {
-            this.phase = this.PHASE_REFILL_AIR;
-            return;
-        }
-
-        if (verticalDistance == 0)
-        {
-            if (Math.abs(horizontalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
-            {
-                Player.playerSprite.body.x = this.nextPlayerPositionX;
-                this.phase = this.PHASE_REFILL_AIR;
-                return;
-            }
-
-            if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
-            else
-                Player.playerSprite.body.x += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
-        }
-        else
-        {
-            if (Math.abs(verticalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
-            {
-                Player.playerSprite.body.y = this.nextPlayerPositionY;
-                this.phase = this.PHASE_REFILL_AIR;
-                return;
-            }
-
-            if (verticalDistance > 0)
-                Player.playerSprite.body.y -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
-            else
-                Player.playerSprite.body.y += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
-        }
+        return true;
     },
 
     /**
      * Refills the air bar before starting the next level.
-     *
-     * The air bar goes back to the default air level, using the same increment as before.
      */
     refillAir : function()
     {
-        if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
-        {
-            Level.airLevel += LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
-            HUD.displayAirLevel();
-        }
-        else
-        {
+        if (LevelTransitionAirScore.refillAir())
             this.phase = this.PHASE_LOAD_NEXT_LEVEL;
-        }
     },
 
     /**
      * Loads the next level and hands control back to the normal start-level flow.
-     *
-     * Level.load() resets level-related data, creates monsters for the new level
-     * and positions the player. HUD.update() refreshes score, lives, level and air.
-     *
-     * After every completed level, Level.bonusMan is set to true so the HUD shows
-     * the bonus man reward animation on the next level.
      */
     loadNextLevel : function()
     {
