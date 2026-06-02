@@ -59,6 +59,7 @@ Current logical order:
 <script src="js/levelRevealSequence.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
+<script src="js/collisionDetector.js"></script>
 <script src="js/screenManager.js"></script>
 <script src="js/playerMovement.js"></script>
 <script src="js/playerInteractions.js"></script>
@@ -87,13 +88,14 @@ The project is organized around a set of global objects:
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
-- `Player`: player movement, jumping, falling, and death triggering.
+- `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
 - `PlayerMovement`: keyboard input and movement rules for the player.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `Monster`: constructor function for enemy instances.
 - `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
-- `Util`: shared collision and helper functions.
+- `CollisionDetector`: manual tile, rectangle, monster, and exit collision checks.
+- `Util`: shared non-collision helper functions.
 - `Data`: static gameplay data such as jump trajectory, level data, and bonus-man colors.
 
 The main Phaser globals created in `main.js` are:
@@ -220,18 +222,14 @@ Main data:
 Main update methods:
 
 - `updateLoadIntroduction()`
-- `updateIntroduction()`
 - `updateLoadHelp()`
-- `updateHelp()`
 - `updateLoadLevel()`
 - `updateDisplayLevel()`
 - `updateStartLevel()`
-- `updateDisplayingMonsters()`
 - `updatePlaying()`
 - `updateEndLevel()`
 - `updateEndGame()`
 - `updateShowGameOver()`
-- `updateGameOver()`
 
 `GameController` does not directly implement most visual sequences. It delegates them to specialized objects:
 
@@ -380,21 +378,15 @@ The final message text is stored in `LevelConstants.END_GAME_MESSAGE_TEXT`.
 
 ## `js/player.js`
 
-`Player` is responsible for the playable character.
+`Player` owns the playable character sprite and the small amount of runtime state that still belongs directly to the character.
 
 Responsibilities:
 
 - create the normal player sprite;
 - reset the player at the beginning of a level;
-- read keyboard input;
-- handle horizontal movement;
-- handle jumping;
-- handle falling;
-- detect deadly falls;
-- handle conveyor belts;
-- handle slippery platforms;
-- handle ladders;
+- delegate movement rules to `PlayerMovement`;
 - delegate key collection, deadly collision checks, and exit detection to `PlayerInteractions`;
+- advance left/right animation frames;
 - trigger the death sequence through `PlayerDeathSequence`.
 
 Important data:
@@ -418,7 +410,23 @@ Data.jumpPath
 
 This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
 
-Key collection and exit behavior are implemented in `PlayerInteractions`, while the death animation and post-death consequences are handled by `PlayerDeathSequence`. `Player` remains responsible for movement and for triggering death when needed.
+Movement rules are implemented in `PlayerMovement`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
+
+## `js/playerMovement.js`
+
+`PlayerMovement` handles frame-by-frame movement rules for the player.
+
+Responsibilities:
+
+- read keyboard input;
+- handle horizontal movement;
+- handle jumping and falling;
+- detect deadly falls;
+- apply conveyor belts and slippery platforms;
+- handle ladders;
+- block movement against walls and ceilings.
+
+Most movement checks use manual pixel probes through `CollisionDetector`. The hard-coded offsets in this file are gameplay-sensitive and define much of the platforming feel.
 
 ## `js/playerInteractions.js`
 
@@ -434,6 +442,8 @@ Responsibilities:
 - trigger `Player.kill()` when needed;
 - detect the level exit once all keys have been collected;
 - switch to `GameStates.END_LEVEL` or `GameStates.END_GAME`.
+
+`PlayerInteractions` delegates manual collision checks to `CollisionDetector`.
 
 `Player.update()` passes the player coordinates captured at the beginning of the frame to `PlayerInteractions`. This is intentional: the original implementation performed these checks using those same coordinates after applying movement for the frame. Keeping this convention avoids subtle changes in collision timing.
 
@@ -507,7 +517,7 @@ Monsters do not chase the player. They follow predefined paths.
 Collision with the player is tested in:
 
 ```js
-Util.collisionRectangleWithMonsters()
+CollisionDetector.collisionRectangleWithMonsters()
 ```
 
 ## `js/monsterConstants.js`
@@ -631,23 +641,33 @@ LevelConstants.END_GAME_MESSAGE_TEXT
 
 The values that mirror the Tiled map must remain synchronized with the map data.
 
-## `js/util.js`
+## `js/collisionDetector.js`
 
-`Util` contains shared helper functions.
+`CollisionDetector` contains manual collision checks used by the player and gameplay interactions.
 
 Main responsibilities:
 
-- test collisions along horizontal and vertical lines;
+- test collisions along horizontal and vertical tile lines;
 - test collisions around rectangle edges;
+- test disappearing platforms;
 - test collision with the level exit;
 - test collision with monsters;
-- test disappearing platforms;
+- store `lastTileHit` so collected key tiles can be hidden.
+
+Most player movement and interaction checks depend on this file, so it is gameplay-critical. The algorithms intentionally still scan pixel-by-pixel, matching the previous behavior.
+
+## `js/util.js`
+
+`Util` contains shared non-collision helper functions.
+
+Main responsibilities:
+
 - create animated sprites from tile definitions;
 - find Tiled objects by property;
 - retrieve monster tile properties;
 - draw text using the game font.
 
-Most player and interaction collision checks depend on this file, so it is gameplay-critical.
+Collision checks are handled by `CollisionDetector`.
 
 ## `js/data.js`
 
@@ -833,7 +853,7 @@ Because there is no module system, `index.html` load order is part of the archit
 
 ### Manual collisions
 
-Collision code is very specific to this game. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, key collection, exit detection, and enemy collision.
+Collision code is very specific to this game and is centralized in `CollisionDetector`. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, key collection, exit detection, and enemy collision.
 
 ### Counter-based sequences
 

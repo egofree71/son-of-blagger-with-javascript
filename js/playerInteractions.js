@@ -47,7 +47,7 @@ var PlayerInteractions =
     {
         var playerHeight = player.playerSprite.body.height;
 
-        if (Util.collisionRectangle(
+        if (CollisionDetector.collisionRectangle(
             x + this.KEY_LEFT_OFFSET,
             y + this.KEY_TOP_OFFSET,
             x + this.KEY_RIGHT_OFFSET,
@@ -63,7 +63,7 @@ var PlayerInteractions =
             HUD.displayScore();
 
             // Hide the key tile and force the tilemap layer to redraw.
-            Util.lastTileHit.alpha = 0;
+            CollisionDetector.lastTileHit.alpha = 0;
             layer.dirty = true;
         }
     },
@@ -75,7 +75,7 @@ var PlayerInteractions =
     {
         var playerHeight = player.playerSprite.body.height;
 
-        if (Util.collisionRectangle(
+        if (CollisionDetector.collisionRectangle(
                 x + this.DEADLY_LEFT_OFFSET,
                 y + this.DEADLY_TOP_OFFSET,
                 x + this.DEADLY_RIGHT_OFFSET,
@@ -83,7 +83,7 @@ var PlayerInteractions =
                 LevelConstants.TILED_PROPERTY_TYPE,
                 LevelConstants.TILE_TYPE_DEADLY,
                 false) ||
-            Util.collisionRectangleWithMonsters(
+            CollisionDetector.collisionRectangleWithMonsters(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
@@ -102,7 +102,7 @@ var PlayerInteractions =
         var playerHeight = player.playerSprite.body.height;
 
         if (Level.keysTaken == Data.levels[Level.level - 1][0] &&
-            Util.collisionRectangleWithEndLevel(
+            CollisionDetector.collisionRectangleWithEndLevel(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,

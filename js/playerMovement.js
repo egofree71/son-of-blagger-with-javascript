@@ -203,7 +203,7 @@ var PlayerMovement =
     updateFalling : function(player, direction, x, y)
     {
         if (this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, false) == false &&
-            Util.collisionLineWithVanishingPlatform(
+            CollisionDetector.collisionLineWithVanishingPlatform(
                 x + this.FOOT_LEFT_OFFSET,
                 x + this.FOOT_RIGHT_OFFSET,
                 y + player.playerSprite.body.height) == false)
@@ -245,7 +245,7 @@ var PlayerMovement =
     blockInvalidMovement : function(player, direction, x, y)
     {
         if (direction.vertical == PlayerStates.UP &&
-            Util.horizontalCollisionLine(
+            CollisionDetector.horizontalCollisionLine(
                 x + this.FOOT_LEFT_OFFSET,
                 x + this.FOOT_RIGHT_OFFSET,
                 y + this.WALL_ABOVE_Y_OFFSET,
@@ -256,7 +256,7 @@ var PlayerMovement =
         }
 
         if (direction.horizontal == PlayerStates.RIGHT &&
-            Util.verticalCollisionLine(
+            CollisionDetector.verticalCollisionLine(
                 y + this.SIDE_WALL_TOP_OFFSET,
                 y + player.playerSprite.body.height - this.SIDE_WALL_BOTTOM_OFFSET,
                 x + this.RIGHT_WALL_X_OFFSET,
@@ -268,7 +268,7 @@ var PlayerMovement =
         }
 
         if (direction.horizontal == PlayerStates.LEFT &&
-            Util.verticalCollisionLine(
+            CollisionDetector.verticalCollisionLine(
                 y + this.SIDE_WALL_TOP_OFFSET,
                 y + player.playerSprite.body.height - this.SIDE_WALL_BOTTOM_OFFSET,
                 x + this.LEFT_WALL_X_OFFSET,
@@ -299,7 +299,7 @@ var PlayerMovement =
     {
         return this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, true) ||
             this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SLIDE, true) ||
-            Util.collisionLineWithVanishingPlatform(
+            CollisionDetector.collisionLineWithVanishingPlatform(
                 x + this.FOOT_LEFT_OFFSET,
                 x + this.FOOT_RIGHT_OFFSET,
                 y + player.playerSprite.body.height);
@@ -307,7 +307,7 @@ var PlayerMovement =
 
     hasGroundBelow : function(player, x, y, tileType, onTop)
     {
-        return Util.horizontalCollisionLine(
+        return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
             x + this.FOOT_RIGHT_OFFSET,
             y + player.playerSprite.body.height,
@@ -318,7 +318,7 @@ var PlayerMovement =
 
     isOnTileByName : function(player, x, y, tileName, yOffset)
     {
-        return Util.horizontalCollisionLine(
+        return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
             x + this.FOOT_RIGHT_OFFSET,
             y + player.playerSprite.body.height + yOffset,
@@ -329,7 +329,7 @@ var PlayerMovement =
 
     isOnLadder : function(player, x, y)
     {
-        return Util.collisionRectangle(
+        return CollisionDetector.collisionRectangle(
             x + this.LADDER_LEFT_OFFSET,
             y + player.playerSprite.body.height - this.LADDER_TOP_FROM_BOTTOM_OFFSET,
             x + this.LADDER_RIGHT_OFFSET,
