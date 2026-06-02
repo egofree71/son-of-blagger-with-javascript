@@ -279,35 +279,10 @@ var Player =
 		if (verticalDirection == PlayerStates.UP)
 			this.playerSprite.body.y -= 1;
 
-		// If the player collides with a key
-		if (Util.collisionRectangle(x + 7, y , x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_KEY, false))
-		{
-			Level.keysTaken++;
-
-			// Increase the score
-			GameController.score += LevelConstants.KEY_SCORE_INCREMENT;
-			HUD.displayScore();
-
-			// Hide the key
-			Util.lastTileHit.alpha = 0;
-			layer.dirty = true;
-		}
-
-		// If the player meets a deadly object
-		if (Util.collisionRectangle (x + 5, y, x + 27, y + this.playerSprite.body.height - 1, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_DEADLY, false) ||
-			Util.collisionRectangleWithMonsters(x + 4, y, x + 28, y + this.playerSprite.body.height))
-			this.kill();
-
-
-		// If the player has taken all level's keys, and if he is located on the next gate, go to the next level
-		if (Level.keysTaken == Data.levels[Level.level-1][0] && Util.collisionRectangleWithEndLevel (x + 4, y, x + 28, y + this.playerSprite.body.height))
-		{
-			// If the player has finished the last level
-			if (Level.level == Data.levels.length)
-				GameController.gameState = GameStates.END_GAME;
-			else
-				GameController.gameState = GameStates.END_LEVEL;
-		}
+		// Handle gameplay interactions that depend on the player's position.
+		// Movement remains in Player.update(); key collection, deadly collisions,
+		// and exit detection are delegated to PlayerInteractions.
+		PlayerInteractions.update(this, x, y);
 	},
 
 	// Display player going left

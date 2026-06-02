@@ -60,6 +60,7 @@ Current logical order:
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
+<script src="js/playerInteractions.js"></script>
 <script src="js/player.js"></script>
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
@@ -84,7 +85,8 @@ The project is organized around a set of global objects:
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
-- `Player`: player movement, jumping, falling, key collection, death, and exit detection.
+- `Player`: player movement, jumping, falling, and death animation.
+- `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `Monster`: constructor function for enemy instances.
 - `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
 - `Util`: shared collision and helper functions.
@@ -389,9 +391,7 @@ Responsibilities:
 - handle conveyor belts;
 - handle slippery platforms;
 - handle ladders;
-- collect keys;
-- detect deadly collisions;
-- detect the level exit;
+- delegate key collection, deadly collision checks, and exit detection to `PlayerInteractions`;
 - play the death animation;
 - reload the level or trigger game over after death.
 
@@ -416,17 +416,24 @@ Data.jumpPath
 
 This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
 
-Key collection behavior:
+Key collection and exit behavior are implemented in `PlayerInteractions`, while `Player` remains responsible for movement and death animation.
 
-- `Level.keysTaken` increases;
-- the score increases by `LevelConstants.KEY_SCORE_INCREMENT`;
-- the touched key tile becomes invisible;
-- the layer is marked as dirty.
+## `js/playerInteractions.js`
 
-Exit behavior:
+`PlayerInteractions` handles gameplay interactions that are triggered by the player position but are not movement rules.
 
-- if all keys have been collected and the player touches the exit, the game moves to `GameStates.END_LEVEL`;
-- if the current level is the last level, the game moves to `GameStates.END_GAME` instead.
+Responsibilities:
+
+- detect key collection;
+- update `Level.keysTaken`;
+- increase and redraw the score after a key is collected;
+- hide collected key tiles;
+- detect deadly tiles and monster collisions;
+- trigger `Player.kill()` when needed;
+- detect the level exit once all keys have been collected;
+- switch to `GameStates.END_LEVEL` or `GameStates.END_GAME`.
+
+`Player.update()` passes the player coordinates captured at the beginning of the frame to `PlayerInteractions`. This is intentional: the original implementation performed these checks using those same coordinates after applying movement for the frame. Keeping this convention avoids subtle changes in collision timing.
 
 ## `js/playerStates.js`
 
@@ -615,7 +622,7 @@ Main responsibilities:
 - retrieve monster tile properties;
 - draw text using the game font.
 
-Most player collision checks depend on this file, so it is gameplay-critical.
+Most player and interaction collision checks depend on this file, so it is gameplay-critical.
 
 ## `js/data.js`
 
@@ -684,10 +691,8 @@ Player.update()
 - input;
 - movement;
 - jump/fall logic;
-- tile collisions;
-- key collection;
-- deadly collisions;
-- exit detection.
+- movement-related tile collisions;
+- delegation to `PlayerInteractions` for key collection, deadly collisions, and exit detection.
 
 ## End-of-level flow
 
@@ -695,6 +700,7 @@ When all keys have been collected and the player touches the exit:
 
 ```text
 Player.update()
+  -> PlayerInteractions.exitLevelIfNeeded()
   -> GameController.gameState = GameStates.END_LEVEL
 ```
 
@@ -714,6 +720,7 @@ When the last level has been completed:
 
 ```text
 Player.update()
+  -> PlayerInteractions.exitLevelIfNeeded()
   -> GameController.gameState = GameStates.END_GAME
 ```
 
@@ -803,7 +810,7 @@ Because there is no module system, `index.html` load order is part of the archit
 
 ### Manual collisions
 
-Collision code is very specific to this game. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, and enemy collision.
+Collision code is very specific to this game. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, key collection, exit detection, and enemy collision.
 
 ### Counter-based sequences
 
