@@ -1,0 +1,41 @@
+# IDE / editor metadata
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies / package manager caches
+node_modules/
+.pnp/
+.pnp.js
+
+# Build output / generated files
+build/
+dist/
+coverage/
+.cache/
+.tmp/
+tmp/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local test servers / tooling
+.http-server/
+
+# Local archives produced during refactoring
+*.zip
