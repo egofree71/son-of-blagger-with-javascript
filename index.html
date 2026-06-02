@@ -1,38 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8" />
-	<title>Son of Blagger</title>
-	<link rel="icon" href="data:,">
-	<!--
-		Vite serves files from public/ at the site root.
-		The game still uses classic script tags and global objects in this step.
-	-->
-    <script src="js/phaser.min.js"></script>
-	<script src="js/gameStates.js"></script>
-	<script src="js/playerStates.js"></script>
-	<script src="js/monsterConstants.js"></script>
-	<script src="js/levelConstants.js"></script>
-	<script src="js/hudConstants.js"></script>
-	<script src="js/levelRevealSequence.js"></script>
-	<script src="js/assetLoader.js"></script>
-	<script src="js/gameInitializer.js"></script>
-	<script src="js/main.js"></script>
-	<script src="js/util.js"></script>
-	<script src="js/collisionDetector.js"></script>
-	<script src="js/screenManager.js"></script>
-	<script src="js/playerMovement.js"></script>
-	<script src="js/playerInteractions.js"></script>
-	<script src="js/playerDeathSequence.js"></script>
-	<script src="js/player.js"></script>
-	<script src="js/monster.js"></script>
-	<script src="js/data.js"></script>
-	<script src="js/levelObjectLoader.js"></script>
-	<script src="js/levelTransition.js"></script>
-	<script src="js/level.js"></script>
-	<script src="js/endGameSequence.js"></script>
-	<script src="js/HUD.js"></script>
-	<script src="js/gameController.js"></script>
+    <meta charset="UTF-8" />
+    <title>Son of Blagger</title>
+    <link rel="icon" href="data:,">
+    <!-- Phaser 2.3 is kept as a classic global script for now. -->
+    <script src="./js/phaser.min.js"></script>
+    <!-- Vite entry point. The game files are imported from src/main.js. -->
+    <script type="module" src="/src/main.js"></script>
     <style type="text/css">
         body {
             margin: 0;

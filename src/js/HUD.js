@@ -1,4 +1,4 @@
-var HUD =
+window.HUD =
 {
     // Width of a character in pixels
     charWidth : HudConstants.CHAR_WIDTH,

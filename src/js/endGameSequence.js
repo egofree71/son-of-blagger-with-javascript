@@ -7,7 +7,7 @@
  *
  * The behaviour, scoring values and timings are intentionally preserved.
  */
-var EndGameSequence =
+window.EndGameSequence =
 {
     // Current phase of the final sequence.
     phase : LevelConstants.END_GAME_STEP_CONVERT_AIR,

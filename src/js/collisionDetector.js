@@ -6,7 +6,7 @@
  * the existing algorithms and offsets untouched while giving collision logic a
  * clearer home than the generic Util object.
  */
-var CollisionDetector =
+window.CollisionDetector =
 {
     // Store the last tile hit by a tile-based collision check.
     // Key collection uses this reference to hide the collected key tile.

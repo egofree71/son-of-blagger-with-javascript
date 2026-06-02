@@ -6,7 +6,7 @@
  * player state machine yet. It only removes repeated raw strings from
  * player.js so future refactorings are safer.
  */
-var PlayerStates =
+window.PlayerStates =
 {
     // Horizontal and vertical movement directions used while computing one
     // gameplay frame. Values are preserved from the previous implementation.

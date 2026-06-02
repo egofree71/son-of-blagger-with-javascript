@@ -6,7 +6,7 @@
  * raw strings used by monster.js in one place, without changing the existing
  * movement rules.
  */
-var MonsterConstants =
+window.MonsterConstants =
 {
     // Directions stored in the Tiled object properties and used while moving
     // monsters along their predefined path.

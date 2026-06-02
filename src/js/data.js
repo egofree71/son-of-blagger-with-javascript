@@ -1,4 +1,4 @@
-var Data =
+window.Data =
 {
     // Each element of the array contains the horizontal and vertical movements for each jump's step
     jumpPath : [[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"], [false,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],

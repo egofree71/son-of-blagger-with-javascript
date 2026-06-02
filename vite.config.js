@@ -1,9 +1,8 @@
 import { defineConfig } from "vite";
 
-// Vite is introduced here as a development/build wrapper around the existing
-// Phaser 2.3 codebase. The runtime JavaScript files are still loaded as classic
-// browser scripts from public/js, so this step does not convert the game to ES
-// modules yet.
+// Vite now owns the game module entry point through src/main.js.
+// Phaser 2.3 itself remains a classic browser script in public/js because the
+// current runtime still depends on the global Phaser object.
 export default defineConfig({
     // A relative base keeps the generated dist/ folder usable when deployed from
     // the GitHub Pages project URL as well as when previewed locally.

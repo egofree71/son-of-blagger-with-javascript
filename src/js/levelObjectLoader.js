@@ -6,7 +6,7 @@
  * This keeps Level.load() focused on orchestration instead of low-level map
  * parsing and sprite creation.
  */
-var LevelObjectLoader =
+window.LevelObjectLoader =
 {
     /**
      * Creates all monster instances for the requested level.

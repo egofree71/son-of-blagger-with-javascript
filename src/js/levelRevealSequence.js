@@ -14,7 +14,7 @@
  * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
  * objects avoids changing rendering order or Phaser 2 behaviour.
  */
-var LevelRevealSequence =
+window.LevelRevealSequence =
 {
     // Fixed-camera graphics used for the progressive reveal and black overlays.
     upperBlackRectangle : null,

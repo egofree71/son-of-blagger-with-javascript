@@ -10,7 +10,7 @@
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-var PlayerInteractions =
+window.PlayerInteractions =
 {
     // Collision rectangle offsets used when collecting keys.
     KEY_LEFT_OFFSET : 7,

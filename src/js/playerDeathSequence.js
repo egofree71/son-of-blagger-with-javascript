@@ -5,7 +5,7 @@
  * triggered. Once death starts, this object owns the animation callback and the
  * life / bonus-man / reload decision that happens after the animation finishes.
  */
-var PlayerDeathSequence =
+window.PlayerDeathSequence =
 {
     /**
      * Starts the death animation for the given player object.

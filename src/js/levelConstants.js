@@ -6,7 +6,7 @@
  * implementation easier to read and safer to refactor later; the values are
  * intentionally preserved.
  */
-var LevelConstants =
+window.LevelConstants =
 {
     // Generic level state values.
     INITIAL_LEVEL : 1,

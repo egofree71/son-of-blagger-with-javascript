@@ -1,4 +1,4 @@
-var GameController =
+window.GameController =
 {
     // The current game state.
     gameState : null,

@@ -1,5 +1,5 @@
 // Monster object
-function Monster(monsterProperties, tileProperties)
+window.Monster = function Monster(monsterProperties, tileProperties)
 {
     this.firstPositionX = monsterProperties.x;
     this.firstPositionY = monsterProperties.y - MonsterConstants.TILED_TO_PHASER_Y_OFFSET;

@@ -9,7 +9,7 @@
  * The string values are intentionally unchanged to preserve the current
  * behaviour. Only their usage is now centralized through named constants.
  */
-var GameStates =
+window.GameStates =
 {
     LOAD_INTRODUCTION : "load introduction",
     INTRODUCTION : "introduction",

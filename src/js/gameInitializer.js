@@ -11,7 +11,7 @@
  * lifecycle easier to understand and will also make a future Phaser migration
  * less risky.
  */
-var GameInitializer =
+window.GameInitializer =
 {
     /**
      * Runs the complete Phaser create() setup sequence.

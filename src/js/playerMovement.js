@@ -12,7 +12,7 @@
  * remain in PlayerInteractions. This separation lets PlayerMovement focus only
  * on deciding the player's next one-pixel movement for the current frame.
  */
-var PlayerMovement =
+window.PlayerMovement =
 {
     // Horizontal foot probes. These are used to test the tiles below the player.
     // They intentionally do not span the full sprite width, so the player can

@@ -4,7 +4,7 @@
  * This file only gives names to existing HUD values. It should not change any
  * gameplay behavior, HUD timing, screen position, color, or formatting rule.
  */
-var HudConstants =
+window.HudConstants =
 {
     // Basic HUD grid. The HUD uses the same 16x16 grid as the retro font.
     CHAR_WIDTH : 16,

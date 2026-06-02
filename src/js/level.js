@@ -1,4 +1,4 @@
-var Level =
+window.Level =
 {
   // Current level
   level : LevelConstants.INITIAL_LEVEL,

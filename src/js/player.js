@@ -1,4 +1,4 @@
-var Player =
+window.Player =
 {
 	// Show if the player is jumping
 	jumping : false,

@@ -5,7 +5,7 @@
  * a level. Moving them here keeps Level focused on actual level management
  * while preserving the original title/help/game-over behaviour.
  */
-var ScreenManager =
+window.ScreenManager =
 {
     // Title screen objects.
     introductionLogo : null,

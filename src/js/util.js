@@ -1,4 +1,4 @@
-var Util =
+window.Util =
 {
 	// Create sprites from a given tile and put them into the group
 	createSpritesFromTiles : function(tileIndex, spriteSheet, animationSpeed)
