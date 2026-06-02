@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 5**.
+Document updated after **refactoring step 6**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -54,6 +54,7 @@ The logical order is:
 <script src="js/phaser.min.js"></script>
 <script src="js/gameStates.js"></script>
 <script src="js/playerStates.js"></script>
+<script src="js/monsterConstants.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/player.js"></script>
@@ -146,6 +147,24 @@ PlayerStates.ANIMATION_BLAGGER_DYING
 ```
 
 This is deliberately low risk: the existing movement, jump, fall and death logic remain unchanged.
+
+### `js/monsterConstants.js`
+
+Centralized list of monster-related constants.
+
+This file was added in refactoring step 6. It does not change monster behavior. It only gives names to raw values used by `monster.js`, such as:
+
+```js
+MonsterConstants.DIRECTION_RIGHT
+MonsterConstants.DIRECTION_LEFT
+MonsterConstants.DIRECTION_DOWN
+MonsterConstants.DIRECTION_UP
+MonsterConstants.DEFAULT_SPEED
+MonsterConstants.TILED_TO_PHASER_Y_OFFSET
+MonsterConstants.ANIMATION_DEFAULT
+```
+
+The direction strings still match the values stored in the Tiled map properties. This is important: changing them would break monster movement unless the map data was changed too.
 
 ### `js/gameController.js`
 
@@ -318,6 +337,8 @@ Responsibilities:
 - reverse its direction when it reaches its maximum distance.
 
 Monsters do not chase the player. They follow predefined paths.
+
+Since refactoring step 6, repeated raw strings and small magic values used by `monster.js` have been moved to `MonsterConstants`. This includes monster directions, Tiled property names, the default monster speed, the monster animation name, and the existing vertical Tiled-to-Phaser offset.
 
 Collision with the player is tested in `Util.collisionRectangleWithMonsters()`.
 
@@ -549,26 +570,34 @@ Some sequences still use counters or numeric steps:
 
 The transition between levels has already been isolated into `LevelTransition`, but other sequences could be clarified later.
 
-### Directions and animation names
+### Directions, animation names, and Tiled property names
 
-Player movement directions and player animation names are now centralized in:
+Player movement directions and player animation names are centralized in:
 
 ```text
 js/playerStates.js
 ```
 
-This currently covers the strings used by `player.js`, such as:
+Monster directions, monster animation names, and the Tiled property names used by monsters are centralized in:
+
+```text
+js/monsterConstants.js
+```
+
+This currently covers values such as:
 
 ```js
 PlayerStates.LEFT
 PlayerStates.RIGHT
-PlayerStates.UP
-PlayerStates.DOWN
 PlayerStates.ANIMATION_LEFT
 PlayerStates.ANIMATION_RIGHT
+MonsterConstants.DIRECTION_RIGHT
+MonsterConstants.DIRECTION_LEFT
+MonsterConstants.PROPERTY_MAX_DISTANCE
+MonsterConstants.ANIMATION_DEFAULT
 ```
 
-Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or monster directions. Those should be cleaned up carefully and only when the meaning is clear.
+Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or screen names. Those should be cleaned up carefully and only when the meaning is clear.
 
 ### Tiled properties
 
@@ -644,6 +673,23 @@ index.html
 
 Goal: remove repeated raw strings from `player.js` for movement directions and player animation names, while preserving the current player movement logic.
 
+### Step 6 — Centralize monster constants
+
+Created:
+
+```text
+js/monsterConstants.js
+```
+
+Updated:
+
+```text
+js/monster.js
+index.html
+```
+
+Goal: remove repeated raw strings and small magic values from `monster.js` for monster directions, Tiled object property names, monster animation configuration, default movement speed, and the existing vertical Tiled-to-Phaser offset. Monster paths and collision behavior remain unchanged.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -658,13 +704,16 @@ It would describe layers, expected properties, tile types, `player` objects, `en
 
 ### 2. Continue centralizing constants
 
-`PlayerStates` now centralizes the direction and animation strings used by `player.js`.
+`PlayerStates` centralizes direction and animation strings used by `player.js`.
+`MonsterConstants` centralizes direction, property name, animation and speed values used by `monster.js`.
 
-A future step could decide whether to:
+A future step could continue with:
 
-- reuse `PlayerStates` elsewhere;
-- create a more generic `Directions` object for both player and monsters;
-- centralize Tiled property names and tile names.
+- tile names;
+- object layer names;
+- HUD constants;
+- repeated score values;
+- the remaining Tiled-to-Phaser vertical offsets used outside monster creation.
 
 This should be done carefully, because some strings are gameplay data coming from the Tiled map.
 

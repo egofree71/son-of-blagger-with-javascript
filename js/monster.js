@@ -2,25 +2,25 @@
 function Monster(monsterProperties, tileProperties)
 {
     this.firstPositionX = monsterProperties.x;
-    this.firstPositionY = monsterProperties.y - 42;
+    this.firstPositionY = monsterProperties.y - MonsterConstants.TILED_TO_PHASER_Y_OFFSET;
     this.distanceFromOrigin = 0;
 
-    this.monsterSpeed = 0.5;
+    this.monsterSpeed = MonsterConstants.DEFAULT_SPEED;
     // Add the bounding box for the collision
     this.realWidth = parseInt(tileProperties.width);
     this.realHeight = parseInt(tileProperties.height);
     this.collisionOffsetX = parseInt(tileProperties.offsetX);
     this.collisionOffsetY = parseInt(tileProperties.offsetY);
 
-    this.direction = monsterProperties.properties.direction;
-    this.level = parseInt(monsterProperties.properties.level);
-    this.maxDistance = parseInt(monsterProperties.properties.maxDistance);
+    this.direction = monsterProperties.properties[MonsterConstants.PROPERTY_DIRECTION];
+    this.level = parseInt(monsterProperties.properties[MonsterConstants.PROPERTY_LEVEL]);
+    this.maxDistance = parseInt(monsterProperties.properties[MonsterConstants.PROPERTY_MAX_DISTANCE]);
 
     // Create a new sprite for the current monster
-    // Phaser uses top left, tiled bottom left so we have to subtract 42 to the vertical position
-    this.sprite = game.add.sprite(monsterProperties.x, monsterProperties.y - 42, monsterProperties.type);
+    // Phaser uses top-left coordinates while Tiled stores this object lower on the vertical axis.
+    this.sprite = game.add.sprite(monsterProperties.x, monsterProperties.y - MonsterConstants.TILED_TO_PHASER_Y_OFFSET, monsterProperties.type);
     game.physics.enable(this.sprite, Phaser.Physics.ARCADE);
-    this.sprite.animations.add('animation', [0, 1], 10, true);
+    this.sprite.animations.add(MonsterConstants.ANIMATION_DEFAULT, MonsterConstants.ANIMATION_FRAMES, MonsterConstants.ANIMATION_FRAME_RATE, true);
 };
 
 Monster.prototype.updatePosition = function()
@@ -41,7 +41,7 @@ Monster.prototype.updatePosition = function()
 
     switch (this.direction)
     {
-        case "right" :
+        case MonsterConstants.DIRECTION_RIGHT :
 
             // If we haven't reached the maximum distance, continue
             if (this.distanceFromOrigin <= this.maxDistance)
@@ -51,12 +51,12 @@ Monster.prototype.updatePosition = function()
             }
             else
             {
-                this.direction = "left";
+                this.direction = MonsterConstants.DIRECTION_LEFT;
             }
 
             break;
 
-        case "left" :
+        case MonsterConstants.DIRECTION_LEFT :
 
             if (this.distanceFromOrigin >= 0)
             {
@@ -65,12 +65,12 @@ Monster.prototype.updatePosition = function()
             }
             else
             {
-                this.direction = "right";
+                this.direction = MonsterConstants.DIRECTION_RIGHT;
             }
 
             break;
 
-        case "down" :
+        case MonsterConstants.DIRECTION_DOWN :
             // If we haven't reached the maximum distance, continue
             if (this.distanceFromOrigin <= this.maxDistance)
             {
@@ -79,12 +79,12 @@ Monster.prototype.updatePosition = function()
             }
             else
             {
-                this.direction = "up";
+                this.direction = MonsterConstants.DIRECTION_UP;
             }
 
             break;
 
-        case "up" :
+        case MonsterConstants.DIRECTION_UP :
 
             if (this.distanceFromOrigin >= 0)
             {
@@ -93,7 +93,7 @@ Monster.prototype.updatePosition = function()
             }
             else
             {
-                this.direction = "down";
+                this.direction = MonsterConstants.DIRECTION_DOWN;
             }
 
             break;
