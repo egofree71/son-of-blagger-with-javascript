@@ -67,12 +67,12 @@ var GameController =
      */
     updateLoadIntroduction : function()
     {
-        Level.displayIntroduction();
+        ScreenManager.displayIntroduction();
 
         // If the user pressed a key, start a new game or display help.
         game.input.keyboard.onPressCallback = function(key)
         {
-            Level.removeIntroduction();
+            ScreenManager.removeIntroduction();
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
@@ -88,11 +88,11 @@ var GameController =
      * Show the help screen once.
      *
      * The input callback that leaves the help screen is currently owned by
-     * Level.displayInstructions(), so this state only delegates the display.
+     * ScreenManager.displayInstructions(), so this state only delegates the display.
      */
     updateLoadHelp : function()
     {
-        Level.displayInstructions();
+        ScreenManager.displayInstructions();
         this.gameState = GameStates.HELP;
     },
 
@@ -156,13 +156,13 @@ var GameController =
     updateShowGameOver : function()
     {
         Level.resetGame();
-        Level.displayGameOver();
+        ScreenManager.displayGameOver();
 
         // If the user pressed a key, show the introduction again.
         game.input.keyboard.onPressCallback = function()
         {
             game.input.keyboard.onPressCallback = null;
-            Level.gameOver.destroy();
+            ScreenManager.removeGameOver();
             GameController.gameState = GameStates.LOAD_INTRODUCTION;
         };
 

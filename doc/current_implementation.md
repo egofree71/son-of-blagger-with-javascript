@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 10**.
+Document updated after **refactoring step 12**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -59,6 +59,7 @@ The logical order is:
 <script src="js/hudConstants.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
+<script src="js/screenManager.js"></script>
 <script src="js/player.js"></script>
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
@@ -225,15 +226,15 @@ Main data:
 
 State-specific methods:
 
-- `updateLoadIntroduction()` displays the title screen and installs the first key-press callback;
-- `updateLoadHelp()` displays the help screen;
+- `updateLoadIntroduction()` delegates title display to `ScreenManager` and installs the first key-press callback;
+- `updateLoadHelp()` delegates help display to `ScreenManager`;
 - `updateLoadLevel()` loads the current level and refreshes the HUD;
 - `updateDisplayLevel()` runs the progressive level reveal;
 - `updateStartLevel()` runs the monster reveal sequence;
 - `updatePlaying()` runs one normal gameplay frame;
 - `updateEndLevel()` delegates to the end-of-level transition;
 - `updateEndGame()` runs the final end-game sequence;
-- `updateShowGameOver()` shows the game-over screen and waits for a key press.
+- `updateShowGameOver()` delegates game-over display/removal to `ScreenManager` and waits for a key press.
 
 During the `GameStates.PLAYING` state, `updatePlaying()` calls, in order:
 
@@ -245,6 +246,23 @@ Player.update();
 ```
 
 This order is important and was preserved from the previous implementation.
+
+### `js/screenManager.js`
+
+Global object responsible for non-gameplay screens.
+
+This file was added in refactoring step 12 to move title, help, and game-over display logic out of `Level`.
+
+Main responsibilities:
+
+- display the introduction title screen;
+- remove the introduction title screen;
+- display the help/instructions screen;
+- display and remove the game-over logo.
+
+`ScreenManager` still reuses `Level.upperBlackRectangle` for the black screen background, because that graphic object already exists and is used by several legacy sequences. This keeps the refactoring small and preserves the current rendering behaviour.
+
+The help screen still owns its temporary keyboard callback: pressing any key destroys the help text, clears the black rectangle, and returns to `GameStates.LOAD_INTRODUCTION`.
 
 ### `js/level.js`
 
@@ -259,8 +277,10 @@ Main responsibilities:
 - manage the level exit object;
 - progressively reveal the level with two black rectangles;
 - reveal monsters at the beginning of a level;
-- handle the introduction, help screen, game over, and end-game screens;
+- handle the final end-game congratulations sequence;
 - reset some game data.
+
+Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`.
 
 Important data:
 
@@ -286,7 +306,7 @@ now simply delegates to:
 LevelTransition.update()
 ```
 
-Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by the title/help/game-over screens.
+Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by `ScreenManager` for the title/help/game-over screens.
 
 ### `js/levelTransition.js`
 
@@ -591,6 +611,7 @@ The project still heavily depends on global variables:
 - `Player`
 - `HUD`
 - `Util`
+- `ScreenManager`
 - `Data`
 
 This is acceptable for now, but it will be an important point if the project later migrates to TypeScript or to a modern Phaser version.
@@ -828,6 +849,35 @@ doc/current_implementation.md
 
 Goal: turn the audit into concrete low-risk corrections. This step fixes implicit globals in level/player code, removes unused code, replaces several remaining raw Tiled strings and sprite keys with existing constants, makes one collision helper return `false` explicitly, adds a defensive fallback for levels without monsters, and updates this documentation.
 
+### Step 11 — Ignore local IDE metadata
+
+Created:
+
+```text
+.gitignore
+```
+
+Goal: keep local IDE/editor metadata such as `.idea/` or `.vscode/` out of the public repository. This step does not modify runtime code.
+
+### Step 12 — Extract non-gameplay screens
+
+Created:
+
+```text
+js/screenManager.js
+```
+
+Updated:
+
+```text
+index.html
+js/gameController.js
+js/level.js
+doc/current_implementation.md
+```
+
+Goal: move the introduction, help, and game-over screen display logic out of `Level` and into `ScreenManager`. This narrows the responsibility of `Level` without changing the title/help/game-over behaviour.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -851,7 +901,7 @@ A future step could continue with:
 
 - asset keys still hard-coded in `main.js`;
 - animated tile setup values in `main.js` / `Util.createSpritesFromTiles()`;
-- long help/end-game text blocks in `level.js`;
+- long help text in `screenManager.js` and end-game text in `level.js`;
 - player movement geometry values such as collision probe offsets.
 
 This should be done carefully, because some strings are gameplay data coming from the Tiled map.
