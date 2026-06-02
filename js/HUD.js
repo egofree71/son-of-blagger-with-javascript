@@ -151,11 +151,6 @@ var HUD =
         this.HUDScore.text = (HudConstants.SIX_DIGITS_PADDING + GameController.score).substr(HudConstants.SIX_DIGITS_LENGTH);
     },
 
-    // Update the level display
-    displayLevelInfo : function()
-    {
-        this.HUDLevel.text = (HudConstants.TWO_DIGITS_PADDING + level).substr(HudConstants.TWO_DIGITS_LENGTH);
-    },
 
     // Update all HUD infromation
     update : function()

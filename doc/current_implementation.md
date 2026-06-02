@@ -401,6 +401,8 @@ Responsibilities:
 
 Since refactoring step 8, repeated raw strings and magic values used by `HUD.js` have been moved to `HudConstants`. This includes HUD text labels, text positions, colors, air depletion timing, bonus man animation timing, digit formatting, and the retro font configuration.
 
+Since refactoring step 9, the unused `displayLevelInfo()` helper has been removed. The level number is still refreshed by `HUD.update()`, which uses `Level.level`.
+
 The air bar is decremented in:
 
 ```js
@@ -789,6 +791,17 @@ doc/current_implementation.md
 
 Goal: remove raw strings and magic values from `HUD.js` for HUD labels, text positions, colors, air bar drawing, air depletion timing, bonus man animation timing, digit formatting, and retro font configuration. The HUD display, air depletion behavior, and bonus man animation remain unchanged.
 
+### Step 9 — Remove unused HUD level helper
+
+Updated:
+
+```text
+js/HUD.js
+doc/current_implementation.md
+```
+
+Goal: remove the unused `HUD.displayLevelInfo()` method. The method was not called anywhere and also referenced an unqualified `level` variable. The active HUD level refresh remains handled by `HUD.update()`, which uses `Level.level`.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -831,7 +844,7 @@ This is a small but important cleanup before a possible TypeScript migration.
 
 ### 4. Isolate HUD logic
 
-HUD constants are now centralized, but the HUD still mixes display, air depletion, and death logic when the air reaches zero.
+HUD constants are now centralized and the unused `displayLevelInfo()` helper has been removed, but the HUD still mixes display, air depletion, and death logic when the air reaches zero.
 
 Eventually, this could be split into:
 
