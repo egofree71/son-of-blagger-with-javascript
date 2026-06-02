@@ -63,6 +63,8 @@ Current logical order:
 <script src="js/util.js"></script>
 <script src="js/collisionDetector.js"></script>
 <script src="js/screenManager.js"></script>
+<script src="js/playerMovementProbes.js"></script>
+<script src="js/playerEnvironmentEffects.js"></script>
 <script src="js/playerMovement.js"></script>
 <script src="js/playerInteractions.js"></script>
 <script src="js/playerDeathSequence.js"></script>
@@ -93,7 +95,9 @@ The project is organized around a set of global objects:
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
 - `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
-- `PlayerMovement`: keyboard input and movement rules for the player.
+- `PlayerMovement`: high-level frame-by-frame movement orchestration for the player.
+- `PlayerMovementProbes`: pixel probe helpers used by player movement.
+- `PlayerEnvironmentEffects`: tile-driven movement effects such as slides, falling, conveyors and ladders.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `Monster`: constructor function for enemy instances.
@@ -444,23 +448,52 @@ Data.jumpPath
 
 This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
 
-Movement rules are implemented in `PlayerMovement`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
+Movement rules are orchestrated by `PlayerMovement`. Low-level movement probes live in `PlayerMovementProbes`, tile-driven movement effects live in `PlayerEnvironmentEffects`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
 
 ## `js/playerMovement.js`
 
-`PlayerMovement` handles frame-by-frame movement rules for the player.
+`PlayerMovement` handles the high-level frame-by-frame movement flow for the player.
 
 Responsibilities:
 
-- read keyboard input;
-- handle horizontal movement;
-- handle jumping and falling;
-- detect deadly falls;
-- apply conveyor belts and slippery platforms;
-- handle ladders;
-- block movement against walls and ceilings.
+- capture the player position at the start of the frame;
+- handle keyboard input for walking and jump start;
+- advance the data-driven jump path;
+- handle the special deadly-fall state;
+- block movement against walls and ceilings;
+- apply the final one-pixel movement;
+- return the original frame-start coordinates used by `PlayerInteractions`.
 
-Most movement checks use manual pixel probes through `CollisionDetector`. The hard-coded offsets in this file are gameplay-sensitive and define much of the platforming feel.
+`PlayerMovement` intentionally keeps the order of operations stable because movement, collision timing, and interaction timing are sensitive in this remake.
+
+## `js/playerMovementProbes.js`
+
+`PlayerMovementProbes` contains the pixel probes used by the movement system.
+
+Responsibilities:
+
+- test whether there is ground below the player;
+- test whether the player has landed after a jump;
+- test vanishing platforms below the player;
+- detect slides, ladders, walls and ceiling blocks;
+- centralize movement-related probe offsets.
+
+The offsets in this file are gameplay-sensitive. They define how close the player can stand to edges, when ladders are detected, and when movement is blocked by walls.
+
+## `js/playerEnvironmentEffects.js`
+
+`PlayerEnvironmentEffects` applies movement caused by the tiles under or around the player.
+
+Responsibilities:
+
+- apply left and right slides;
+- start or continue falling when no ground is below;
+- start the deadly-fall state when the fall limit is reached;
+- apply conveyor belt movement;
+- apply ladder movement;
+- stop walking animation when no horizontal key is pressed.
+
+This object adjusts the requested movement direction. `PlayerMovement` still applies the final one-pixel movement after wall blocking has been checked.
 
 ## `js/playerInteractions.js`
 
