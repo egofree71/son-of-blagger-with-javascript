@@ -60,6 +60,7 @@ Current logical order:
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
+<script src="js/playerMovement.js"></script>
 <script src="js/playerInteractions.js"></script>
 <script src="js/playerDeathSequence.js"></script>
 <script src="js/player.js"></script>
@@ -87,6 +88,7 @@ The project is organized around a set of global objects:
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
 - `Player`: player movement, jumping, falling, and death triggering.
+- `PlayerMovement`: keyboard input and movement rules for the player.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `Monster`: constructor function for enemy instances.
@@ -709,13 +711,7 @@ Level.updateMonsters()
 Player.update()
 ```
 
-`Player.update()` handles:
-
-- input;
-- movement;
-- jump/fall logic;
-- movement-related tile collisions;
-- delegation to `PlayerInteractions` for key collection, deadly collisions, and exit detection.
+`Player.update()` delegates movement to `PlayerMovement` and gameplay interaction checks to `PlayerInteractions`.
 
 ## End-of-level flow
 
