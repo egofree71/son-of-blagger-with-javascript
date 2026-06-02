@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { HudConstants } from "./hudConstants.js";
+
 window.HUD =
 {
     // Width of a character in pixels

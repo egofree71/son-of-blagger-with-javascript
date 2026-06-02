@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+
 /**
  * Handles the progressive reveal played before each level starts.
  *

@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { PlayerStates } from "./playerStates.js";
+
 /**
  * Handles the visual and gameplay consequences of the player's death.
  *

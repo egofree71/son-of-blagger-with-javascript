@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+
 window.Level =
 {
   // Current level

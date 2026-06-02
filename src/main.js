@@ -1,10 +1,12 @@
 // Main Vite module entry point.
 //
 // Phaser 2.3 is still loaded as a classic script from public/js/phaser.min.js.
-// The game files below are now imported by Vite in a single, explicit order.
-// They still expose their runtime objects on window so the existing code can
-// keep using its historical global-object style while we move away from many
-// script tags in index.html.
+// The constant files below are now real ES modules and are also mirrored on
+// window for temporary compatibility and console debugging.
+//
+// Most gameplay objects are still imported for their side effects: each module
+// registers its legacy runtime object on window. They will be converted to
+// explicit imports/exports in later steps.
 
 import "./js/gameStates.js";
 import "./js/playerStates.js";

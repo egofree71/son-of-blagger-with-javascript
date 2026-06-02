@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+
 /**
  * Handles the final sequence played after the last level has been completed.
  *

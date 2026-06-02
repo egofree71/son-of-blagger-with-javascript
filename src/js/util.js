@@ -1,3 +1,5 @@
+import { HudConstants } from "./hudConstants.js";
+
 window.Util =
 {
 	// Create sprites from a given tile and put them into the group

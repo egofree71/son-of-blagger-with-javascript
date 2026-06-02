@@ -1,3 +1,5 @@
+import { LevelConstants } from "./levelConstants.js";
+
 /**
  * Loads Phaser objects that belong to the current Tiled level.
  *

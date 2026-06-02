@@ -19,14 +19,14 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Engine: **Phaser 2.3.0**.
 - Language: classic JavaScript.
 - Development/build tool: **Vite**.
-- Module system: Vite ES module entry point. Runtime objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
-- Main architecture style: global objects and constructor functions.
+- Module system: Vite ES module entry point. Constant modules now use explicit ES module exports/imports. Most runtime objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
+- Main architecture style: transitional hybrid: ES module constants plus global runtime objects and constructor functions.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js` in an explicit order. To avoid a risky full rewrite, the runtime objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until a later explicit `import` / `export` migration.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` now export their objects as ES modules, and consumers import them explicitly. Most gameplay runtime objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
 
 ## Running the game locally
 
@@ -100,11 +100,11 @@ doc/
 <script type="module" src="/src/main.js"></script>
 ```
 
-Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported by `src/main.js` in a single explicit order.
+Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through `src/main.js`.
 
-The project still relies on global runtime objects, but they are now attached explicitly to `window` from the imported modules. This keeps the current code compatible while removing the long list of manual script tags from `index.html`.
+The constant files are now real ES modules: they export named constants and the files that use them import those constants explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
 
-If a file uses a global object before that object is registered by `src/main.js`, the game will fail with a `ReferenceError`.
+Most gameplay runtime objects still register themselves on `window`. This keeps the current code compatible while removing the long list of manual script tags from `index.html`. If a legacy runtime object is used before its module has registered it, the game will fail with a `ReferenceError`.
 
 ## Main runtime objects
 
@@ -141,7 +141,7 @@ These globals are still used directly by multiple files.
 
 ## Game states
 
-Game states are centralized in `src/js/gameStates.js`.
+`GameStates` is defined in `src/js/gameStates.js` and exported as an ES module. Files that use game states import it explicitly.
 
 The string values are intentionally kept stable because they are part of the current runtime flow.
 
@@ -213,9 +213,9 @@ This order is part of the current gameplay behavior and should be changed only w
 
 ## `src/main.js`
 
-This is the Vite module entry point referenced by `index.html`. It imports all game runtime files from `src/js` in the order required by the current global-object architecture.
+This is the Vite module entry point referenced by `index.html`. It imports the constant modules, the remaining legacy runtime modules, and finally starts the Phaser runtime by importing `src/js/main.js` last.
 
-This file does not contain gameplay logic. Its role is to make the dependency order explicit in one place and then start the Phaser runtime by importing `src/js/main.js` last.
+This file does not contain gameplay logic. Its role is to connect Vite's module graph to the current Phaser 2.3 runtime while the project is gradually migrated away from global objects.
 
 ## `src/js/assetLoader.js`
 
@@ -539,7 +539,7 @@ This keeps movement code in `Player` and death sequencing in one dedicated objec
 
 ## `src/js/playerStates.js`
 
-`PlayerStates` centralizes player-related runtime constants.
+`PlayerStates` centralizes player-related runtime constants. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 It includes:
 
@@ -589,7 +589,7 @@ CollisionDetector.collisionRectangleWithMonsters()
 
 ## `src/js/monsterConstants.js`
 
-`MonsterConstants` centralizes monster-related constants.
+`MonsterConstants` centralizes monster-related constants. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 It includes:
 
@@ -647,7 +647,7 @@ The active level number display is refreshed by `HUD.update()` using `Level.leve
 
 ## `src/js/hudConstants.js`
 
-`HudConstants` centralizes HUD-related constants.
+`HudConstants` centralizes HUD-related constants. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 It includes:
 
@@ -675,7 +675,7 @@ HudConstants.COLOR_GREY
 
 ## `src/js/levelConstants.js`
 
-`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants.
+`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 It includes:
 
@@ -912,11 +912,11 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ### Global state
 
-The project still relies heavily on global objects and variables, even though the files are now loaded through a Vite module entry point. This compatibility layer is workable for the current codebase, but it is the main architectural limitation before a future migration to explicit imports, TypeScript or a modern Phaser scene structure.
+The project still relies heavily on global runtime objects and Phaser globals, even though constant modules now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
 
 ### Script order
 
-Because runtime objects are still exposed globally, import order in `src/main.js` is still part of the architecture. Adding a new global object usually requires importing its file at the correct position in `src/main.js`.
+Because most runtime objects are still exposed globally, import order in `src/main.js` is still part of the architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constant dependencies should now be imported directly by the files that use them.
 
 ### Manual collisions
 

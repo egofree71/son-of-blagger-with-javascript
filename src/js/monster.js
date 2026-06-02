@@ -1,3 +1,6 @@
+import { GameStates } from "./gameStates.js";
+import { MonsterConstants } from "./monsterConstants.js";
+
 // Monster object
 window.Monster = function Monster(monsterProperties, tileProperties)
 {

@@ -1,3 +1,6 @@
+import { PlayerStates } from "./playerStates.js";
+import { LevelConstants } from "./levelConstants.js";
+
 /**
  * PlayerMovement owns the frame-by-frame movement rules for Slippery Sid.
  *

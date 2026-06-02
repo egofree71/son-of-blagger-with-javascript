@@ -1,3 +1,5 @@
+import { LevelConstants } from "./levelConstants.js";
+
 /**
  * Centralizes gameplay collision checks.
  *

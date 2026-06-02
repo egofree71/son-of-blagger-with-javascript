@@ -1,3 +1,7 @@
+import { GameStates } from "./gameStates.js";
+import { PlayerStates } from "./playerStates.js";
+import { LevelConstants } from "./levelConstants.js";
+
 window.Player =
 {
 	// Show if the player is jumping

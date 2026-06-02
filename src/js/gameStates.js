@@ -9,7 +9,7 @@
  * The string values are intentionally unchanged to preserve the current
  * behaviour. Only their usage is now centralized through named constants.
  */
-window.GameStates =
+export const GameStates =
 {
     LOAD_INTRODUCTION : "load introduction",
     INTRODUCTION : "introduction",
@@ -30,3 +30,7 @@ window.GameStates =
     SHOW_GAME_OVER : "show game over",
     GAME_OVER : "game over"
 };
+
+// Keep the constant object available globally while the rest of the legacy
+// runtime is migrated progressively to explicit ES module imports.
+window.GameStates = GameStates;

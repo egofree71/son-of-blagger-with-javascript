@@ -1,3 +1,5 @@
+import { GameStates } from "./gameStates.js";
+
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
  *
