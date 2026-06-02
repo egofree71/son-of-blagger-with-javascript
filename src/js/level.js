@@ -8,7 +8,7 @@ import { LevelTransition } from "./levelTransition.js";
 import { Player } from "./player.js";
 import { HUD } from "./HUD.js";
 
-window.Level =
+export const Level =
 {
   // Current level
   level : LevelConstants.INITIAL_LEVEL,
@@ -153,4 +153,9 @@ window.Level =
       LevelRevealSequence.update();
   }
 
-}
+};
+
+// Keep Level available globally while the remaining legacy-style modules are
+// migrated progressively to explicit ES module imports and to preserve
+// convenient browser-console debugging.
+window.Level = Level;

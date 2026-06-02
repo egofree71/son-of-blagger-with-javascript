@@ -19,14 +19,14 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Engine: **Phaser 2.3.0**.
 - Language: classic JavaScript.
 - Development/build tool: **Vite**.
-- Module system: Vite ES module entry point. Constants, static gameplay data, shared helper modules, player support modules, level-object/monster helpers, several screen/sequence helpers, `Player`, `HUD`, and `LevelTransition` now use explicit ES module exports/imports. Remaining legacy owner objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
-- Main architecture style: transitional hybrid: ES module constants/helpers plus global gameplay objects and constructor functions.
+- Module system: Vite ES module entry point. Most runtime modules now use explicit ES module exports/imports and are still mirrored on `window` for compatibility with the existing Phaser 2.3 code and browser-console debugging.
+- Main architecture style: transitional hybrid: ES module exports with temporary `window.*` compatibility mirrors.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Static data such as `Data` is also exported/imported explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`, and `Player` itself is also exported/imported explicitly. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, `LevelTransition`, and `EndGameSequence` are also exported/imported explicitly. Core orchestration modules such as `GameInitializer` and `GameController` are imported explicitly by the Phaser lifecycle bootstrap. Level-object and monster helpers such as `LevelObjectLoader` and `Monster` are also ES module exports. `HUD` is now exported/imported explicitly as well. These converted objects are still mirrored on `window` during the transition period. `Level` and the Phaser runtime globals still keep part of the existing global-object style until later migration steps.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Static data such as `Data` is also exported/imported explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`, and `Player` itself is also exported/imported explicitly. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, `LevelTransition`, and `EndGameSequence` are also exported/imported explicitly. Core orchestration modules such as `GameInitializer` and `GameController` are imported explicitly by the Phaser lifecycle bootstrap. Level-object and monster helpers such as `LevelObjectLoader` and `Monster` are also ES module exports. `HUD` and `Level` are also exported as ES modules. These converted objects are still mirrored on `window` during the transition period. The remaining global-object style is mostly limited to Phaser runtime globals such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
 
 ## Running the game locally
 
@@ -102,19 +102,19 @@ doc/
 
 Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through `src/main.js`.
 
-The constant files, static data, shared helper files, player support helpers, level-object/monster helpers, and several screen/sequence helpers are now real ES modules: they export named objects and the files that use them import those objects explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
+Most runtime files are now real ES modules: they export named objects and the files that use them import those objects explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
 
-The few remaining legacy owner objects still register themselves on `window`. Converted modules are also mirrored on `window` temporarily for console debugging and compatibility with code that has not yet been fully migrated. This keeps the current code compatible while removing the long list of manual script tags from `index.html`. If a legacy runtime object is used before its module has registered it, the game will fail with a `ReferenceError`.
+This keeps the current code compatible while removing the long list of manual script tags from `index.html`. The remaining legacy globals are mostly Phaser runtime objects created in `src/js/main.js`, such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
 
 ## Main runtime objects
 
-The project is organized around a mix of ES module exports and global gameplay objects defined under `src/js`:
+The project is organized around ES module exports defined under `src/js`. Most of them are still mirrored on `window` during the transition period:
 
 - `AssetLoader`: Phaser asset preloading. Exported as an ES module and mirrored on `window` during the transition period.
 - `GameInitializer`: runtime startup after asset loading. Exported as an ES module and mirrored on `window` during the transition period.
 - `GameController`: high-level game state orchestration. Exported as an ES module and mirrored on `window` during the transition period.
 - `ScreenManager`: title, help, and game-over screens. Exported as an ES module and mirrored on `window` during the transition period.
-- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
+- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelTransition`: transition between two levels after all keys have been collected. Exported as an ES module and mirrored on `window` during the transition period.
@@ -125,8 +125,8 @@ The project is organized around a mix of ES module exports and global gameplay o
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision. Exported as an ES module and mirrored on `window` during the transition period.
 - `Monster`: constructor function for enemy instances. Exported as an ES module and mirrored on `window` during the transition period.
 - `HUD`: air bar, lives, score, level number, hi-score, and bonus man display. Exported as an ES module and mirrored on `window` during the transition period.
-- `CollisionDetector`: manual tile, rectangle, monster, and exit collision checks.
-- `Util`: shared non-collision helper functions.
+- `CollisionDetector`: manual tile, rectangle, monster, and exit collision checks. Exported as an ES module and mirrored on `window` during the transition period.
+- `Util`: shared non-collision helper functions. Exported as an ES module and mirrored on `window` during the transition period.
 - `Data`: static gameplay data such as jump trajectory, level data, and bonus-man colors. Exported as an ES module and mirrored on `window` during the transition period.
 
 The main Phaser globals created in `src/js/main.js` are:
