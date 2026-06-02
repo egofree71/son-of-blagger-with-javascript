@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 6**.
+Document updated after **refactoring step 7**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -55,6 +55,7 @@ The logical order is:
 <script src="js/gameStates.js"></script>
 <script src="js/playerStates.js"></script>
 <script src="js/monsterConstants.js"></script>
+<script src="js/levelConstants.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/player.js"></script>
@@ -166,6 +167,25 @@ MonsterConstants.ANIMATION_DEFAULT
 
 The direction strings still match the values stored in the Tiled map properties. This is important: changing them would break monster movement unless the map data was changed too.
 
+### `js/levelConstants.js`
+
+Centralized list of constants used by `level.js`.
+
+This file was added in refactoring step 7. It does not change level behavior. It only gives names to raw values used by `level.js`, such as:
+
+```js
+LevelConstants.DEFAULT_AIR_LEVEL
+LevelConstants.TILED_PROPERTY_LEVEL
+LevelConstants.OBJECT_LAYER_MONSTERS
+LevelConstants.OBJECT_LAYER_END_LEVEL
+LevelConstants.TILE_KEY_INDEX
+LevelConstants.END_LEVEL_Y_OFFSET
+LevelConstants.DISPLAY_STEP_INITIALIZE
+LevelConstants.END_GAME_SCORE_INCREMENT
+```
+
+Some constants represent conventions coming from the Tiled map, such as the `level` property or the `end level` object layer. These values must stay synchronized with the map data. Others are preserved timing, positioning or scoring values from the previous implementation.
+
 ### `js/gameController.js`
 
 Main orchestrator of the game.
@@ -243,6 +263,8 @@ now simply delegates to:
 ```js
 LevelTransition.update()
 ```
+
+Since refactoring step 7, raw strings and magic numbers used by `level.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, the key tile index, the end-level Y offset, the default air level, level reveal steps, end-game score conversion values, and screen positions used by the title/help/game-over screens.
 
 ### `js/levelTransition.js`
 
@@ -584,6 +606,12 @@ Monster directions, monster animation names, and the Tiled property names used b
 js/monsterConstants.js
 ```
 
+Level-related Tiled layer names, some sprite keys, level reveal steps, air values and end-game constants are centralized in:
+
+```text
+js/levelConstants.js
+```
+
 This currently covers values such as:
 
 ```js
@@ -595,6 +623,10 @@ MonsterConstants.DIRECTION_RIGHT
 MonsterConstants.DIRECTION_LEFT
 MonsterConstants.PROPERTY_MAX_DISTANCE
 MonsterConstants.ANIMATION_DEFAULT
+LevelConstants.OBJECT_LAYER_END_LEVEL
+LevelConstants.TILE_KEY_INDEX
+LevelConstants.DEFAULT_AIR_LEVEL
+LevelConstants.END_GAME_SCORE_INCREMENT
 ```
 
 Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or screen names. Those should be cleaned up carefully and only when the meaning is clear.
@@ -690,6 +722,24 @@ index.html
 
 Goal: remove repeated raw strings and small magic values from `monster.js` for monster directions, Tiled object property names, monster animation configuration, default movement speed, and the existing vertical Tiled-to-Phaser offset. Monster paths and collision behavior remain unchanged.
 
+### Step 7 — Centralize level constants
+
+Created:
+
+```text
+js/levelConstants.js
+```
+
+Updated:
+
+```text
+js/level.js
+index.html
+doc/current_implementation.md
+```
+
+Goal: remove raw strings and magic values from `level.js` for Tiled layer/property names, the key tile index, sprite keys used by level screens, air and lives reset values, progressive level reveal values, end-level positioning, and end-game scoring/timing values. The level loading, monster reveal, level reveal and end-game behavior remain unchanged.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -706,13 +756,14 @@ It would describe layers, expected properties, tile types, `player` objects, `en
 
 `PlayerStates` centralizes direction and animation strings used by `player.js`.
 `MonsterConstants` centralizes direction, property name, animation and speed values used by `monster.js`.
+`LevelConstants` centralizes the first batch of raw strings and magic values used by `level.js`.
 
 A future step could continue with:
 
-- tile names;
-- object layer names;
 - HUD constants;
-- repeated score values;
+- utility collision constants;
+- raw tile names still used by `util.js` or `player.js`;
+- asset keys still hard-coded in `main.js`;
 - the remaining Tiled-to-Phaser vertical offsets used outside monster creation.
 
 This should be done carefully, because some strings are gameplay data coming from the Tiled map.

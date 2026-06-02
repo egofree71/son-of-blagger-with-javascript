@@ -1,7 +1,7 @@
 var Level =
 {
   // Current level
-  level : 1,
+  level : LevelConstants.INITIAL_LEVEL,
 
   // Rectangles which are used to display progressively the map
   upperBlackRectangle : null,
@@ -11,15 +11,15 @@ var Level =
   rectangleWidth : 0,
 
   // Counter used to set the animation's speed
-  counterDisplayingLevel : 1,
+  counterDisplayingLevel : LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER,
 
   // Variables used to run sequences when transitions occur.
   // The end-level transition itself is handled by LevelTransition.
-  stepDisplayLevel : 1,
-  stepEndGame : 1,
+  stepDisplayLevel : LevelConstants.INITIAL_SEQUENCE_STEP,
+  stepEndGame : LevelConstants.INITIAL_SEQUENCE_STEP,
 
   // air level of the current level
-  airLevel : 480,
+  airLevel : LevelConstants.DEFAULT_AIR_LEVEL,
 
   // Array which contains all monsters for a given level
   monsters : [],
@@ -52,7 +52,7 @@ var Level =
 
   resetAirLevel : function()
   {
-      this.airLevel = 480;
+      this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
   },
 
   // Create black rectangles used to display progressively the map
@@ -78,7 +78,7 @@ var Level =
   addMonsters : function()
   {
       // find all monsters in the map for the given level
-      var monstersProperties = Util.findObjectsByProperty(map, 'level', this.level, 'monsters');
+      var monstersProperties = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level, LevelConstants.OBJECT_LAYER_MONSTERS);
 
       // If we are restarting the current level, destroy previous monsters
       for (i=0; i < this.monsters.length; i++)
@@ -120,8 +120,8 @@ var Level =
     // Display an explosion for each monster
     for (i=0; i < this.monsters.length; i++)
     {
-  		var explosion = this.explosions.create(this.monsters[i].firstPositionX, this.monsters[i].firstPositionY, 'explosion');
-  		var anim = explosion.animations.add('explosion');
+  		var explosion = this.explosions.create(this.monsters[i].firstPositionX, this.monsters[i].firstPositionY, LevelConstants.SPRITE_EXPLOSION);
+  		var anim = explosion.animations.add(LevelConstants.SPRITE_EXPLOSION);
 
   		anim.onComplete.add(function()
   		{
@@ -135,7 +135,7 @@ var Level =
   			GameController.gameState = GameStates.PLAYING;
   		});
 
-  		explosion.animations.play('explosion', 18, false, true);
+  		explosion.animations.play(LevelConstants.SPRITE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
   	}
 
   	GameController.gameState = GameStates.DISPLAYING_MONSTERS;
@@ -145,14 +145,14 @@ var Level =
   displayIntroduction : function()
   {
   	// Draw a blakc rectangle behind the title
-    this.upperBlackRectangle.beginFill(0x000000, 1);
+    this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
     this.upperBlackRectangle.drawRect(0, 0, game.camera.width,  game.camera.height);
 
   	// Display the title
-    this.introductionLogo = game.add.sprite(180, 50, 'title');
+    this.introductionLogo = game.add.sprite(LevelConstants.TITLE_X, LevelConstants.TITLE_Y, LevelConstants.SPRITE_TITLE);
     this.introductionLogo.fixedToCamera = true;
 
-    this.fontIntroduction = Util.drawFontText("press any key to start or h for help", 2, 11);
+    this.fontIntroduction = Util.drawFontText(LevelConstants.INTRO_PROMPT_TEXT, LevelConstants.INTRO_PROMPT_X, LevelConstants.INTRO_PROMPT_Y);
   },
 
   // Remove the introduction title
@@ -165,7 +165,7 @@ var Level =
   // Display game over logo
   displayGameOver : function()
   {
-    this.gameOver = game.add.sprite(140, 50, 'game over');
+    this.gameOver = game.add.sprite(LevelConstants.GAME_OVER_X, LevelConstants.GAME_OVER_Y, LevelConstants.SPRITE_GAME_OVER);
     this.gameOver.fixedToCamera = true;
   },
 
@@ -173,10 +173,10 @@ var Level =
   displayInstructions : function()
   {
   	// Draw a blakc rectangle
-    this.upperBlackRectangle.beginFill(0x000000, 1);
+    this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
     this.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
 
-  	var font = game.add.retroFont('blaggerFont', 16, 16, Phaser.RetroFont.TEXT_SET2);
+  	var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
   	font.setText ("Players control Slippery Sid, who is an\n" +
   				  "an espionage agent and son of blagger.\n" +
   		          "Like the first game, the task is to \n" +
@@ -194,8 +194,8 @@ var Level =
   				  "Controls : left and right arrows \n" +
   				  "to go left and right and space bar \nto jump.", true, 0, 6);
 
-  	var image = game.add.image(10 , 10, font);
-  	image.tint = 0xc0c0c0;
+  	var image = game.add.image(LevelConstants.HELP_TEXT_X, LevelConstants.HELP_TEXT_Y, font);
+  	image.tint = LevelConstants.HELP_TEXT_COLOR;
   	image.fixedToCamera = true;
 
   	// If the user pressed a key, go back to the introduction screen
@@ -216,63 +216,63 @@ var Level =
   	switch(this.stepEndGame)
   	{
   		// Increase the score according to the remaining air level
-  		case 1:
+  		case LevelConstants.END_GAME_STEP_CONVERT_AIR:
   			if (this.airLevel > 0)
   			{
-                this.airLevel -=6;
-  				GameController.score += 30;
+                this.airLevel -= LevelConstants.END_GAME_AIR_DECREMENT;
+  				GameController.score += LevelConstants.END_GAME_SCORE_INCREMENT;
   				HUD.displayScore();
   				HUD.displayAirLevel();
   			}
   			else
   			{
   				HUD.clearAirLevel();
-                this.airLevel = 480;
+                this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
                 this.stepEndGame += 1;
   			}
 
   			break;
 
         // Display a congratulations message
-  		case 2:
+  		case LevelConstants.END_GAME_STEP_SHOW_MESSAGE:
             this.stepEndGame++;
   			// Draw a black rectangle
-            this.upperBlackRectangle.beginFill(0x000000, 1);
+            this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
             this.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
 
-  			var font = game.add.retroFont('blaggerFont', 16, 16, Phaser.RetroFont.TEXT_SET2);
+  			var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
   			font.setText ("Congratulations !\n      you\nfinished the game", true, 1 ,18);
 
-            this.congratulationsImage = game.add.image(60 , 100, font);
-            this.congratulationsImage.tint = 0xFFFFFF;
+            this.congratulationsImage = game.add.image(LevelConstants.END_GAME_MESSAGE_X, LevelConstants.END_GAME_MESSAGE_Y, font);
+            this.congratulationsImage.tint = LevelConstants.WHITE_COLOR;
             this.congratulationsImage.fixedToCamera = true;
 
   			// Scale down the message
-            this.congratulationsImage.scale.x = 0.1;
-            this.congratulationsImage.scale.y = 0.1;
+            this.congratulationsImage.scale.x = LevelConstants.END_GAME_INITIAL_SCALE;
+            this.congratulationsImage.scale.y = LevelConstants.END_GAME_INITIAL_SCALE;
 
-            this.counter = 220;
+            this.counter = LevelConstants.END_GAME_MESSAGE_WAIT_COUNTER;
   			break;
 
   		// Scale up the message
-  		case 3:
-            this.congratulationsImage.scale.x += 0.005;
-            this.congratulationsImage.scale.y += 0.005;
+  		case LevelConstants.END_GAME_STEP_SCALE_MESSAGE:
+            this.congratulationsImage.scale.x += LevelConstants.END_GAME_SCALE_INCREMENT;
+            this.congratulationsImage.scale.y += LevelConstants.END_GAME_SCALE_INCREMENT;
 
-  			if (this.congratulationsImage.scale.x > 1.8)
+  			if (this.congratulationsImage.scale.x > LevelConstants.END_GAME_MAX_SCALE)
               this.stepEndGame++;
 
   			break;
 
         // Wait a little bit, and show the introduction screen
-  		case 4:
+  		case LevelConstants.END_GAME_STEP_WAIT_THEN_RESET:
             this.counter--;
 
   			if (this.counter == 0)
   			{
                 this.upperBlackRectangle.clear();
                 this.congratulationsImage.destroy();
-                this.stepEndGame = 1;
+                this.stepEndGame = LevelConstants.INITIAL_SEQUENCE_STEP;
                 this.resetGame();
   				HUD.displayAirLevel();
   				GameController.gameState = GameStates.LOAD_INTRODUCTION;
@@ -290,9 +290,9 @@ var Level =
   	       GameController.hiScore = GameController.score;
       }
 
-    this.level = 1;
+    this.level = LevelConstants.INITIAL_LEVEL;
   	GameController.score = 0;
-  	GameController.lives = 3;
+  	GameController.lives = LevelConstants.INITIAL_LIVES;
 
     LevelTransition.reset();
     HUD.update();
@@ -308,7 +308,7 @@ var Level =
   load : function()
   {
   	// Reset level properties
-    this.airLevel = 480;
+    this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
     this.keysTaken = 0;
     this.bonusMan = false;
 
@@ -316,17 +316,17 @@ var Level =
     this.addMonsters();
 
   	// find all 'end level' objects in the map
-  	var results = Util.findObjectsByProperty(map, 'level', this.level, 'end level');
+  	var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level, LevelConstants.OBJECT_LAYER_END_LEVEL);
 
   	// If the 'end level' object is not yet defined for the current level, create it
   	if (!this.endLevel)
   	{
-        this.endLevel = game.add.sprite(results[0].x, results[0].y - 16, 'end level');
+        this.endLevel = game.add.sprite(results[0].x, results[0].y - LevelConstants.END_LEVEL_Y_OFFSET, LevelConstants.SPRITE_END_LEVEL);
         this.endLevel.alpha = 0;
   	}
   	else
   	{
-        this.endLevel.reset(results[0].x, results[0].y - 16);
+        this.endLevel.reset(results[0].x, results[0].y - LevelConstants.END_LEVEL_Y_OFFSET);
   	}
 
   },
@@ -337,7 +337,7 @@ var Level =
   	switch (this.stepDisplayLevel)
   	{
   		// Initalize the rectangles and reset the keys
-  		case 1:
+  		case LevelConstants.DISPLAY_STEP_INITIALIZE:
 
             this.rectangleHeight = game.camera.height/2;
             this.rectangleWidth = game.camera.width;
@@ -345,32 +345,32 @@ var Level =
   			// Show again all keys
   			map.forEach(function(tile)
   			{
-  				if (tile.index == 40) tile.alpha = 1;
+  				if (tile.index == LevelConstants.TILE_KEY_INDEX) tile.alpha = 1;
   			});
 
             this.stepDisplayLevel++;
   			break;
 
-  		case 2:
+  		case LevelConstants.DISPLAY_STEP_REVEAL:
             this.counterDisplayingLevel -= 1;
 
   			// Draw the upper black background
             this.upperBlackRectangle.clear();
-            this.upperBlackRectangle.beginFill(0x000000, 1);
+            this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
             this.upperBlackRectangle.drawRect(0, 0, game.camera.width, this.rectangleHeight);
             this.upperBlackRectangle.endFill();
 
   			// Draw the lower black background
             this.lowerblackRectangle.clear();
-            this.lowerblackRectangle.beginFill(0x000000, 1);
+            this.lowerblackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
             this.lowerblackRectangle.drawRect(0, game.camera.height - this.rectangleHeight, game.camera.width, this.rectangleHeight);
             this.lowerblackRectangle.endFill();
 
 
   			if (this.counterDisplayingLevel == 0)
   			{
-                this.counterDisplayingLevel = 2;
-                this.rectangleHeight -=2;
+                this.counterDisplayingLevel = LevelConstants.DISPLAY_REVEAL_COUNTER_RESET;
+                this.rectangleHeight -= LevelConstants.DISPLAY_REVEAL_HEIGHT_STEP;
   			}
 
   			// If the rectangles are gone, start the game
@@ -378,7 +378,7 @@ var Level =
   			{
                 this.upperBlackRectangle.clear();
                 this.lowerblackRectangle.clear();
-                this.stepDisplayLevel = 1;
+                this.stepDisplayLevel = LevelConstants.INITIAL_SEQUENCE_STEP;
   				GameController.gameState = GameStates.START_LEVEL;
   			}
 
