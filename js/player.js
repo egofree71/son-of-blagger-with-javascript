@@ -311,47 +311,10 @@ var Player =
 
 	},
 
-	// When the player is killed, display the 'dying' animation
+	// When the player is killed, delegate the death animation and life handling.
 	kill : function()
 	{
-		GameController.gameState = GameStates.KILL_PLAYER;
-		this.playerSprite.visible = false;
-
-		// Display blagger dying
-		this.playerDyingSprite = game.add.sprite(this.playerSprite.body.x, this.playerSprite.body.y - PlayerStates.DYING_SPRITE_Y_OFFSET, PlayerStates.SPRITE_BLAGGER_DYING);
-		var anim = this.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
-
-		// If it's a deadly fall, display white sprites
-		if (this.deadlyFall)
-			this.playerDyingSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_DYING_WHITE);
-
-		// When the player has finished to die, reset the level's properties
-		anim.onComplete.add(function()
-		{
-			// If there is the 'bonus man', remove it
-			if (Level.bonusMan == true)
-			{
-				HUD.hideBonusMan();
-				Level.bonusMan = false;
-			}
-			else
-			{
-				GameController.lives -= 1;
-			}
-
-			HUD.displayLives();
-
-			Level.resetAirLevel();
-			HUD.displayAirLevel();
-			
-			// If there are no lives left, the game is over
-			if (GameController.lives == 0)
-				GameController.gameState = GameStates.SHOW_GAME_OVER;
-			else
-				GameController.gameState = GameStates.LOAD_LEVEL;
-		});
-
-		this.playerDyingSprite.animations.play(PlayerStates.ANIMATION_BLAGGER_DYING, PlayerStates.DYING_ANIMATION_FRAME_RATE, false, true);
+		PlayerDeathSequence.start(this);
 	}
 
 }

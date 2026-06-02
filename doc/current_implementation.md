@@ -61,6 +61,7 @@ Current logical order:
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
 <script src="js/playerInteractions.js"></script>
+<script src="js/playerDeathSequence.js"></script>
 <script src="js/player.js"></script>
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
@@ -85,8 +86,9 @@ The project is organized around a set of global objects:
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
-- `Player`: player movement, jumping, falling, and death animation.
+- `Player`: player movement, jumping, falling, and death triggering.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
+- `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `Monster`: constructor function for enemy instances.
 - `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
 - `Util`: shared collision and helper functions.
@@ -381,7 +383,6 @@ The final message text is stored in `LevelConstants.END_GAME_MESSAGE_TEXT`.
 Responsibilities:
 
 - create the normal player sprite;
-- create the separate death-animation sprite;
 - reset the player at the beginning of a level;
 - read keyboard input;
 - handle horizontal movement;
@@ -392,8 +393,7 @@ Responsibilities:
 - handle slippery platforms;
 - handle ladders;
 - delegate key collection, deadly collision checks, and exit detection to `PlayerInteractions`;
-- play the death animation;
-- reload the level or trigger game over after death.
+- trigger the death sequence through `PlayerDeathSequence`.
 
 Important data:
 
@@ -416,7 +416,7 @@ Data.jumpPath
 
 This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
 
-Key collection and exit behavior are implemented in `PlayerInteractions`, while `Player` remains responsible for movement and death animation.
+Key collection and exit behavior are implemented in `PlayerInteractions`, while the death animation and post-death consequences are handled by `PlayerDeathSequence`. `Player` remains responsible for movement and for triggering death when needed.
 
 ## `js/playerInteractions.js`
 
@@ -434,6 +434,29 @@ Responsibilities:
 - switch to `GameStates.END_LEVEL` or `GameStates.END_GAME`.
 
 `Player.update()` passes the player coordinates captured at the beginning of the frame to `PlayerInteractions`. This is intentional: the original implementation performed these checks using those same coordinates after applying movement for the frame. Keeping this convention avoids subtle changes in collision timing.
+
+## `js/playerDeathSequence.js`
+
+`PlayerDeathSequence` handles the death animation and the consequences that happen after the animation completes.
+
+Responsibilities:
+
+- stop normal gameplay by switching to `GameStates.KILL_PLAYER`;
+- hide the normal player sprite;
+- create the separate death-animation sprite;
+- use the white death sprite after a deadly fall;
+- consume the bonus man when available;
+- otherwise remove one life;
+- reset the air bar after death;
+- reload the current level or show the game-over screen.
+
+`Player.kill()` is now a small delegation method:
+
+```js
+PlayerDeathSequence.start(Player)
+```
+
+This keeps movement code in `Player` and death sequencing in one dedicated object.
 
 ## `js/playerStates.js`
 
@@ -742,22 +765,26 @@ Player death can be caused by:
 - deadly fall;
 - depleted air.
 
-The central method is:
+Death is triggered through:
 
 ```js
 Player.kill()
 ```
 
+`Player.kill()` delegates to `PlayerDeathSequence.start()`.
+
 Simplified flow:
 
 ```text
 Player.kill()
-  -> stop normal gameplay
-  -> hide normal player sprite
-  -> show death sprite
-  -> play death animation
-  -> remove one life or consume bonus man
-  -> reload level or show game over
+  -> PlayerDeathSequence.start()
+      -> stop normal gameplay
+      -> hide normal player sprite
+      -> show death sprite
+      -> play death animation
+      -> remove one life or consume bonus man
+      -> reset the air bar
+      -> reload level or show game over
 ```
 
 ## Hi-score flow
