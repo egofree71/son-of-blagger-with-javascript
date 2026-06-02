@@ -2,6 +2,8 @@ import { GameStates } from "./gameStates.js";
 import { GameController } from "./gameController.js";
 import { Util } from "./util.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { Player } from "./player.js";
+import { HUD } from "./HUD.js";
 
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.

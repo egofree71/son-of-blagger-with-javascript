@@ -4,6 +4,9 @@ import { LevelRevealSequence } from "./levelRevealSequence.js";
 import { EndGameSequence } from "./endGameSequence.js";
 import { Data } from "./data.js";
 import { LevelObjectLoader } from "./levelObjectLoader.js";
+import { LevelTransition } from "./levelTransition.js";
+import { Player } from "./player.js";
+import { HUD } from "./HUD.js";
 
 window.Level =
 {

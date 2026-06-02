@@ -6,7 +6,7 @@ import { PlayerMovement } from "./playerMovement.js";
 import { PlayerInteractions } from "./playerInteractions.js";
 import { PlayerDeathSequence } from "./playerDeathSequence.js";
 
-window.Player =
+export const Player =
 {
 	// Show if the player is jumping
 	jumping : false,
@@ -105,4 +105,6 @@ window.Player =
 		PlayerDeathSequence.start(this);
 	}
 
-}
+};
+
+window.Player = Player;

@@ -1,6 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { HUD } from "./HUD.js";
 
 /**
  * Handles the final sequence played after the last level has been completed.

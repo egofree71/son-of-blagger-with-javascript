@@ -2,6 +2,7 @@ import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { CollisionDetector } from "./collisionDetector.js";
 import { Data } from "./data.js";
+import { HUD } from "./HUD.js";
 
 /**
  * Handles gameplay interactions that are triggered by the player's position.

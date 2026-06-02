@@ -2,6 +2,8 @@ import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { ScreenManager } from "./screenManager.js";
 import { EndGameSequence } from "./endGameSequence.js";
+import { HUD } from "./HUD.js";
+import { Player } from "./player.js";
 
 export const GameController =
 {

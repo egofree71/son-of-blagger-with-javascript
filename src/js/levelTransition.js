@@ -1,6 +1,8 @@
 import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { Util } from "./util.js";
+import { Player } from "./player.js";
+import { HUD } from "./HUD.js";
 
 /**
  * Handles the transition played when the player completes a level.
@@ -18,7 +20,7 @@ import { Util } from "./util.js";
  * values in Level.stepEndLevel. Here the numeric values are still preserved,
  * but they are named so each phase explains what it does.
  */
-window.LevelTransition =
+export const LevelTransition =
 {
     // 1) Increase Level.level and read the player spawn position of the next level from the Tiled map.
     PHASE_PREPARE_NEXT_LEVEL : 1,
@@ -341,4 +343,7 @@ window.LevelTransition =
         this.reset();
         GameController.gameState = GameStates.START_LEVEL;
     }
+
 };
+
+window.LevelTransition = LevelTransition;

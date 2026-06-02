@@ -2,7 +2,7 @@ import { GameStates } from "./gameStates.js";
 import { HudConstants } from "./hudConstants.js";
 import { Data } from "./data.js";
 
-window.HUD =
+export const HUD =
 {
     // Width of a character in pixels
     charWidth : HudConstants.CHAR_WIDTH,
@@ -184,4 +184,6 @@ window.HUD =
         return font;
     }
 
-}
+};
+
+window.HUD = HUD;

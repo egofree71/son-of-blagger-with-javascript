@@ -2,12 +2,11 @@
 //
 // Phaser 2.3 is still loaded as a classic script from public/js/phaser.min.js.
 // The constant files, static data, utility helpers, player support helpers,
-// level-object/monster helpers, several screen/sequence helpers, and core orchestration modules are now real ES modules. They are still mirrored on
+// level-object/monster helpers, player/HUD runtime objects, the level transition, several screen/sequence helpers, and core orchestration modules are now real ES modules. They are still mirrored on
 // window for temporary compatibility and console debugging.
 //
-// Most gameplay objects are still imported for their side effects: each module
-// registers its legacy runtime object on window. They will be converted to
-// explicit imports/exports in later steps.
+// A few legacy runtime objects are still mirrored on window for compatibility
+// and console debugging while the migration continues.
 
 import "./js/gameStates.js";
 import "./js/playerStates.js";
