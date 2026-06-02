@@ -1,0 +1,662 @@
+# Son of Blagger — Current Implementation
+
+Document updated after **refactoring step 2**.
+
+This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
+
+## Project goal
+
+This project is a web remake of the Commodore 64 game **Son of Blagger**.
+
+The player controls Slippery Sid through a series of maze-like levels. The goal is to collect all keys in the current level, avoid enemies and traps, then reach the exit to move on to the next level.
+
+The current refactoring goal is to modernize the code gradually while preserving the existing behavior of the game.
+
+## Current technical state
+
+- Engine: **Phaser 2.3**.
+- Language: classic JavaScript, with no ES6 modules and no TypeScript.
+- Architecture: global objects and constructor functions.
+- Map: Tiled JSON file loaded by Phaser.
+- Rendering: Phaser sprites, Phaser tilemap, bitmap/retro font.
+- Physics: Phaser Arcade Physics, although many collisions are still computed manually through tile checks.
+- Persistence: the hi-score is stored in `localStorage`.
+
+The project is intentionally still close to its original style. Recent refactorings mainly isolated some responsibilities without changing the engine or the gameplay.
+
+## Running the game locally
+
+From the project root:
+
+```powershell
+py -m http.server 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+It is better to use a small local HTTP server instead of opening `index.html` directly, because browsers may block or mishandle some file loading when running under `file:///`.
+
+## General file organization
+
+### `index.html`
+
+HTML entry point of the game.
+
+It loads Phaser and then all project JavaScript files in an important order, because the code relies on global objects.
+
+The logical order is:
+
+```html
+<script src="js/phaser.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/gameStates.js"></script>
+<script src="js/util.js"></script>
+<script src="js/monster.js"></script>
+<script src="js/player.js"></script>
+<script src="js/levelTransition.js"></script>
+<script src="js/level.js"></script>
+<script src="js/HUD.js"></script>
+<script src="js/gameController.js"></script>
+<script src="js/main.js"></script>
+```
+
+If a global object is used before it has been loaded, the game may crash with a `ReferenceError`.
+
+### `js/main.js`
+
+Phaser initialization file.
+
+Main responsibilities:
+
+- create the Phaser instance:
+
+```js
+var game = new Phaser.Game(640, 400, Phaser.AUTO, '', { preload: preload, create: create, update: updateGame });
+```
+
+- load assets in `preload()`;
+- create the tilemap and layers in `create()`;
+- initialize Arcade Physics;
+- create animated sprites from some tiles;
+- create the player;
+- initialize monsters;
+- initialize the HUD;
+- create the black rectangles used for the progressive level reveal;
+- start the game with the `GameStates.LOAD_INTRODUCTION` state;
+- delegate every frame to `GameController.update()`.
+
+Important global variables created here:
+
+- `game`
+- `map`
+- `layer`
+- `keyPressed`
+- `vanishingPlatformGroup`
+
+These variables are still used by several other global objects. Eventually, they could be grouped into a context object or encapsulated inside a modern Phaser scene.
+
+### `js/gameStates.js`
+
+Centralized list of game states.
+
+Before refactoring step 2, states were written as raw strings in several files, for example:
+
+```js
+"playing"
+"end level"
+"load level"
+```
+
+They are now grouped in `GameStates`, for example:
+
+```js
+GameStates.PLAYING
+GameStates.END_LEVEL
+GameStates.LOAD_LEVEL
+```
+
+The original string values were preserved to avoid changing the existing behavior.
+
+### `js/gameController.js`
+
+Main orchestrator of the game.
+
+`GameController.update()` is called once per frame from `updateGame()` in `main.js`.
+
+It uses `GameController.gameState` to decide which part of the game should run.
+
+Responsibilities:
+
+- handle the introduction screen;
+- handle the help screen;
+- load a level;
+- progressively reveal the level;
+- start the monster reveal sequence;
+- run the main gameplay loop;
+- start the end-of-level transition;
+- start the end-game sequence;
+- handle game over.
+
+Main data:
+
+- `gameState`
+- `score`
+- `hiScore`
+- `lives`
+
+During the `GameStates.PLAYING` state, it mainly calls:
+
+```js
+HUD.updateAirLevel();
+HUD.displayBonusMan();
+Level.updateMonsters();
+Player.update();
+```
+
+### `js/level.js`
+
+Global object responsible for level management.
+
+Main responsibilities:
+
+- keep track of the current level number;
+- load the objects of the current level;
+- create the monsters associated with the level;
+- manage explosion and reverse-explosion groups;
+- manage the level exit object;
+- progressively reveal the level with two black rectangles;
+- reveal monsters at the beginning of a level;
+- handle the introduction, help screen, game over, and end-game screens;
+- reset some game data.
+
+Important data:
+
+- `level`
+- `airLevel`
+- `keysTaken`
+- `bonusMan`
+- `monsters`
+- `monstersGroup`
+- `endLevel`
+- `stepDisplayLevel`
+- `stepEndGame`
+
+Since refactoring step 1, the end-of-level transition is no longer implemented directly inside `Level`. The method:
+
+```js
+Level.goToNext()
+```
+
+now simply delegates to:
+
+```js
+LevelTransition.update()
+```
+
+### `js/levelTransition.js`
+
+Global object responsible for the transition between two levels.
+
+This logic was previously embedded directly inside `Level.goToNext()` using numeric steps and counters. It was extracted to make the sequence easier to read and maintain.
+
+The transition is a small internal state machine.
+
+Current phases:
+
+1. prepare the next level;
+2. hide the monsters from the completed level;
+3. restore the gray background;
+4. precisely align the player on one axis;
+5. convert the remaining air into score;
+6. move the player toward the start point of the next level;
+7. refill the air bar;
+8. load the next level.
+
+The behavior and timings were preserved as closely as possible compared with the previous implementation.
+
+Notes:
+
+- `MOVE_DELAY` corresponds to the old counter used to slow down tile-based movement;
+- the main movement uses 16-pixel steps;
+- the vertical `-42` offset is preserved because Tiled and Phaser do not reference objects in exactly the same way;
+- the transition grants a `bonusMan` for the next level.
+
+### `js/player.js`
+
+Global object responsible for the player.
+
+Responsibilities:
+
+- create the player sprite;
+- position the player at the beginning of the level;
+- read keyboard input;
+- handle horizontal movement;
+- handle jumping;
+- handle falling;
+- detect deadly falls;
+- handle conveyor belts;
+- handle slippery platforms;
+- handle ladders;
+- collect keys;
+- detect deadly collisions;
+- detect the level exit;
+- play the death animation;
+- restart the level or trigger game over.
+
+Important data:
+
+- `jumping`
+- `jumpIndex`
+- `jumpingDirection`
+- `fallHeight`
+- `fallLimit`
+- `deadlyFall`
+- `playerSprite`
+- `playerDyingSprite`
+
+The jump uses the `Data.jumpPath` array, which contains the vertical and horizontal movement for each jump step. This logic is very specific to the current gameplay and should be modified carefully.
+
+When the player picks up a key:
+
+- `Level.keysTaken` increases;
+- the score increases;
+- the touched tile becomes invisible;
+- the layer is marked as `dirty`.
+
+When all keys have been collected and the player touches the exit:
+
+- if this is the last level: `GameStates.END_GAME`;
+- otherwise: `GameStates.END_LEVEL`.
+
+### `js/monster.js`
+
+Constructor function for monsters.
+
+Each monster is created from a Tiled object and from collision properties stored in the monster tileset.
+
+Responsibilities:
+
+- create the monster sprite;
+- read its initial direction;
+- read its maximum movement distance;
+- store its real hitbox;
+- move the monster horizontally or vertically;
+- reverse its direction when it reaches its maximum distance.
+
+Monsters do not chase the player. They follow predefined paths.
+
+Collision with the player is tested in `Util.collisionRectangleWithMonsters()`.
+
+### `js/HUD.js`
+
+Global object responsible for the HUD display.
+
+Responsibilities:
+
+- create the black area below the playfield;
+- display the air bar;
+- display lives;
+- display the score;
+- display the level number;
+- display the hi-score;
+- manage the bonus man;
+- gradually decrease the air during gameplay.
+
+The air bar is decremented in:
+
+```js
+HUD.updateAirLevel()
+```
+
+During gameplay, if the air reaches zero, the player is killed through:
+
+```js
+Player.kill()
+```
+
+### `js/util.js`
+
+Global object containing utility functions.
+
+Main responsibilities:
+
+- test collisions along a horizontal line;
+- test collisions along a vertical line;
+- test collisions along the edges of a rectangle;
+- test collision with the level exit;
+- test collision with monsters;
+- test disappearing platforms;
+- create animated sprites from tiles;
+- find Tiled objects by property;
+- retrieve monster tile properties;
+- draw text using the game font.
+
+Most player collisions rely on these functions. This makes `Util` very important for gameplay.
+
+### `js/data.js`
+
+Global object containing gameplay data.
+
+Main contents:
+
+- `jumpPath`: detailed jump trajectory;
+- `levels`: number of keys per level and monster animation speed;
+- `bonusManColors`: colors used to display the bonus man.
+
+`Data.levels` is notably used to know how many keys are required to complete the current level:
+
+```js
+Data.levels[Level.level - 1][0]
+```
+
+## Simplified game lifecycle
+
+```text
+LOAD_INTRODUCTION
+  -> INTRODUCTION
+      -> LOAD_HELP -> HELP -> LOAD_INTRODUCTION
+      -> LOAD_LEVEL
+          -> DISPLAY_LEVEL
+              -> START_LEVEL
+                  -> DISPLAYING_MONSTERS
+                      -> PLAYING
+                          -> END_LEVEL -> START_LEVEL of next level
+                          -> END_GAME -> LOAD_INTRODUCTION
+                          -> SHOW_GAME_OVER -> GAME_OVER -> LOAD_INTRODUCTION
+```
+
+## Main game loop
+
+Every frame:
+
+```text
+main.updateGame()
+  -> GameController.update()
+      -> action depending on GameController.gameState
+```
+
+During the `PLAYING` state:
+
+```text
+HUD.updateAirLevel()
+HUD.displayBonusMan()
+Level.updateMonsters()
+Player.update()
+```
+
+The player is therefore updated after the monsters and after the air bar.
+
+## Loading a level
+
+Level loading is mainly handled in:
+
+```js
+Level.load()
+```
+
+This method:
+
+1. resets air, keys, and bonus man to their initial state;
+2. calls `Player.reset()`;
+3. creates the level monsters through `Level.addMonsters()`;
+4. finds the level exit object in Tiled;
+5. creates or repositions the invisible exit sprite.
+
+Then `HUD.update()` refreshes the displayed information.
+
+## Progressive level reveal
+
+The progressive reveal is handled by:
+
+```js
+Level.display()
+```
+
+Principle:
+
+- two black rectangles hide the map;
+- the rectangles gradually move away;
+- when the rectangles are gone, the state changes to `GameStates.START_LEVEL`;
+- `Level.displayMonsters()` plays the beginning-of-level monster reveal sequence;
+- monsters become visible;
+- the state changes to `GameStates.PLAYING`.
+
+## Transition between levels
+
+When all keys have been collected and the player touches the exit, `Player.update()` triggers:
+
+```js
+GameController.gameState = GameStates.END_LEVEL;
+```
+
+Then:
+
+```text
+GameController.update()
+  -> Level.goToNext()
+      -> LevelTransition.update()
+```
+
+The transition converts the remaining air into score, moves the player toward the next level, refills the air, then loads the new level.
+
+## Player death
+
+Player death is triggered by:
+
+- collision with a deadly element;
+- collision with a monster;
+- deadly fall;
+- depleted air.
+
+The central method is:
+
+```js
+Player.kill()
+```
+
+It:
+
+1. changes the game state;
+2. hides the normal player sprite;
+3. displays the death animation;
+4. at the end of the animation, removes one life or consumes the bonus man;
+5. reloads the level or triggers game over.
+
+## Hi-score
+
+The hi-score is read in `main.create()` with:
+
+```js
+localStorage.getItem('hiScore')
+```
+
+It is updated in `Level.resetGame()` if the current score is greater than the stored hi-score.
+
+## Technical points to watch
+
+### Global variables
+
+The project still heavily depends on global variables:
+
+- `game`
+- `map`
+- `layer`
+- `keyPressed`
+- `vanishingPlatformGroup`
+- `GameController`
+- `Level`
+- `Player`
+- `HUD`
+- `Util`
+- `Data`
+
+This is acceptable for now, but it will be an important point if the project later migrates to TypeScript or to a modern Phaser version.
+
+### No modules yet
+
+Files are loaded through `<script>` tags in `index.html`. There is currently no module system, no import/export, and no bundler.
+
+A future step could introduce Vite, but this has not been done yet.
+
+### Manual collisions
+
+Player collisions are very specific to the game and are often computed at the pixel level.
+
+They should not be rewritten too early. Even a small change can alter the feel of the game.
+
+### Counter-based sequences
+
+Some sequences still use counters or numeric steps:
+
+- progressive level reveal;
+- end-game sequence;
+- HUD animation;
+- monster movement.
+
+The transition between levels has already been isolated into `LevelTransition`, but other sequences could be clarified later.
+
+### Directions as raw strings
+
+The code still uses several raw strings:
+
+```js
+"LEFT"
+"RIGHT"
+"UP"
+"DOWN"
+"left"
+"right"
+"up"
+"down"
+```
+
+A future step could centralize these directions, as was done with `GameStates`.
+
+### Tiled properties
+
+The gameplay strongly depends on properties defined in the Tiled map and tilesets:
+
+- `type`
+- `name`
+- `level`
+- `direction`
+- `maxDistance`
+- monster hitbox properties
+
+These conventions should be documented more precisely if the map is modified.
+
+## Refactorings already done
+
+### Step 1 — Extract end-of-level transition
+
+Created:
+
+```text
+js/levelTransition.js
+```
+
+Goal: move the transition between levels out of `Level.goToNext()`.
+
+### Step 2 — Centralize game states
+
+Created:
+
+```text
+js/gameStates.js
+```
+
+Goal: replace scattered state strings with centralized constants.
+
+## Future refactoring ideas
+
+### 1. Document Tiled conventions
+
+Create a separate document, for example:
+
+```text
+doc/tiled_map_conventions.md
+```
+
+It would describe layers, expected properties, tile types, `player` objects, `end level` objects, `monsters`, etc.
+
+### 2. Centralize directions
+
+Create a file such as:
+
+```text
+js/directions.js
+```
+
+with:
+
+```js
+Directions.LEFT
+Directions.RIGHT
+Directions.UP
+Directions.DOWN
+```
+
+This would reduce the risk of typos in `Player` and `Monster`.
+
+### 3. Clean up implicit global variables
+
+Some loops still use variables that are not explicitly declared, for example `i` in several files.
+
+They should gradually be replaced with:
+
+```js
+for (var i = 0; i < ...; i++)
+```
+
+This is a small but important cleanup before a possible TypeScript migration.
+
+### 4. Isolate HUD logic
+
+The HUD still mixes display, air depletion, and death logic when the air reaches zero.
+
+Eventually, this could be split into:
+
+- air timer logic;
+- air bar display;
+- gameplay effects when air is depleted.
+
+### 5. Prepare a future TypeScript migration
+
+Before moving to TypeScript, it would be useful to:
+
+- reduce global variables;
+- document the shape of Tiled objects;
+- centralize constants;
+- clarify the responsibilities of each object.
+
+## Manual test checklist after refactoring
+
+After each small refactoring step, test at least:
+
+- game launch;
+- title screen;
+- access help with `h`;
+- return from help;
+- level 1 loading;
+- left/right movement;
+- jump;
+- fall;
+- key collection;
+- collision with an enemy or a trap;
+- losing a life;
+- transition to the next level;
+- score, lives, level number, and air display;
+- no red JavaScript error in the console.
+
+To quickly test the transition to the next level from the browser console:
+
+```js
+Level.keysTaken = Data.levels[Level.level - 1][0];
+GameController.gameState = GameStates.END_LEVEL;
+```
+
+This command must not be turned into a keyboard shortcut that is active in production. If a debug system is added later, it should be explicitly enabled, for example through a URL parameter such as `?debug=1`.
