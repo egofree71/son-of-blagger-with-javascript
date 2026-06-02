@@ -1,4 +1,14 @@
-var Player =
+import { GameStates } from "./gameStates.js";
+import { PlayerStates } from "./playerStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { Util } from "./util.js";
+import { PlayerMovement } from "./playerMovement.js";
+import { PlayerInteractions } from "./playerInteractions.js";
+import { PlayerDeathSequence } from "./playerDeathSequence.js";
+import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+
+export const Player =
 {
 	// Show if the player is jumping
 	jumping : false,
@@ -97,4 +107,4 @@ var Player =
 		PlayerDeathSequence.start(this);
 	}
 
-}
+};

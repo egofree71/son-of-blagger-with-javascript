@@ -4,7 +4,7 @@
  * This file only gives names to existing HUD values. It should not change any
  * gameplay behavior, HUD timing, screen position, color, or formatting rule.
  */
-var HudConstants =
+export const HudConstants =
 {
     // Basic HUD grid. The HUD uses the same 16x16 grid as the retro font.
     CHAR_WIDTH : 16,
@@ -83,3 +83,6 @@ var HudConstants =
     FONT_CHAR_WIDTH : 16,
     FONT_CHAR_HEIGHT : 16
 };
+
+// Keep the constant object available globally while the rest of the legacy
+// runtime is migrated progressively to explicit ES module imports.

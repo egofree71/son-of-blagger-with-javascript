@@ -1,3 +1,11 @@
+import { GameStates } from "./gameStates.js";
+import { GameController } from "./gameController.js";
+import { Util } from "./util.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { Player } from "./player.js";
+import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
+
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
  *
@@ -11,7 +19,7 @@
  * lifecycle easier to understand and will also make a future Phaser migration
  * less risky.
  */
-var GameInitializer =
+export const GameInitializer =
 {
     /**
      * Runs the complete Phaser create() setup sequence.
@@ -183,3 +191,7 @@ var GameInitializer =
         GameController.gameState = GameStates.LOAD_INTRODUCTION;
     }
 };
+
+
+// Keep the initializer available globally while the remaining runtime objects
+// are migrated progressively to explicit ES module imports.

@@ -6,7 +6,7 @@
  * player state machine yet. It only removes repeated raw strings from
  * player.js so future refactorings are safer.
  */
-var PlayerStates =
+export const PlayerStates =
 {
     // Horizontal and vertical movement directions used while computing one
     // gameplay frame. Values are preserved from the previous implementation.
@@ -32,3 +32,6 @@ var PlayerStates =
     DYING_SPRITE_Y_OFFSET : 1,
     DYING_ANIMATION_FRAME_RATE : 6
 };
+
+// Keep the constant object available globally while the rest of the legacy
+// runtime is migrated progressively to explicit ES module imports.

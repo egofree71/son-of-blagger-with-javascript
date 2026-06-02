@@ -6,7 +6,7 @@
  * implementation easier to read and safer to refactor later; the values are
  * intentionally preserved.
  */
-var LevelConstants =
+export const LevelConstants =
 {
     // Generic level state values.
     INITIAL_LEVEL : 1,
@@ -110,3 +110,6 @@ var LevelConstants =
     END_GAME_MESSAGE_X : 60,
     END_GAME_MESSAGE_Y : 100
 };
+
+// Keep the constant object available globally while the rest of the legacy
+// runtime is migrated progressively to explicit ES module imports.

@@ -1,3 +1,10 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+
 /**
  * Handles the final sequence played after the last level has been completed.
  *
@@ -7,7 +14,7 @@
  *
  * The behaviour, scoring values and timings are intentionally preserved.
  */
-var EndGameSequence =
+export const EndGameSequence =
 {
     // Current phase of the final sequence.
     phase : LevelConstants.END_GAME_STEP_CONVERT_AIR,

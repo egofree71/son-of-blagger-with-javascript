@@ -1,3 +1,9 @@
+import { GameStates } from "./gameStates.js";
+import { PlayerStates } from "./playerStates.js";
+import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+
 /**
  * Handles the visual and gameplay consequences of the player's death.
  *
@@ -5,7 +11,7 @@
  * triggered. Once death starts, this object owns the animation callback and the
  * life / bonus-man / reload decision that happens after the animation finishes.
  */
-var PlayerDeathSequence =
+export const PlayerDeathSequence =
 {
     /**
      * Starts the death animation for the given player object.

@@ -1,3 +1,9 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { Util } from "./util.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { GameController } from "./gameController.js";
+
 /**
  * ScreenManager owns the non-gameplay screens.
  *
@@ -5,7 +11,7 @@
  * a level. Moving them here keeps Level focused on actual level management
  * while preserving the original title/help/game-over behaviour.
  */
-var ScreenManager =
+export const ScreenManager =
 {
     // Title screen objects.
     introductionLogo : null,

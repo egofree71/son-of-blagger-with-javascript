@@ -2,7 +2,7 @@
 
 This document describes the current architecture of the JavaScript / Phaser remake of **Son of Blagger**.
 
-Its purpose is to help someone understand the project as it exists today: the runtime structure, the main global objects, the gameplay flow, the responsibilities of each file, and the technical points to watch before making further changes.
+Its purpose is to help someone understand the project as it exists today: the runtime structure, the ES module graph, the remaining Phaser runtime globals, the gameplay flow, the responsibilities of each file, and the technical points to watch before making further changes.
 
 It is not a changelog. Historical refactoring steps are intentionally not listed here.
 
@@ -18,75 +18,95 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 
 - Engine: **Phaser 2.3.0**.
 - Language: classic JavaScript.
-- Module system: none. Files are loaded through `<script>` tags.
-- Main architecture style: global objects and constructor functions.
+- Development/build tool: **Vite**.
+- Module system: Vite ES module entry point. Runtime files now use explicit ES module exports/imports.
+- Main architecture style: ES modules with a small legacy Phaser runtime context kept on `window`.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style. Several responsibilities have been isolated into dedicated global objects, but the project has not yet moved to ES modules, TypeScript, Phaser 3, or Phaser 4.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported through `src/js/main.js`. Runtime objects such as `GameController`, `Level`, `Player`, `HUD`, sequences, helpers, constants, and static data are exported as ES modules and imported explicitly by their consumers. They are no longer available through explicit imports. The remaining global-object style is limited to Phaser 2.3 runtime context created in `src/js/main.js`, such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
 
 ## Running the game locally
 
-From the project root:
+Install dependencies once from the project root:
 
 ```powershell
-py -m http.server 8000
+npm install
 ```
 
-Then open:
+Then start the Vite development server:
+
+```powershell
+npm run dev
+```
+
+Open the local URL printed by Vite, usually:
 
 ```text
-http://localhost:8000
+http://localhost:5173/
 ```
 
-Using a local HTTP server is preferable to opening `index.html` directly, because browsers can block or mishandle asset loading under `file:///`.
+The old `py -m http.server 8000` workflow is no longer the preferred way to run the project. Vite provides the local development server and can also build a production version of the game with `npm run build`.
+
+## Building the game
+
+To create a production build:
+
+```powershell
+npm run build
+```
+
+This creates a generated `dist/` folder. It should not be edited by hand.
+
+To preview that production build locally:
+
+```powershell
+npm run preview
+```
+
+## Project structure
+
+The current Vite-based layout is:
+
+```text
+index.html
+package.json
+vite.config.js
+src/
+ main.js
+ js/
+  ...game runtime modules...
+public/
+ js/
+  phaser.min.js
+ assets/
+  maps/
+  sprites/
+  tileset/
+doc/
+ current_implementation.md
+```
+
+`public/` is still used for files that must be copied unchanged to the production `dist/` folder. This currently includes Phaser 2.3 and all Phaser-loaded game assets. The game source files themselves now live in `src/js` and are imported by Vite through `src/main.js`.
 
 ## File loading order
 
-The project relies on globals, so script order in `index.html` matters.
-
-Current logical order:
+`index.html` now loads only two scripts:
 
 ```html
-<script src="js/phaser.min.js"></script>
-<script src="js/gameStates.js"></script>
-<script src="js/playerStates.js"></script>
-<script src="js/monsterConstants.js"></script>
-<script src="js/levelConstants.js"></script>
-<script src="js/hudConstants.js"></script>
-<script src="js/levelRevealSequence.js"></script>
-<script src="js/assetLoader.js"></script>
-<script src="js/gameInitializer.js"></script>
-<script src="js/main.js"></script>
-<script src="js/util.js"></script>
-<script src="js/collisionDetector.js"></script>
-<script src="js/screenManager.js"></script>
-<script src="js/playerMovementProbes.js"></script>
-<script src="js/playerEnvironmentEffects.js"></script>
-<script src="js/playerMovement.js"></script>
-<script src="js/playerInteractions.js"></script>
-<script src="js/playerDeathSequence.js"></script>
-<script src="js/player.js"></script>
-<script src="js/monster.js"></script>
-<script src="js/data.js"></script>
-<script src="js/levelObjectLoader.js"></script>
-<script src="js/levelTransitionPlayerMover.js"></script>
-<script src="js/levelTransitionVisualEffects.js"></script>
-<script src="js/levelTransitionAirScore.js"></script>
-<script src="js/levelTransition.js"></script>
-<script src="js/level.js"></script>
-<script src="js/endGameSequence.js"></script>
-<script src="js/HUD.js"></script>
-<script src="js/gameController.js"></script>
+<script src="./js/phaser.min.js"></script>
+<script type="module" src="/src/main.js"></script>
 ```
 
-If a file uses a global object before that object is loaded, the game will fail with a `ReferenceError`.
+Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through `src/main.js`.
+
+Runtime files are now real ES modules: they export named objects and the files that use them import those objects explicitly. This removes the long list of manual script tags from `index.html` and removes the previous temporary `window.*` compatibility mirrors. The remaining legacy globals are Phaser runtime objects created in `src/js/main.js`, such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
 
 ## Main runtime objects
 
-The project is organized around a set of global objects:
+The project is organized around ES module exports defined under `src/js`:
 
 - `AssetLoader`: Phaser asset preloading.
 - `GameInitializer`: runtime startup after asset loading.
@@ -96,14 +116,9 @@ The project is organized around a set of global objects:
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
-- `LevelTransitionPlayerMover`: target capture and player movement during the end-level transition.
-- `LevelTransitionVisualEffects`: background flash, monster hiding, and reverse explosion effects used by the end-level transition.
-- `LevelTransitionAirScore`: air-to-score conversion and air refill used by the end-level transition.
 - `EndGameSequence`: final congratulations sequence.
 - `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
-- `PlayerMovement`: high-level frame-by-frame movement orchestration for the player.
-- `PlayerMovementProbes`: pixel probe helpers used by player movement.
-- `PlayerEnvironmentEffects`: tile-driven movement effects such as slides, falling, conveyors and ladders.
+- `PlayerMovement`: keyboard input and movement rules for the player.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `Monster`: constructor function for enemy instances.
@@ -112,7 +127,7 @@ The project is organized around a set of global objects:
 - `Util`: shared non-collision helper functions.
 - `Data`: static gameplay data such as jump trajectory, level data, and bonus-man colors.
 
-The main Phaser globals created in `main.js` are:
+The main Phaser globals created in `src/js/main.js` are:
 
 - `game`
 - `map`
@@ -124,7 +139,7 @@ These globals are still used directly by multiple files.
 
 ## Game states
 
-Game states are centralized in `js/gameStates.js`.
+`GameStates` is defined in `src/js/gameStates.js` and exported as an ES module. Files that use game states import it explicitly.
 
 The string values are intentionally kept stable because they are part of the current runtime flow.
 
@@ -150,16 +165,16 @@ The current lifecycle is approximately:
 
 ```text
 LOAD_INTRODUCTION
-  -> INTRODUCTION
-      -> LOAD_HELP -> HELP -> LOAD_INTRODUCTION
-      -> LOAD_LEVEL
-          -> DISPLAY_LEVEL
-              -> START_LEVEL
-                  -> DISPLAYING_MONSTERS
-                      -> PLAYING
-                          -> END_LEVEL -> START_LEVEL of next level
-                          -> END_GAME -> LOAD_INTRODUCTION
-                          -> SHOW_GAME_OVER -> GAME_OVER -> LOAD_INTRODUCTION
+ -> INTRODUCTION
+   -> LOAD_HELP -> HELP -> LOAD_INTRODUCTION
+   -> LOAD_LEVEL
+     -> DISPLAY_LEVEL
+       -> START_LEVEL
+         -> DISPLAYING_MONSTERS
+           -> PLAYING
+             -> END_LEVEL -> START_LEVEL of next level
+             -> END_GAME -> LOAD_INTRODUCTION
+             -> SHOW_GAME_OVER -> GAME_OVER -> LOAD_INTRODUCTION
 ```
 
 ## Main game loop
@@ -168,9 +183,9 @@ LOAD_INTRODUCTION
 
 ```js
 var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
-    preload: preload,
-    create: create,
-    update: updateGame
+  preload: preload,
+  create: create,
+  update: updateGame
 });
 ```
 
@@ -178,7 +193,7 @@ Every frame, Phaser calls:
 
 ```text
 updateGame()
-  -> GameController.update()
+ -> GameController.update()
 ```
 
 `GameController.update()` dispatches to one method per game state.
@@ -194,9 +209,15 @@ Player.update()
 
 This order is part of the current gameplay behavior and should be changed only with care.
 
-## `js/assetLoader.js`
+## `src/main.js`
 
-`AssetLoader` centralizes Phaser asset preloading.
+This is the Vite module entry point referenced by `index.html`. It imports `src/js/main.js`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
+
+This file does not contain gameplay logic. Its role is to connect Vite's module graph to the current Phaser 2.3 runtime.
+
+## `src/js/assetLoader.js`
+
+`AssetLoader` centralizes Phaser asset preloading. It is exported as an ES module and imported by the Phaser lifecycle bootstrap.
 
 Responsibilities:
 
@@ -211,9 +232,9 @@ Responsibilities:
 
 The asset keys and sprite dimensions are part of the current runtime contract. Other files still refer to those keys directly, so they should be renamed only with care.
 
-## `js/main.js`
+## `src/js/main.js`
 
-`main.js` is now intentionally small. It owns the Phaser lifecycle entry points and the shared Phaser globals.
+`main.js` is now intentionally small. It owns the Phaser lifecycle entry points and the shared Phaser globals. It imports `AssetLoader`, `GameInitializer`, and `GameController` explicitly instead of relying on their global mirrors.
 
 Main responsibilities:
 
@@ -234,9 +255,9 @@ vanishingPlatformGroup
 
 These are still part of the current architecture and should be treated as shared runtime context.
 
-## `js/gameInitializer.js`
+## `src/js/gameInitializer.js`
 
-`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback.
+`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameInitializer` during the migration.
 
 Main responsibilities:
 
@@ -252,9 +273,9 @@ Main responsibilities:
 - create the black rectangles used by screen and reveal sequences;
 - set the initial game state.
 
-## `js/gameController.js`
+## `src/js/gameController.js`
 
-`GameController` is the high-level state orchestrator.
+`GameController` is the high-level state orchestrator. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameController` during the migration.
 
 Main data:
 
@@ -282,7 +303,7 @@ Main update methods:
 - end-of-level transition: `LevelTransition`;
 - final congratulations sequence: `EndGameSequence`.
 
-## `js/screenManager.js`
+## `src/js/screenManager.js`
 
 `ScreenManager` handles screens that are not normal gameplay screens.
 
@@ -298,7 +319,7 @@ The help screen owns a temporary keyboard callback: pressing any key removes the
 
 `ScreenManager` uses the shared black rectangle created by `LevelRevealSequence` as a full-screen background when needed.
 
-## `js/level.js`
+## `src/js/level.js`
 
 `Level` is responsible for the current level and level-related runtime data.
 
@@ -326,11 +347,11 @@ Important data:
 - `animationCounterMax`
 - `animationCounter`
 
-`Level` still exposes some compatibility-style methods that delegate to more specialized objects:
+`Level` is now imported explicitly by the modules that need current level state. It still exposes some compatibility-style methods that delegate to more specialized objects:
 
 ```js
-Level.display()      // delegates to LevelRevealSequence.update()
-Level.goToNext()     // delegates to LevelTransition.update()
+Level.display()   // delegates to LevelRevealSequence.update()
+Level.goToNext()   // delegates to LevelTransition.update()
 ```
 
 `Level.load()` is the central method for loading a level. It:
@@ -342,9 +363,9 @@ Level.goToNext()     // delegates to LevelTransition.update()
 
 `Level.resetGame()` updates the hi-score when necessary and resets score, lives, level number, air, keys, and bonus-man state.
 
-## `js/levelObjectLoader.js`
+## `src/js/levelObjectLoader.js`
 
-`LevelObjectLoader` isolates Tiled object lookup and Phaser sprite creation for objects that belong to a level.
+`LevelObjectLoader` isolates Tiled object lookup and Phaser sprite creation for objects that belong to a level. It is exported as an ES module and imported explicitly by consumers .
 
 Responsibilities:
 
@@ -357,7 +378,7 @@ Responsibilities:
 
 This object does not own gameplay state. It returns created objects to `Level`, which remains the runtime owner of `monsters` and `endLevel`.
 
-## `js/levelRevealSequence.js`
+## `src/js/levelRevealSequence.js`
 
 `LevelRevealSequence` handles the progressive reveal shown when a level starts.
 
@@ -378,13 +399,11 @@ Main data:
 
 The same upper rectangle is also reused as a black background by some non-gameplay screens. This is a legacy-style shared object, but it keeps the current rendering simple.
 
-## End-level transition files
+## `src/js/levelTransition.js`
 
-The end-level transition is split across a small orchestrator and focused helper objects.
+`LevelTransition` handles the transition after a level has been completed. It is exported as an ES module and imported explicitly by consumers .
 
-### `js/levelTransition.js`
-
-`LevelTransition` handles the transition after a level has been completed. It owns the frame-by-frame state machine and decides which phase should run.
+It is a small frame-by-frame state machine.
 
 Current phases:
 
@@ -404,41 +423,9 @@ Important behavior:
 - the air bar is refilled before gameplay resumes;
 - `Level.bonusMan` is enabled for the next level.
 
-### `js/levelTransitionPlayerMover.js`
+The transition uses existing coordinate conventions between Tiled and Phaser, especially the player vertical offset.
 
-`LevelTransitionPlayerMover` owns the player positioning work used during the transition.
-
-Responsibilities:
-
-- read the next level player spawn position from the Tiled map;
-- apply the preserved Tiled-to-Phaser vertical offset;
-- run the one-pixel alignment phase;
-- move the player toward the target position using tile-sized steps.
-
-The unusual rule where the one-pixel alignment phase stops as soon as one axis is aligned is part of the current gameplay behavior and should be changed only deliberately.
-
-### `js/levelTransitionVisualEffects.js`
-
-`LevelTransitionVisualEffects` owns the visual effects used by the transition.
-
-Responsibilities:
-
-- flash the background red;
-- restore the normal gray background;
-- hide the monsters from the completed level;
-- play reverse explosions at the monsters' last positions.
-
-### `js/levelTransitionAirScore.js`
-
-`LevelTransitionAirScore` owns the score and air-bar rules used by the transition.
-
-Responsibilities:
-
-- convert remaining air into score one frame at a time;
-- clear the air display when conversion is finished;
-- refill the air bar before the next level starts.
-
-## `js/endGameSequence.js`
+## `src/js/endGameSequence.js`
 
 `EndGameSequence` handles the final congratulations sequence after the last level.
 
@@ -454,9 +441,9 @@ Current phases:
 
 The final message text is stored in `LevelConstants.END_GAME_MESSAGE_TEXT`.
 
-## `js/player.js`
+## `src/js/player.js`
 
-`Player` owns the playable character sprite and the small amount of runtime state that still belongs directly to the character.
+`Player` owns the playable character sprite and the small amount of runtime state that still belongs directly to the character. It is exported as an ES module and imported explicitly by consumers .
 
 Responsibilities:
 
@@ -488,56 +475,27 @@ Data.jumpPath
 
 This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
 
-Movement rules are orchestrated by `PlayerMovement`. Low-level movement probes live in `PlayerMovementProbes`, tile-driven movement effects live in `PlayerEnvironmentEffects`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
+Movement rules are implemented in `PlayerMovement`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
 
-## `js/playerMovement.js`
+## `src/js/playerMovement.js`
 
-`PlayerMovement` handles the high-level frame-by-frame movement flow for the player.
-
-Responsibilities:
-
-- capture the player position at the start of the frame;
-- handle keyboard input for walking and jump start;
-- advance the data-driven jump path;
-- handle the special deadly-fall state;
-- block movement against walls and ceilings;
-- apply the final one-pixel movement;
-- return the original frame-start coordinates used by `PlayerInteractions`.
-
-`PlayerMovement` intentionally keeps the order of operations stable because movement, collision timing, and interaction timing are sensitive in this remake.
-
-## `js/playerMovementProbes.js`
-
-`PlayerMovementProbes` contains the pixel probes used by the movement system.
+`PlayerMovement` handles frame-by-frame movement rules for the player. It is exported as an ES module and imported explicitly by consumers.
 
 Responsibilities:
 
-- test whether there is ground below the player;
-- test whether the player has landed after a jump;
-- test vanishing platforms below the player;
-- detect slides, ladders, walls and ceiling blocks;
-- centralize movement-related probe offsets.
+- read keyboard input;
+- handle horizontal movement;
+- handle jumping and falling;
+- detect deadly falls;
+- apply conveyor belts and slippery platforms;
+- handle ladders;
+- block movement against walls and ceilings.
 
-The offsets in this file are gameplay-sensitive. They define how close the player can stand to edges, when ladders are detected, and when movement is blocked by walls.
+Most movement checks use manual pixel probes through `CollisionDetector`. The hard-coded offsets in this file are gameplay-sensitive and define much of the platforming feel.
 
-## `js/playerEnvironmentEffects.js`
+## `src/js/playerInteractions.js`
 
-`PlayerEnvironmentEffects` applies movement caused by the tiles under or around the player.
-
-Responsibilities:
-
-- apply left and right slides;
-- start or continue falling when no ground is below;
-- start the deadly-fall state when the fall limit is reached;
-- apply conveyor belt movement;
-- apply ladder movement;
-- stop walking animation when no horizontal key is pressed.
-
-This object adjusts the requested movement direction. `PlayerMovement` still applies the final one-pixel movement after wall blocking has been checked.
-
-## `js/playerInteractions.js`
-
-`PlayerInteractions` handles gameplay interactions that are triggered by the player position but are not movement rules.
+`PlayerInteractions` handles gameplay interactions that are triggered by the player position but are not movement rules. It is exported as an ES module and imported explicitly by consumers.
 
 Responsibilities:
 
@@ -554,9 +512,9 @@ Responsibilities:
 
 `Player.update()` passes the player coordinates captured at the beginning of the frame to `PlayerInteractions`. This is intentional: the original implementation performed these checks using those same coordinates after applying movement for the frame. Keeping this convention avoids subtle changes in collision timing.
 
-## `js/playerDeathSequence.js`
+## `src/js/playerDeathSequence.js`
 
-`PlayerDeathSequence` handles the death animation and the consequences that happen after the animation completes.
+`PlayerDeathSequence` handles the death animation and the consequences that happen after the animation completes. It is exported as an ES module and imported explicitly by consumers.
 
 Responsibilities:
 
@@ -577,9 +535,9 @@ PlayerDeathSequence.start(Player)
 
 This keeps movement code in `Player` and death sequencing in one dedicated object.
 
-## `js/playerStates.js`
+## `src/js/playerStates.js`
 
-`PlayerStates` centralizes player-related runtime constants.
+`PlayerStates` centralizes player-related runtime constants. It is exported as an ES module and imported explicitly by consumers.
 
 It includes:
 
@@ -604,9 +562,9 @@ PlayerStates.SPRITE_BLAGGER_DYING
 PlayerStates.ANIMATION_BLAGGER_DYING
 ```
 
-## `js/monster.js`
+## `src/js/monster.js`
 
-`Monster` is a constructor function for enemy instances.
+`Monster` is a constructor function for enemy instances. It is exported as an ES module and imported explicitly by consumers .
 
 Each monster is created from a Tiled object and from collision properties stored in the monster tileset.
 
@@ -627,9 +585,9 @@ Collision with the player is tested in:
 CollisionDetector.collisionRectangleWithMonsters()
 ```
 
-## `js/monsterConstants.js`
+## `src/js/monsterConstants.js`
 
-`MonsterConstants` centralizes monster-related constants.
+`MonsterConstants` centralizes monster-related constants. It is exported as an ES module and imported explicitly by consumers.
 
 It includes:
 
@@ -654,9 +612,9 @@ MonsterConstants.ANIMATION_DEFAULT
 
 The direction strings must remain compatible with the values stored in the Tiled map.
 
-## `js/HUD.js`
+## `src/js/HUD.js`
 
-`HUD` handles the display and update of the lower status area.
+`HUD` handles the display and update of the lower status area. It is exported as an ES module and imported explicitly by consumers .
 
 Responsibilities:
 
@@ -685,9 +643,9 @@ Player.kill()
 
 The active level number display is refreshed by `HUD.update()` using `Level.level`.
 
-## `js/hudConstants.js`
+## `src/js/hudConstants.js`
 
-`HudConstants` centralizes HUD-related constants.
+`HudConstants` centralizes HUD-related constants. It is exported as an ES module and imported explicitly by consumers.
 
 It includes:
 
@@ -713,9 +671,9 @@ HudConstants.COLOR_AIR_BLUE
 HudConstants.COLOR_GREY
 ```
 
-## `js/levelConstants.js`
+## `src/js/levelConstants.js`
 
-`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants.
+`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants. It is exported as an ES module and imported explicitly by consumers.
 
 It includes:
 
@@ -748,9 +706,9 @@ LevelConstants.END_GAME_MESSAGE_TEXT
 
 The values that mirror the Tiled map must remain synchronized with the map data.
 
-## `js/collisionDetector.js`
+## `src/js/collisionDetector.js`
 
-`CollisionDetector` contains manual collision checks used by the player and gameplay interactions.
+`CollisionDetector` contains manual collision checks used by the player and gameplay interactions. It is exported as an ES module and imported explicitly by consumers.
 
 Main responsibilities:
 
@@ -763,9 +721,9 @@ Main responsibilities:
 
 Most player movement and interaction checks depend on this file, so it is gameplay-critical. The algorithms intentionally still scan pixel-by-pixel, matching the previous behavior.
 
-## `js/util.js`
+## `src/js/util.js`
 
-`Util` contains shared non-collision helper functions.
+`Util` contains shared non-collision helper functions. It is exported as an ES module and imported explicitly by consumers.
 
 Main responsibilities:
 
@@ -776,9 +734,9 @@ Main responsibilities:
 
 Collision checks are handled by `CollisionDetector`.
 
-## `js/data.js`
+## `src/js/data.js`
 
-`Data` contains static gameplay data.
+`Data` contains static gameplay data. It is exported as an ES module and imported explicitly by consumers .
 
 Main contents:
 
@@ -804,12 +762,12 @@ Simplified flow:
 
 ```text
 Level.load()
-  -> reset level data
-  -> Player.reset()
-  -> Level.addMonsters()
-      -> LevelObjectLoader.loadMonsters()
-  -> LevelObjectLoader.loadEndLevel()
-  -> HUD.update()
+ -> reset level data
+ -> Player.reset()
+ -> Level.addMonsters()
+   -> LevelObjectLoader.loadMonsters()
+ -> LevelObjectLoader.loadEndLevel()
+ -> HUD.update()
 ```
 
 After loading, the level is revealed by `LevelRevealSequence`, then monsters are revealed by `Level.displayMonsters()`, and gameplay begins.
@@ -818,13 +776,13 @@ After loading, the level is revealed by `LevelRevealSequence`, then monsters are
 
 ```text
 GameStates.LOAD_LEVEL
-  -> Level.load()
-  -> HUD.update()
-  -> GameStates.DISPLAY_LEVEL
-      -> LevelRevealSequence.update()
-      -> GameStates.START_LEVEL
-          -> Level.displayMonsters()
-          -> GameStates.PLAYING
+ -> Level.load()
+ -> HUD.update()
+ -> GameStates.DISPLAY_LEVEL
+   -> LevelRevealSequence.update()
+   -> GameStates.START_LEVEL
+     -> Level.displayMonsters()
+     -> GameStates.PLAYING
 ```
 
 ## Normal gameplay flow
@@ -846,16 +804,16 @@ When all keys have been collected and the player touches the exit:
 
 ```text
 Player.update()
-  -> PlayerInteractions.exitLevelIfNeeded()
-  -> GameController.gameState = GameStates.END_LEVEL
+ -> PlayerInteractions.exitLevelIfNeeded()
+ -> GameController.gameState = GameStates.END_LEVEL
 ```
 
 Then:
 
 ```text
 GameController.updateEndLevel()
-  -> Level.goToNext()
-      -> LevelTransition.update()
+ -> Level.goToNext()
+   -> LevelTransition.update()
 ```
 
 The transition moves the player toward the next level start, converts remaining air into score, refills the air, and starts the next level.
@@ -866,15 +824,15 @@ When the last level has been completed:
 
 ```text
 Player.update()
-  -> PlayerInteractions.exitLevelIfNeeded()
-  -> GameController.gameState = GameStates.END_GAME
+ -> PlayerInteractions.exitLevelIfNeeded()
+ -> GameController.gameState = GameStates.END_GAME
 ```
 
 Then:
 
 ```text
 GameController.updateEndGame()
-  -> EndGameSequence.update()
+ -> EndGameSequence.update()
 ```
 
 The sequence converts remaining air into score, displays the congratulations message, scales it up, waits briefly, resets the game, and returns to the title screen.
@@ -900,14 +858,14 @@ Simplified flow:
 
 ```text
 Player.kill()
-  -> PlayerDeathSequence.start()
-      -> stop normal gameplay
-      -> hide normal player sprite
-      -> show death sprite
-      -> play death animation
-      -> remove one life or consume bonus man
-      -> reset the air bar
-      -> reload level or show game over
+ -> PlayerDeathSequence.start()
+   -> stop normal gameplay
+   -> hide normal player sprite
+   -> show death sprite
+   -> play death animation
+   -> remove one life or consume bonus man
+   -> reset the air bar
+   -> reload level or show game over
 ```
 
 ## Hi-score flow
@@ -952,11 +910,11 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ### Global state
 
-The project still relies heavily on global objects and variables. This is workable for the current codebase, but it is the main architectural limitation before a future migration to TypeScript or a modern Phaser scene structure.
+The project still relies on several global gameplay objects and Phaser globals, even though constants, shared helpers, player support helpers, and `Level` now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
 
 ### Script order
 
-Because there is no module system, `index.html` load order is part of the architecture. Adding a new global object usually requires adding a new `<script>` tag at the correct position.
+Because several gameplay runtime objects are still exposed globally, import order in `src/main.js` is still part of the transitional architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constants and shared helper dependencies should now be imported directly by the files that use them.
 
 ### Manual collisions
 
@@ -1001,7 +959,7 @@ A debug mode would be useful for testing transitions and levels. It should not b
 
 ### Reduce global variables
 
-A future architecture could group shared runtime objects into a context object, then later move toward ES modules or Phaser scenes.
+A future architecture could group shared runtime objects into a context object, then later replace the remaining `window` globals with explicit ES module imports or Phaser scenes.
 
 ### Prepare TypeScript gradually
 

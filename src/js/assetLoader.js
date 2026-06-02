@@ -6,7 +6,7 @@
  * intentionally preserved from the previous implementation because other files
  * still refer to these keys directly.
  */
-var AssetLoader =
+export const AssetLoader =
 {
     preload : function()
     {

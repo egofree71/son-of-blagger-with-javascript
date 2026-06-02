@@ -1,4 +1,12 @@
-var GameController =
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { ScreenManager } from "./screenManager.js";
+import { EndGameSequence } from "./endGameSequence.js";
+import { HUD } from "./HUD.js";
+import { Player } from "./player.js";
+import { Level } from "./level.js";
+
+export const GameController =
 {
     // The current game state.
     gameState : null,
@@ -188,3 +196,8 @@ var GameController =
         Player.update();
     }
 };
+
+
+// Keep the controller available globally while the remaining runtime objects
+// are migrated progressively to explicit ES module imports and to preserve
+// convenient browser-console debugging.

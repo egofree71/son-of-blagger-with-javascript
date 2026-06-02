@@ -1,3 +1,11 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { CollisionDetector } from "./collisionDetector.js";
+import { Data } from "./data.js";
+import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+
 /**
  * Handles gameplay interactions that are triggered by the player's position.
  *
@@ -10,7 +18,7 @@
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-var PlayerInteractions =
+export const PlayerInteractions =
 {
     // Collision rectangle offsets used when collecting keys.
     KEY_LEFT_OFFSET : 7,

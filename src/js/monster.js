@@ -1,5 +1,10 @@
+import { GameStates } from "./gameStates.js";
+import { MonsterConstants } from "./monsterConstants.js";
+import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+
 // Monster object
-function Monster(monsterProperties, tileProperties)
+export function Monster(monsterProperties, tileProperties)
 {
     this.firstPositionX = monsterProperties.x;
     this.firstPositionY = monsterProperties.y - MonsterConstants.TILED_TO_PHASER_Y_OFFSET;
@@ -101,4 +106,4 @@ Monster.prototype.updatePosition = function()
 
     this.sprite.x += horizontalSpeed ;
     this.sprite.y += verticalSpeed ;
-}
+};

@@ -1,4 +1,15 @@
-var Level =
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { EndGameSequence } from "./endGameSequence.js";
+import { Data } from "./data.js";
+import { LevelObjectLoader } from "./levelObjectLoader.js";
+import { LevelTransition } from "./levelTransition.js";
+import { Player } from "./player.js";
+import { HUD } from "./HUD.js";
+import { GameController } from "./gameController.js";
+
+export const Level =
 {
   // Current level
   level : LevelConstants.INITIAL_LEVEL,
@@ -143,4 +154,4 @@ var Level =
       LevelRevealSequence.update();
   }
 
-}
+};

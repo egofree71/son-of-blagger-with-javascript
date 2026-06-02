@@ -1,3 +1,7 @@
+import { GameStates } from "./gameStates.js";
+import { LevelConstants } from "./levelConstants.js";
+import { GameController } from "./gameController.js";
+
 /**
  * Handles the progressive reveal played before each level starts.
  *
@@ -14,7 +18,7 @@
  * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
  * objects avoids changing rendering order or Phaser 2 behaviour.
  */
-var LevelRevealSequence =
+export const LevelRevealSequence =
 {
     // Fixed-camera graphics used for the progressive reveal and black overlays.
     upperBlackRectangle : null,

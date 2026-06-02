@@ -1,0 +1,14 @@
+{
+  "name": "son-of-blagger-with-javascript",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web remake of Son of Blagger using the original Phaser 2.3 implementation with a Vite development/build wrapper.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  }
+}

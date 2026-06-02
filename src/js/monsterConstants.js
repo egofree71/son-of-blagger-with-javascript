@@ -6,7 +6,7 @@
  * raw strings used by monster.js in one place, without changing the existing
  * movement rules.
  */
-var MonsterConstants =
+export const MonsterConstants =
 {
     // Directions stored in the Tiled object properties and used while moving
     // monsters along their predefined path.
@@ -34,3 +34,6 @@ var MonsterConstants =
     // intentionally unchanged.
     TILED_TO_PHASER_Y_OFFSET : 42
 };
+
+// Keep the constant object available globally while the rest of the legacy
+// runtime is migrated progressively to explicit ES module imports.
