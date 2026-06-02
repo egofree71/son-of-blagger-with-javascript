@@ -14,7 +14,7 @@ import { CollisionDetector } from "./collisionDetector.js";
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-window.PlayerInteractions =
+export const PlayerInteractions =
 {
     // Collision rectangle offsets used when collecting keys.
     KEY_LEFT_OFFSET : 7,
@@ -119,3 +119,5 @@ window.PlayerInteractions =
         }
     }
 };
+
+window.PlayerInteractions = PlayerInteractions;

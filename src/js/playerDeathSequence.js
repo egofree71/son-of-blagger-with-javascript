@@ -8,7 +8,7 @@ import { PlayerStates } from "./playerStates.js";
  * triggered. Once death starts, this object owns the animation callback and the
  * life / bonus-man / reload decision that happens after the animation finishes.
  */
-window.PlayerDeathSequence =
+export const PlayerDeathSequence =
 {
     /**
      * Starts the death animation for the given player object.
@@ -90,3 +90,5 @@ window.PlayerDeathSequence =
         }
     }
 };
+
+window.PlayerDeathSequence = PlayerDeathSequence;

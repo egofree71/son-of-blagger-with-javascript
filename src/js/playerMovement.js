@@ -16,7 +16,7 @@ import { CollisionDetector } from "./collisionDetector.js";
  * remain in PlayerInteractions. This separation lets PlayerMovement focus only
  * on deciding the player's next one-pixel movement for the current frame.
  */
-window.PlayerMovement =
+export const PlayerMovement =
 {
     // Horizontal foot probes. These are used to test the tiles below the player.
     // They intentionally do not span the full sprite width, so the player can
@@ -454,3 +454,5 @@ window.PlayerMovement =
         player.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, player.playerSprite.animations.currentAnim.frame);
     }
 };
+
+window.PlayerMovement = PlayerMovement;

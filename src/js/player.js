@@ -2,6 +2,9 @@ import { GameStates } from "./gameStates.js";
 import { PlayerStates } from "./playerStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { Util } from "./util.js";
+import { PlayerMovement } from "./playerMovement.js";
+import { PlayerInteractions } from "./playerInteractions.js";
+import { PlayerDeathSequence } from "./playerDeathSequence.js";
 
 window.Player =
 {
