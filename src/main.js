@@ -1,9 +1,9 @@
 // Main Vite module entry point.
 //
 // Phaser 2.3 is still loaded as a classic script from public/js/phaser.min.js.
-// The constant files, utility helpers, and some player support helpers are now
-// real ES modules. They are still mirrored on window for temporary
-// compatibility and console debugging.
+// The constant files, utility helpers, player support helpers, and several
+// screen/sequence helpers are now real ES modules. They are still mirrored on
+// window for temporary compatibility and console debugging.
 //
 // Most gameplay objects are still imported for their side effects: each module
 // registers its legacy runtime object on window. They will be converted to

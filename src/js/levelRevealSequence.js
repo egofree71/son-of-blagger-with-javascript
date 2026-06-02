@@ -17,7 +17,7 @@ import { LevelConstants } from "./levelConstants.js";
  * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
  * objects avoids changing rendering order or Phaser 2 behaviour.
  */
-window.LevelRevealSequence =
+export const LevelRevealSequence =
 {
     // Fixed-camera graphics used for the progressive reveal and black overlays.
     upperBlackRectangle : null,
@@ -149,3 +149,5 @@ window.LevelRevealSequence =
         GameController.gameState = GameStates.START_LEVEL;
     }
 };
+
+window.LevelRevealSequence = LevelRevealSequence;

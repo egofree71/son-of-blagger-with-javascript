@@ -6,7 +6,7 @@
  * intentionally preserved from the previous implementation because other files
  * still refer to these keys directly.
  */
-window.AssetLoader =
+export const AssetLoader =
 {
     preload : function()
     {
@@ -92,3 +92,5 @@ window.AssetLoader =
         game.load.image('blaggerFont', 'assets/tileset/fonts.png');
     }
 };
+
+window.AssetLoader = AssetLoader;

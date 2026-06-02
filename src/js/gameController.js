@@ -1,5 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
+import { ScreenManager } from "./screenManager.js";
+import { EndGameSequence } from "./endGameSequence.js";
 
 window.GameController =
 {

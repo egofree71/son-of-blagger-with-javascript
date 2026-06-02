@@ -1,5 +1,7 @@
 "use strict";
 
+import { AssetLoader } from "./assetLoader.js";
+
 // These Phaser runtime objects are still shared through the browser global scope.
 // The game now runs from a Vite module entry point, so they are attached
 // explicitly to window instead of relying on classic script globals.

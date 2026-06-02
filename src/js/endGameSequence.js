@@ -1,5 +1,6 @@
 import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
 
 /**
  * Handles the final sequence played after the last level has been completed.
@@ -10,7 +11,7 @@ import { LevelConstants } from "./levelConstants.js";
  *
  * The behaviour, scoring values and timings are intentionally preserved.
  */
-window.EndGameSequence =
+export const EndGameSequence =
 {
     // Current phase of the final sequence.
     phase : LevelConstants.END_GAME_STEP_CONVERT_AIR,
@@ -133,3 +134,5 @@ window.EndGameSequence =
         }
     }
 };
+
+window.EndGameSequence = EndGameSequence;

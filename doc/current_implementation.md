@@ -19,14 +19,14 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Engine: **Phaser 2.3.0**.
 - Language: classic JavaScript.
 - Development/build tool: **Vite**.
-- Module system: Vite ES module entry point. Constants, shared helper modules, and the player support modules now use explicit ES module exports/imports. Most gameplay owner objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
+- Module system: Vite ES module entry point. Constants, shared helper modules, player support modules, and several screen/sequence helpers now use explicit ES module exports/imports. Most gameplay owner objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
 - Main architecture style: transitional hybrid: ES module constants/helpers plus global gameplay objects and constructor functions.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are also exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are now imported explicitly by `Player`. Most gameplay owner objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are also exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, and `EndGameSequence` are also exported/imported explicitly while still mirrored on `window` during the transition period. Most gameplay owner objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
 
 ## Running the game locally
 
@@ -102,7 +102,7 @@ doc/
 
 Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through `src/main.js`.
 
-The constant files, shared helper files, and player support helpers are now real ES modules: they export named objects and the files that use them import those objects explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
+The constant files, shared helper files, player support helpers, and several screen/sequence helpers are now real ES modules: they export named objects and the files that use them import those objects explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
 
 Most gameplay owner objects still register themselves on `window`. This keeps the current code compatible while removing the long list of manual script tags from `index.html`. If a legacy runtime object is used before its module has registered it, the game will fail with a `ReferenceError`.
 
@@ -110,15 +110,15 @@ Most gameplay owner objects still register themselves on `window`. This keeps th
 
 The project is organized around a mix of ES module exports and global gameplay objects defined under `src/js`:
 
-- `AssetLoader`: Phaser asset preloading.
+- `AssetLoader`: Phaser asset preloading. Exported as an ES module and mirrored on `window` during the transition period.
 - `GameInitializer`: runtime startup after asset loading.
 - `GameController`: high-level game state orchestration.
-- `ScreenManager`: title, help, and game-over screens.
+- `ScreenManager`: title, help, and game-over screens. Exported as an ES module and mirrored on `window` during the transition period.
 - `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
-- `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
+- `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelTransition`: transition between two levels after all keys have been collected.
-- `EndGameSequence`: final congratulations sequence.
+- `EndGameSequence`: final congratulations sequence. Exported as an ES module and mirrored on `window` during the transition period.
 - `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
 - `PlayerMovement`: keyboard input and movement rules for the player. Exported as an ES module and mirrored on `window` during the transition period.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player. Exported as an ES module and mirrored on `window` during the transition period.
@@ -213,13 +213,13 @@ This order is part of the current gameplay behavior and should be changed only w
 
 ## `src/main.js`
 
-This is the Vite module entry point referenced by `index.html`. It imports the constant modules, the remaining legacy runtime modules, and finally starts the Phaser runtime by importing `src/js/main.js` last.
+This is the Vite module entry point referenced by `index.html`. It imports the constant modules, the converted helper modules, the remaining legacy runtime modules, and finally starts the Phaser runtime by importing `src/js/main.js` last.
 
 This file does not contain gameplay logic. Its role is to connect Vite's module graph to the current Phaser 2.3 runtime while the project is gradually migrated away from global objects.
 
 ## `src/js/assetLoader.js`
 
-`AssetLoader` centralizes Phaser asset preloading.
+`AssetLoader` centralizes Phaser asset preloading. It is exported as an ES module and imported by the Phaser lifecycle bootstrap.
 
 Responsibilities:
 

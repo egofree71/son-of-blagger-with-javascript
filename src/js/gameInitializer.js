@@ -1,5 +1,6 @@
 import { GameStates } from "./gameStates.js";
 import { Util } from "./util.js";
+import { LevelRevealSequence } from "./levelRevealSequence.js";
 
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
