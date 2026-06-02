@@ -1,28 +1,31 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 14**.
+This document describes the current architecture of the JavaScript / Phaser remake of **Son of Blagger**.
 
-This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
+Its purpose is to help someone understand the project as it exists today: the runtime structure, the main global objects, the gameplay flow, the responsibilities of each file, and the technical points to watch before making further changes.
+
+It is not a changelog. Historical refactoring steps are intentionally not listed here.
 
 ## Project goal
 
 This project is a web remake of the Commodore 64 game **Son of Blagger**.
 
-The player controls Slippery Sid through a series of maze-like levels. The goal is to collect all keys in the current level, avoid enemies and traps, then reach the exit to move on to the next level.
+The player controls Slippery Sid through maze-like levels. The goal is to collect all keys in the current level, avoid enemies and traps, then reach the exit to move on to the next level.
 
-The current refactoring goal is to modernize the code gradually while preserving the existing behavior of the game.
+The current engineering goal is to keep the original gameplay behavior intact while gradually making the code easier to maintain, understand, and eventually modernize.
 
-## Current technical state
+## Technical overview
 
-- Engine: **Phaser 2.x**. The bundled `js/phaser.min.js` currently reports `v2.2.8`.
-- Language: classic JavaScript, with no ES6 modules and no TypeScript.
-- Architecture: global objects and constructor functions.
-- Map: Tiled JSON file loaded by Phaser.
-- Rendering: Phaser sprites, Phaser tilemap, bitmap/retro font.
-- Physics: Phaser Arcade Physics, although many collisions are still computed manually through tile checks.
+- Engine: **Phaser 2.3.0**.
+- Language: classic JavaScript.
+- Module system: none. Files are loaded through `<script>` tags.
+- Main architecture style: global objects and constructor functions.
+- Map format: Tiled JSON map loaded by Phaser.
+- Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
+- Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The project is intentionally still close to its original style. Recent refactorings mainly isolated some responsibilities without changing the engine or the gameplay.
+The codebase is still close to its original browser-JavaScript style. Several responsibilities have been isolated into dedicated global objects, but the project has not yet moved to ES modules, TypeScript, Phaser 3, or Phaser 4.
 
 ## Running the game locally
 
@@ -38,17 +41,13 @@ Then open:
 http://localhost:8000
 ```
 
-It is better to use a small local HTTP server instead of opening `index.html` directly, because browsers may block or mishandle some file loading when running under `file:///`.
+Using a local HTTP server is preferable to opening `index.html` directly, because browsers can block or mishandle asset loading under `file:///`.
 
-## General file organization
+## File loading order
 
-### `index.html`
+The project relies on globals, so script order in `index.html` matters.
 
-HTML entry point of the game.
-
-It loads Phaser and then all project JavaScript files in an important order, because the code relies on global objects.
-
-The logical order is:
+Current logical order:
 
 ```html
 <script src="js/phaser.min.js"></script>
@@ -57,7 +56,6 @@ The logical order is:
 <script src="js/monsterConstants.js"></script>
 <script src="js/levelConstants.js"></script>
 <script src="js/hudConstants.js"></script>
-<script src="js/levelRevealSequence.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
@@ -65,38 +63,32 @@ The logical order is:
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
 <script src="js/levelTransition.js"></script>
+<script src="js/levelRevealSequence.js"></script>
 <script src="js/level.js"></script>
 <script src="js/endGameSequence.js"></script>
 <script src="js/HUD.js"></script>
 <script src="js/gameController.js"></script>
 ```
 
-If a global object is used before it has been loaded, the game may crash with a `ReferenceError`.
+If a file uses a global object before that object is loaded, the game will fail with a `ReferenceError`.
 
-### `js/main.js`
+## Main runtime objects
 
-Phaser initialization file.
+The project is organized around a set of global objects:
 
-Main responsibilities:
+- `GameController`: high-level game state orchestration.
+- `ScreenManager`: title, help, and game-over screens.
+- `Level`: current level data, level loading, monsters, exit object, and level reset logic.
+- `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
+- `LevelTransition`: transition between two levels after all keys have been collected.
+- `EndGameSequence`: final congratulations sequence.
+- `Player`: player movement, jumping, falling, key collection, death, and exit detection.
+- `Monster`: constructor function for enemy instances.
+- `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
+- `Util`: shared collision and helper functions.
+- `Data`: static gameplay data such as jump trajectory, level data, and bonus-man colors.
 
-- create the Phaser instance:
-
-```js
-var game = new Phaser.Game(640, 400, Phaser.AUTO, '', { preload: preload, create: create, update: updateGame });
-```
-
-- load assets in `preload()`;
-- create the tilemap and layers in `create()`;
-- initialize Arcade Physics;
-- create animated sprites from some tiles;
-- create the player;
-- initialize monsters;
-- initialize the HUD;
-- create the black rectangles used by the progressive level reveal and screen overlays;
-- start the game with the `GameStates.LOAD_INTRODUCTION` state;
-- delegate every frame to `GameController.update()`.
-
-Important global variables created here:
+The main Phaser globals created in `main.js` are:
 
 - `game`
 - `map`
@@ -104,421 +96,33 @@ Important global variables created here:
 - `keyPressed`
 - `vanishingPlatformGroup`
 
-These variables are still used by several other global objects. Eventually, they could be grouped into a context object or encapsulated inside a modern Phaser scene.
+These globals are still used directly by multiple files.
 
-### `js/gameStates.js`
+## Game states
 
-Centralized list of game states.
+Game states are centralized in `js/gameStates.js`.
 
-Before refactoring step 2, states were written as raw strings in several files, for example:
+The string values are intentionally kept stable because they are part of the current runtime flow.
 
-```js
-"playing"
-"end level"
-"load level"
-```
-
-They are now grouped in `GameStates`, for example:
+Important states include:
 
 ```js
+GameStates.LOAD_INTRODUCTION
+GameStates.INTRODUCTION
+GameStates.LOAD_HELP
+GameStates.HELP
+GameStates.LOAD_LEVEL
+GameStates.DISPLAY_LEVEL
+GameStates.START_LEVEL
+GameStates.DISPLAYING_MONSTERS
 GameStates.PLAYING
 GameStates.END_LEVEL
-GameStates.LOAD_LEVEL
+GameStates.END_GAME
+GameStates.SHOW_GAME_OVER
+GameStates.GAME_OVER
 ```
 
-The original string values were preserved to avoid changing the existing behavior.
-
-### `js/playerStates.js`
-
-Centralized list of player-related constants.
-
-Despite the name, this file does not introduce a full player state machine yet. The current player implementation still uses runtime flags such as:
-
-```js
-Player.jumping
-Player.deadlyFall
-```
-
-For this step, `PlayerStates` centralizes raw values used by `player.js` for movement directions, animation names, sprite keys and the preserved death animation timing, for example:
-
-```js
-PlayerStates.LEFT
-PlayerStates.RIGHT
-PlayerStates.UP
-PlayerStates.DOWN
-PlayerStates.ANIMATION_LEFT
-PlayerStates.ANIMATION_RIGHT
-PlayerStates.SPRITE_BLAGGER
-PlayerStates.SPRITE_BLAGGER_DYING
-PlayerStates.ANIMATION_BLAGGER_DYING
-```
-
-This is deliberately low risk: the existing movement, jump, fall and death logic remain unchanged. Refactoring step 10 also removed the unused normal-player `dying` animation registration; the actual death animation still uses the separate `blaggerDying` sprite.
-
-### `js/monsterConstants.js`
-
-Centralized list of monster-related constants.
-
-This file was added in refactoring step 6. It does not change monster behavior. It only gives names to raw values used by `monster.js`, such as:
-
-```js
-MonsterConstants.DIRECTION_RIGHT
-MonsterConstants.DIRECTION_LEFT
-MonsterConstants.DIRECTION_DOWN
-MonsterConstants.DIRECTION_UP
-MonsterConstants.DEFAULT_SPEED
-MonsterConstants.TILED_TO_PHASER_Y_OFFSET
-MonsterConstants.ANIMATION_DEFAULT
-```
-
-The direction strings still match the values stored in the Tiled map properties. This is important: changing them would break monster movement unless the map data was changed too.
-
-### `js/levelConstants.js`
-
-Centralized list of constants used by `level.js`.
-
-This file was added in refactoring step 7. It does not change level behavior. It only gives names to raw values used by `level.js`, such as:
-
-```js
-LevelConstants.DEFAULT_AIR_LEVEL
-LevelConstants.TILED_PROPERTY_LEVEL
-LevelConstants.OBJECT_LAYER_MONSTERS
-LevelConstants.OBJECT_LAYER_END_LEVEL
-LevelConstants.TILE_KEY_INDEX
-LevelConstants.END_LEVEL_Y_OFFSET
-LevelConstants.DISPLAY_STEP_INITIALIZE
-LevelConstants.END_GAME_SCORE_INCREMENT
-```
-
-Some constants represent conventions coming from the Tiled map, such as the `level` property, tile `name` / `type` properties, the `player` object layer, or the `end level` object layer. These values must stay synchronized with the map data. Others are preserved timing, positioning or scoring values from the previous implementation.
-
-### `js/hudConstants.js`
-
-Centralized list of constants used by `HUD.js`.
-
-This file was added in refactoring step 8. It does not change HUD behavior. It only gives names to raw values used by `HUD.js`, such as:
-
-```js
-HudConstants.CHAR_WIDTH
-HudConstants.AIR_DECREASE_DELAY
-HudConstants.BONUS_MAN_COLOR_DELAY
-HudConstants.BONUS_MAN_SPRITE_KEY
-HudConstants.LABEL_AIR
-HudConstants.LABEL_HI_SCORE
-HudConstants.COLOR_AIR_BLUE
-HudConstants.COLOR_GREY
-```
-
-The constants cover HUD layout positions, label strings, colors, digit formatting, air bar drawing values, bonus man color animation timing, and the retro font configuration. The existing air depletion timing, bonus man animation, text positions, and bar dimensions are preserved.
-
-### `js/gameController.js`
-
-Main orchestrator of the game.
-
-`GameController.update()` is called once per frame from `updateGame()` in `main.js`.
-
-It uses `GameController.gameState` to decide which part of the game should run. Since refactoring step 4, the main `update()` method only dispatches to one small method per state. This keeps the game loop easier to scan while preserving the original state flow.
-
-Main data:
-
-- `gameState`
-- `score`
-- `hiScore`
-- `lives`
-
-State-specific methods:
-
-- `updateLoadIntroduction()` delegates title display to `ScreenManager` and installs the first key-press callback;
-- `updateLoadHelp()` delegates help display to `ScreenManager`;
-- `updateLoadLevel()` loads the current level and refreshes the HUD;
-- `updateDisplayLevel()` runs the progressive level reveal;
-- `updateStartLevel()` runs the monster reveal sequence;
-- `updatePlaying()` runs one normal gameplay frame;
-- `updateEndLevel()` delegates to the end-of-level transition;
-- `updateEndGame()` delegates the final end-game sequence to `EndGameSequence`;
-- `updateShowGameOver()` delegates game-over display/removal to `ScreenManager` and waits for a key press.
-
-During the `GameStates.PLAYING` state, `updatePlaying()` calls, in order:
-
-```js
-HUD.updateAirLevel();
-HUD.displayBonusMan();
-Level.updateMonsters();
-Player.update();
-```
-
-This order is important and was preserved from the previous implementation.
-
-### `js/screenManager.js`
-
-Global object responsible for non-gameplay screens.
-
-This file was added in refactoring step 12 to move title, help, and game-over display logic out of `Level`.
-
-Main responsibilities:
-
-- display the introduction title screen;
-- remove the introduction title screen;
-- display the help/instructions screen;
-- display and remove the game-over logo.
-
-`ScreenManager` reuses `LevelRevealSequence.upperBlackRectangle` for the black screen background, because the same fixed-camera graphic object is already used by the reveal and final end-game sequences. This preserves the current rendering behaviour while keeping screen overlay ownership in one place.
-
-The help screen still owns its temporary keyboard callback: pressing any key destroys the help text, clears the black rectangle, and returns to `GameStates.LOAD_INTRODUCTION`.
-
-### `js/level.js`
-
-Global object responsible for level management.
-
-Main responsibilities:
-
-- keep track of the current level number;
-- load the objects of the current level;
-- create the monsters associated with the level;
-- manage explosion and reverse-explosion groups;
-- manage the level exit object;
-- delegate the progressive level reveal to `LevelRevealSequence`;
-- reveal monsters at the beginning of a level;
-- reset some game data.
-
-Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`. Since refactoring step 13, the final congratulations sequence is handled by `EndGameSequence`. Since refactoring step 14, the progressive level reveal is handled by `LevelRevealSequence`.
-
-Important data:
-
-- `level`
-- `airLevel`
-- `keysTaken`
-- `bonusMan`
-- `monsters`
-- `monstersGroup`
-- `endLevel`
-
-Since refactoring step 14, `Level.display()` is now a compatibility-style delegating method:
-
-```js
-Level.display()
-  -> LevelRevealSequence.update()
-```
-
-Since refactoring step 1, the end-of-level transition is no longer implemented directly inside `Level`. The method:
-
-```js
-Level.goToNext()
-```
-
-now simply delegates to:
-
-```js
-LevelTransition.update()
-```
-
-Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, `endGameSequence.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by `ScreenManager` and the final end-game message.
-
-### `js/levelRevealSequence.js`
-
-Global object responsible for the progressive reveal played before each level starts.
-
-This file was added in refactoring step 14 to move the small reveal state machine out of `Level.display()`.
-
-Main responsibilities:
-
-- create the two fixed-camera black rectangles used by the reveal;
-- make all key tiles visible again before the level starts;
-- shrink the upper and lower black rectangles over several frames;
-- clear the overlay when the reveal is complete;
-- switch the game to `GameStates.START_LEVEL`.
-
-Important data:
-
-- `upperBlackRectangle`
-- `lowerBlackRectangle`
-- `rectangleHeight`
-- `rectangleWidth`
-- `counter`
-- `phase`
-
-`ScreenManager` and `EndGameSequence` also reuse `LevelRevealSequence.upperBlackRectangle` as a simple full-screen black overlay. This is still a legacy-style shared graphic object, but it is now owned by a dedicated sequence object rather than by `Level`.
-
-### `js/levelTransition.js`
-
-Global object responsible for the transition between two levels.
-
-This logic was previously embedded directly inside `Level.goToNext()` using numeric steps and counters. It was extracted to make the sequence easier to read and maintain.
-
-The transition is a small internal state machine.
-
-Current phases:
-
-1. prepare the next level;
-2. hide the monsters from the completed level;
-3. restore the gray background;
-4. precisely align the player on one axis;
-5. convert the remaining air into score;
-6. move the player toward the start point of the next level;
-7. refill the air bar;
-8. load the next level.
-
-The behavior and timings were preserved as closely as possible compared with the previous implementation.
-
-Notes:
-
-- `MOVE_DELAY` corresponds to the old counter used to slow down tile-based movement;
-- the main movement uses `LevelConstants.END_LEVEL_TRANSITION_TILE_STEP`;
-- the player vertical offset uses `LevelConstants.PLAYER_TILED_Y_OFFSET` because Tiled and Phaser do not reference objects in exactly the same way;
-- the transition grants a `bonusMan` for the next level.
-
-### `js/endGameSequence.js`
-
-Global object responsible for the final congratulations sequence.
-
-This file was added in refactoring step 13 to move the final end-game sequence out of `Level`. Like `LevelTransition`, it is a small frame-by-frame state machine updated by `GameController` while the game state is `GameStates.END_GAME`.
-
-Current phases:
-
-1. convert the remaining air into score;
-2. display the congratulations message;
-3. scale the message up;
-4. wait briefly, reset the game, and return to the introduction screen.
-
-The scoring values, timings, text positioning, scale values, and black background behaviour are preserved from the previous implementation. The final message text is now centralized in `LevelConstants.END_GAME_MESSAGE_TEXT`.
-
-### `js/player.js`
-
-Global object responsible for the player.
-
-Responsibilities:
-
-- create the player sprite;
-- position the player at the beginning of the level;
-- read keyboard input;
-- handle horizontal movement;
-- handle jumping;
-- handle falling;
-- detect deadly falls;
-- handle conveyor belts;
-- handle slippery platforms;
-- handle ladders;
-- collect keys;
-- detect deadly collisions;
-- detect the level exit;
-- play the death animation;
-- restart the level or trigger game over.
-
-Important data:
-
-- `jumping`
-- `jumpIndex`
-- `jumpingDirection`
-- `fallHeight`
-- `fallLimit`
-- `deadlyFall`
-- `playerSprite`
-- `playerDyingSprite`
-
-Since refactoring steps 5 and 10, repeated raw strings for player movement directions, player animation names, player sprite keys, and death-animation timing have been moved to `PlayerStates`. The player logic itself is still the same: jumping, falling and deadly falls are still tracked with the existing booleans and counters. Step 10 also fixed an implicit global assignment by changing `fallHeight = 0` to `this.fallHeight = 0`.
-
-The jump uses the `Data.jumpPath` array, which contains the vertical and horizontal movement for each jump step. This logic is very specific to the current gameplay and should be modified carefully.
-
-When the player picks up a key:
-
-- `Level.keysTaken` increases;
-- the score increases by `LevelConstants.KEY_SCORE_INCREMENT`;
-- the touched tile becomes invisible;
-- the layer is marked as `dirty`.
-
-When all keys have been collected and the player touches the exit:
-
-- if this is the last level: `GameStates.END_GAME`;
-- otherwise: `GameStates.END_LEVEL`.
-
-### `js/monster.js`
-
-Constructor function for monsters.
-
-Each monster is created from a Tiled object and from collision properties stored in the monster tileset.
-
-Responsibilities:
-
-- create the monster sprite;
-- read its initial direction;
-- read its maximum movement distance;
-- store its real hitbox;
-- move the monster horizontally or vertically;
-- reverse its direction when it reaches its maximum distance.
-
-Monsters do not chase the player. They follow predefined paths.
-
-Since refactoring step 6, repeated raw strings and small magic values used by `monster.js` have been moved to `MonsterConstants`. This includes monster directions, Tiled property names, the default monster speed, the monster animation name, and the existing vertical Tiled-to-Phaser offset.
-
-Collision with the player is tested in `Util.collisionRectangleWithMonsters()`.
-
-### `js/HUD.js`
-
-Global object responsible for the HUD display.
-
-Responsibilities:
-
-- create the black area below the playfield;
-- display the air bar;
-- display lives;
-- display the score;
-- display the level number;
-- display the hi-score;
-- manage the bonus man;
-- gradually decrease the air during gameplay.
-
-Since refactoring step 8, repeated raw strings and magic values used by `HUD.js` have been moved to `HudConstants`. This includes HUD text labels, text positions, colors, air depletion timing, bonus man animation timing, digit formatting, and the retro font configuration.
-
-Since refactoring step 9, the unused `displayLevelInfo()` helper has been removed. The level number is still refreshed by `HUD.update()`, which uses `Level.level`. Step 10 also fixed a small formatting typo in the hi-score text creation code without changing the displayed result.
-
-The air bar is decremented in:
-
-```js
-HUD.updateAirLevel()
-```
-
-During gameplay, if the air reaches zero, the player is killed through:
-
-```js
-Player.kill()
-```
-
-### `js/util.js`
-
-Global object containing utility functions.
-
-Main responsibilities:
-
-- test collisions along a horizontal line;
-- test collisions along a vertical line;
-- test collisions along the edges of a rectangle;
-- test collision with the level exit;
-- test collision with monsters;
-- test disappearing platforms;
-- create animated sprites from tiles;
-- find Tiled objects by property;
-- retrieve monster tile properties;
-- draw text using the game font.
-
-Most player collisions rely on these functions. This makes `Util` very important for gameplay. Refactoring step 10 removed the unused `createFromTiledObject()` helper, made `collisionRectangleWithEndLevel()` return `false` explicitly when there is no collision, and reused centralized constants in the vanishing-platform and font helpers.
-
-### `js/data.js`
-
-Global object containing gameplay data.
-
-Main contents:
-
-- `jumpPath`: detailed jump trajectory;
-- `levels`: number of keys per level and monster animation speed;
-- `bonusManColors`: colors used to display the bonus man.
-
-`Data.levels` is notably used to know how many keys are required to complete the current level:
-
-```js
-Data.levels[Level.level - 1][0]
-```
-
-## Simplified game lifecycle
+The current lifecycle is approximately:
 
 ```text
 LOAD_INTRODUCTION
@@ -536,15 +140,26 @@ LOAD_INTRODUCTION
 
 ## Main game loop
 
-Every frame:
+`main.js` creates the Phaser game instance:
 
-```text
-main.updateGame()
-  -> GameController.update()
-      -> dispatch to one state-specific update method
+```js
+var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+    preload: preload,
+    create: create,
+    update: updateGame
+});
 ```
 
-For example, during the `PLAYING` state:
+Every frame, Phaser calls:
+
+```text
+updateGame()
+  -> GameController.update()
+```
+
+`GameController.update()` dispatches to one method per game state.
+
+During normal gameplay, the update order is:
 
 ```text
 HUD.updateAirLevel()
@@ -553,69 +168,549 @@ Level.updateMonsters()
 Player.update()
 ```
 
-The player is therefore updated after the monsters and after the air bar.
+This order is part of the current gameplay behavior and should be changed only with care.
 
-## Loading a level
+## `js/main.js`
 
-Level loading is mainly handled in:
+Main responsibilities:
+
+- create the Phaser instance;
+- load all assets in `preload()`;
+- create the Tiled map and main layer in `create()`;
+- initialize Arcade Physics;
+- create animated tile sprites where needed;
+- create and initialize the player;
+- initialize the monster group;
+- initialize the HUD;
+- create the black rectangles used by screen and reveal sequences;
+- set the initial game state;
+- delegate each frame to `GameController.update()`.
+
+Important globals created here:
+
+```text
+game
+map
+layer
+keyPressed
+vanishingPlatformGroup
+```
+
+These are still part of the current architecture and should be treated as shared runtime context.
+
+## `js/gameController.js`
+
+`GameController` is the high-level state orchestrator.
+
+Main data:
+
+- `gameState`
+- `score`
+- `hiScore`
+- `lives`
+
+Main update methods:
+
+- `updateLoadIntroduction()`
+- `updateIntroduction()`
+- `updateLoadHelp()`
+- `updateHelp()`
+- `updateLoadLevel()`
+- `updateDisplayLevel()`
+- `updateStartLevel()`
+- `updateDisplayingMonsters()`
+- `updatePlaying()`
+- `updateEndLevel()`
+- `updateEndGame()`
+- `updateShowGameOver()`
+- `updateGameOver()`
+
+`GameController` does not directly implement most visual sequences. It delegates them to specialized objects:
+
+- title/help/game-over screens: `ScreenManager`;
+- level reveal: `LevelRevealSequence`;
+- end-of-level transition: `LevelTransition`;
+- final congratulations sequence: `EndGameSequence`.
+
+## `js/screenManager.js`
+
+`ScreenManager` handles screens that are not normal gameplay screens.
+
+Responsibilities:
+
+- display the title screen;
+- remove the title screen;
+- display the help/instructions screen;
+- display the game-over logo;
+- remove the game-over logo.
+
+The help screen owns a temporary keyboard callback: pressing any key removes the help text, clears the black background, and returns to the introduction flow.
+
+`ScreenManager` uses the shared black rectangle created by `LevelRevealSequence` as a full-screen background when needed.
+
+## `js/level.js`
+
+`Level` is responsible for the current level and level-related runtime data.
+
+Main responsibilities:
+
+- keep track of the current level number;
+- reset level-specific data;
+- load the current level objects from Tiled;
+- position the player at the current level start;
+- create the monsters for the current level;
+- manage monster display and monster updates;
+- find and position the invisible level-exit sprite;
+- create explosion and reverse-explosion groups;
+- reset the whole game when needed.
+
+Important data:
+
+- `level`
+- `airLevel`
+- `keysTaken`
+- `bonusMan`
+- `monsters`
+- `monstersGroup`
+- `endLevel`
+- `stepDisplayMonsters`
+
+`Level` still exposes some compatibility-style methods that delegate to more specialized objects:
+
+```js
+Level.display()      // delegates to LevelRevealSequence.update()
+Level.goToNext()     // delegates to LevelTransition.update()
+```
+
+`Level.load()` is the central method for loading a level. It:
+
+1. resets air, collected keys, and bonus man state;
+2. resets the player;
+3. creates the level monsters;
+4. finds the level exit object in Tiled;
+5. creates or repositions the invisible exit sprite.
+
+`Level.resetGame()` updates the hi-score when necessary and resets score, lives, level number, air, keys, and bonus-man state.
+
+## `js/levelRevealSequence.js`
+
+`LevelRevealSequence` handles the progressive reveal shown when a level starts.
+
+Responsibilities:
+
+- create the two black rectangles used to hide the playfield;
+- progressively move those rectangles away;
+- switch the game state to `GameStates.START_LEVEL` when the level has been revealed.
+
+Main data:
+
+- `upperBlackRectangle`
+- `lowerBlackRectangle`
+- `stepDisplayLevel`
+
+The same upper rectangle is also reused as a black background by some non-gameplay screens. This is a legacy-style shared object, but it keeps the current rendering simple.
+
+## `js/levelTransition.js`
+
+`LevelTransition` handles the transition after a level has been completed.
+
+It is a small frame-by-frame state machine.
+
+Current phases:
+
+1. prepare the next level;
+2. hide the monsters from the completed level;
+3. restore the gray background;
+4. precisely align the player on one axis;
+5. convert the remaining air into score;
+6. move the player toward the next level start position;
+7. refill the air bar;
+8. load the next level and continue with the next level start sequence.
+
+Important behavior:
+
+- remaining air is converted into score;
+- the player is moved visibly between the old and new level positions;
+- the air bar is refilled before gameplay resumes;
+- `Level.bonusMan` is enabled for the next level.
+
+The transition uses existing coordinate conventions between Tiled and Phaser, especially the player vertical offset.
+
+## `js/endGameSequence.js`
+
+`EndGameSequence` handles the final congratulations sequence after the last level.
+
+It is a frame-by-frame state machine updated while the game state is `GameStates.END_GAME`.
+
+Current phases:
+
+1. convert the remaining air into score;
+2. display the congratulations message;
+3. scale the message up;
+4. wait briefly;
+5. reset the game and return to the introduction screen.
+
+The final message text is stored in `LevelConstants.END_GAME_MESSAGE_TEXT`.
+
+## `js/player.js`
+
+`Player` is responsible for the playable character.
+
+Responsibilities:
+
+- create the normal player sprite;
+- create the separate death-animation sprite;
+- reset the player at the beginning of a level;
+- read keyboard input;
+- handle horizontal movement;
+- handle jumping;
+- handle falling;
+- detect deadly falls;
+- handle conveyor belts;
+- handle slippery platforms;
+- handle ladders;
+- collect keys;
+- detect deadly collisions;
+- detect the level exit;
+- play the death animation;
+- reload the level or trigger game over after death.
+
+Important data:
+
+- `jumping`
+- `jumpIndex`
+- `jumpingDirection`
+- `fallHeight`
+- `fallLimit`
+- `deadlyFall`
+- `playerSprite`
+- `playerDyingSprite`
+
+The player is not yet implemented as a formal state machine. Jumping, falling, deadly falls, and death are still controlled by booleans and counters.
+
+The jump trajectory comes from:
+
+```js
+Data.jumpPath
+```
+
+This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
+
+Key collection behavior:
+
+- `Level.keysTaken` increases;
+- the score increases by `LevelConstants.KEY_SCORE_INCREMENT`;
+- the touched key tile becomes invisible;
+- the layer is marked as dirty.
+
+Exit behavior:
+
+- if all keys have been collected and the player touches the exit, the game moves to `GameStates.END_LEVEL`;
+- if the current level is the last level, the game moves to `GameStates.END_GAME` instead.
+
+## `js/playerStates.js`
+
+`PlayerStates` centralizes player-related runtime constants.
+
+It includes:
+
+- movement directions;
+- animation names;
+- player sprite keys;
+- death animation timing values.
+
+Despite the name, it is not a complete player state machine. It is currently a constants holder.
+
+Examples:
+
+```js
+PlayerStates.LEFT
+PlayerStates.RIGHT
+PlayerStates.UP
+PlayerStates.DOWN
+PlayerStates.ANIMATION_LEFT
+PlayerStates.ANIMATION_RIGHT
+PlayerStates.SPRITE_BLAGGER
+PlayerStates.SPRITE_BLAGGER_DYING
+PlayerStates.ANIMATION_BLAGGER_DYING
+```
+
+## `js/monster.js`
+
+`Monster` is a constructor function for enemy instances.
+
+Each monster is created from a Tiled object and from collision properties stored in the monster tileset.
+
+Responsibilities:
+
+- create the monster sprite;
+- read its initial direction;
+- read its maximum movement distance;
+- store its real hitbox;
+- move horizontally or vertically;
+- reverse direction when the maximum distance is reached.
+
+Monsters do not chase the player. They follow predefined paths.
+
+Collision with the player is tested in:
+
+```js
+Util.collisionRectangleWithMonsters()
+```
+
+## `js/monsterConstants.js`
+
+`MonsterConstants` centralizes monster-related constants.
+
+It includes:
+
+- direction values used by Tiled and monster movement;
+- Tiled property names used by monster objects;
+- default monster speed;
+- monster animation name;
+- animation frames and frame rate;
+- vertical Tiled-to-Phaser offset.
+
+Examples:
+
+```js
+MonsterConstants.DIRECTION_RIGHT
+MonsterConstants.DIRECTION_LEFT
+MonsterConstants.DIRECTION_DOWN
+MonsterConstants.DIRECTION_UP
+MonsterConstants.PROPERTY_MAX_DISTANCE
+MonsterConstants.DEFAULT_SPEED
+MonsterConstants.ANIMATION_DEFAULT
+```
+
+The direction strings must remain compatible with the values stored in the Tiled map.
+
+## `js/HUD.js`
+
+`HUD` handles the display and update of the lower status area.
+
+Responsibilities:
+
+- create the black HUD area below the playfield;
+- display the air bar;
+- display lives;
+- display the score;
+- display the current level number;
+- display the hi-score;
+- display and animate the bonus man;
+- decrease the air level during gameplay.
+
+Important methods:
+
+```js
+HUD.update()
+HUD.updateAirLevel()
+HUD.displayBonusMan()
+```
+
+If the air reaches zero during gameplay, `HUD.updateAirLevel()` kills the player through:
+
+```js
+Player.kill()
+```
+
+The active level number display is refreshed by `HUD.update()` using `Level.level`.
+
+## `js/hudConstants.js`
+
+`HudConstants` centralizes HUD-related constants.
+
+It includes:
+
+- text labels;
+- text positions;
+- colors;
+- digit formatting values;
+- air bar layout;
+- air depletion timing;
+- bonus man display timing;
+- retro font configuration.
+
+Examples:
+
+```js
+HudConstants.CHAR_WIDTH
+HudConstants.AIR_DECREASE_DELAY
+HudConstants.BONUS_MAN_COLOR_DELAY
+HudConstants.BONUS_MAN_SPRITE_KEY
+HudConstants.LABEL_AIR
+HudConstants.LABEL_HI_SCORE
+HudConstants.COLOR_AIR_BLUE
+HudConstants.COLOR_GREY
+```
+
+## `js/levelConstants.js`
+
+`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants.
+
+It includes:
+
+- initial level/lives/air values;
+- Tiled layer and property names;
+- common tile names and tile types;
+- score increments;
+- key tile index;
+- player and level-exit coordinate offsets;
+- level reveal values;
+- end-of-level transition values;
+- end-game sequence values;
+- screen positions and text values shared by screen-related objects.
+
+Examples:
+
+```js
+LevelConstants.DEFAULT_AIR_LEVEL
+LevelConstants.TILED_PROPERTY_LEVEL
+LevelConstants.OBJECT_LAYER_PLAYER
+LevelConstants.OBJECT_LAYER_MONSTERS
+LevelConstants.OBJECT_LAYER_END_LEVEL
+LevelConstants.TILE_NAME_KEY
+LevelConstants.TILE_TYPE_SOLID
+LevelConstants.TILE_KEY_INDEX
+LevelConstants.END_LEVEL_Y_OFFSET
+LevelConstants.END_GAME_SCORE_INCREMENT
+LevelConstants.END_GAME_MESSAGE_TEXT
+```
+
+The values that mirror the Tiled map must remain synchronized with the map data.
+
+## `js/util.js`
+
+`Util` contains shared helper functions.
+
+Main responsibilities:
+
+- test collisions along horizontal and vertical lines;
+- test collisions around rectangle edges;
+- test collision with the level exit;
+- test collision with monsters;
+- test disappearing platforms;
+- create animated sprites from tile definitions;
+- find Tiled objects by property;
+- retrieve monster tile properties;
+- draw text using the game font.
+
+Most player collision checks depend on this file, so it is gameplay-critical.
+
+## `js/data.js`
+
+`Data` contains static gameplay data.
+
+Main contents:
+
+- `jumpPath`: per-frame jump trajectory data;
+- `levels`: key count and monster animation speed per level;
+- `bonusManColors`: colors used to animate the bonus man.
+
+The required number of keys for the current level is read through:
+
+```js
+Data.levels[Level.level - 1][0]
+```
+
+## Level loading flow
+
+Level loading is mainly handled by:
 
 ```js
 Level.load()
 ```
 
-This method:
-
-1. resets air, keys, and bonus man to their initial state;
-2. calls `Player.reset()`;
-3. creates the level monsters through `Level.addMonsters()`;
-4. finds the level exit object in Tiled;
-5. creates or repositions the invisible exit sprite.
-
-Then `HUD.update()` refreshes the displayed information.
-
-## Progressive level reveal
-
-The progressive reveal is handled by:
+Simplified flow:
 
 ```text
-GameController.updateDisplayLevel()
-  -> Level.display()
-      -> LevelRevealSequence.update()
+Level.load()
+  -> reset level data
+  -> Player.reset()
+  -> Level.addMonsters()
+  -> find Tiled exit object
+  -> create or reposition invisible exit sprite
+  -> HUD.update()
 ```
 
-Principle:
+After loading, the level is revealed by `LevelRevealSequence`, then monsters are revealed by `Level.displayMonsters()`, and gameplay begins.
 
-- `LevelRevealSequence` resets the reveal phase and makes all key tiles visible;
-- two black rectangles hide the map;
-- the rectangles gradually move away;
-- when the rectangles are gone, the state changes to `GameStates.START_LEVEL`;
-- `Level.displayMonsters()` plays the beginning-of-level monster reveal sequence;
-- monsters become visible;
-- the state changes to `GameStates.PLAYING`.
+## Level start flow
 
-## Transition between levels
+```text
+GameStates.LOAD_LEVEL
+  -> Level.load()
+  -> HUD.update()
+  -> GameStates.DISPLAY_LEVEL
+      -> LevelRevealSequence.update()
+      -> GameStates.START_LEVEL
+          -> Level.displayMonsters()
+          -> GameStates.PLAYING
+```
 
-When all keys have been collected and the player touches the exit, `Player.update()` triggers:
+## Normal gameplay flow
 
-```js
-GameController.gameState = GameStates.END_LEVEL;
+During `GameStates.PLAYING`:
+
+```text
+HUD.updateAirLevel()
+HUD.displayBonusMan()
+Level.updateMonsters()
+Player.update()
+```
+
+`Player.update()` handles:
+
+- input;
+- movement;
+- jump/fall logic;
+- tile collisions;
+- key collection;
+- deadly collisions;
+- exit detection.
+
+## End-of-level flow
+
+When all keys have been collected and the player touches the exit:
+
+```text
+Player.update()
+  -> GameController.gameState = GameStates.END_LEVEL
 ```
 
 Then:
 
 ```text
-GameController.update()
+GameController.updateEndLevel()
   -> Level.goToNext()
       -> LevelTransition.update()
 ```
 
-The transition converts the remaining air into score, moves the player toward the next level, refills the air, then loads the new level.
+The transition moves the player toward the next level start, converts remaining air into score, refills the air, and starts the next level.
 
-## Player death
+## End-game flow
 
-Player death is triggered by:
+When the last level has been completed:
 
-- collision with a deadly element;
+```text
+Player.update()
+  -> GameController.gameState = GameStates.END_GAME
+```
+
+Then:
+
+```text
+GameController.updateEndGame()
+  -> EndGameSequence.update()
+```
+
+The sequence converts remaining air into score, displays the congratulations message, scales it up, waits briefly, resets the game, and returns to the title screen.
+
+## Player death flow
+
+Player death can be caused by:
+
+- collision with a deadly tile;
 - collision with a monster;
 - deadly fall;
 - depleted air.
@@ -626,17 +721,21 @@ The central method is:
 Player.kill()
 ```
 
-It:
+Simplified flow:
 
-1. changes the game state;
-2. hides the normal player sprite;
-3. displays the death animation;
-4. at the end of the animation, removes one life or consumes the bonus man;
-5. reloads the level or triggers game over.
+```text
+Player.kill()
+  -> stop normal gameplay
+  -> hide normal player sprite
+  -> show death sprite
+  -> play death animation
+  -> remove one life or consume bonus man
+  -> reload level or show game over
+```
 
-## Hi-score
+## Hi-score flow
 
-The hi-score is read in `main.create()` with:
+The hi-score is read from `localStorage` during startup:
 
 ```js
 localStorage.getItem('hiScore')
@@ -644,374 +743,126 @@ localStorage.getItem('hiScore')
 
 It is updated in `Level.resetGame()` if the current score is greater than the stored hi-score.
 
+## Tiled map conventions
+
+The game depends on conventions defined in the Tiled map and tilesets.
+
+Important object layers and properties include:
+
+- player object layer;
+- monster object layer;
+- end-level object layer;
+- `level` property;
+- monster `direction` property;
+- monster `maxDistance` property;
+- tile `name` property;
+- tile `type` property.
+
+Important tile concepts include:
+
+- solid tiles;
+- ladders;
+- keys;
+- deadly tiles;
+- slippery platforms;
+- conveyor belts;
+- disappearing platforms;
+- monster collision rectangles.
+
+These conventions are partly represented by `LevelConstants` and `MonsterConstants`, but the Tiled data remains the source of truth.
+
 ## Technical points to watch
 
-### Global variables
+### Global state
 
-The project still heavily depends on global variables:
+The project still relies heavily on global objects and variables. This is workable for the current codebase, but it is the main architectural limitation before a future migration to TypeScript or a modern Phaser scene structure.
 
-- `game`
-- `map`
-- `layer`
-- `keyPressed`
-- `vanishingPlatformGroup`
-- `GameController`
-- `Level`
-- `Player`
-- `HUD`
-- `Util`
-- `ScreenManager`
-- `EndGameSequence`
-- `Data`
+### Script order
 
-This is acceptable for now, but it will be an important point if the project later migrates to TypeScript or to a modern Phaser version.
-
-### No modules yet
-
-Files are loaded through `<script>` tags in `index.html`. There is currently no module system, no import/export, and no bundler.
-
-A future step could introduce Vite, but this has not been done yet.
+Because there is no module system, `index.html` load order is part of the architecture. Adding a new global object usually requires adding a new `<script>` tag at the correct position.
 
 ### Manual collisions
 
-Player collisions are very specific to the game and are often computed at the pixel level.
-
-They should not be rewritten too early. Even a small change can alter the feel of the game.
+Collision code is very specific to this game. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, and enemy collision.
 
 ### Counter-based sequences
 
-Some sequences still use counters or numeric steps:
+Several sequences are still frame/counter based. They are readable now, but still depend on preserved timings and numeric thresholds.
 
-- progressive level reveal;
-- HUD animation;
-- monster movement.
+Important examples:
 
-The transition between levels has already been isolated into `LevelTransition`, and the final congratulations sequence has been isolated into `EndGameSequence`. Other sequences could be clarified later.
+- level reveal;
+- monster reveal;
+- end-of-level transition;
+- end-game sequence;
+- HUD air depletion;
+- bonus man color animation.
 
-### Directions, animation names, and Tiled property names
+### Tiled coupling
 
-Player movement directions and player animation names are centralized in:
+A lot of behavior depends on exact Tiled layer names, object names, tile names, and property names. Changing the map without updating constants and code can break gameplay.
 
-```text
-js/playerStates.js
-```
+### Player logic sensitivity
 
-Monster directions, monster animation names, and the Tiled property names used by monsters are centralized in:
+The player is the most sensitive part of the game. The jump trajectory, fall detection, ladder handling, and tile collision probes should be refactored only in small, well-tested steps.
 
-```text
-js/monsterConstants.js
-```
+## Possible future improvements
 
-Level-related Tiled layer names, some sprite keys, level reveal steps, air values, transition constants and end-game constants are centralized in:
+The following improvements are architectural ideas, not current implementation details.
 
-```text
-js/levelConstants.js
-```
+### Document Tiled conventions separately
 
-HUD labels, colors, layout positions, air timing, bonus man animation timing, and display formatting values are centralized in:
+A dedicated document such as `doc/tiled_map_conventions.md` would be useful. It could describe every expected layer, object type, tile property, monster property, and coordinate offset.
 
-```text
-js/hudConstants.js
-```
+### Add an explicit debug mode
 
-After refactoring step 10, this currently covers values such as:
-
-```js
-PlayerStates.LEFT
-PlayerStates.RIGHT
-PlayerStates.ANIMATION_LEFT
-PlayerStates.ANIMATION_RIGHT
-MonsterConstants.DIRECTION_RIGHT
-MonsterConstants.DIRECTION_LEFT
-MonsterConstants.PROPERTY_MAX_DISTANCE
-MonsterConstants.ANIMATION_DEFAULT
-LevelConstants.OBJECT_LAYER_END_LEVEL
-LevelConstants.OBJECT_LAYER_PLAYER
-LevelConstants.TILED_PROPERTY_NAME
-LevelConstants.TILE_NAME_KEY
-LevelConstants.TILE_TYPE_SOLID
-LevelConstants.TILE_KEY_INDEX
-LevelConstants.DEFAULT_AIR_LEVEL
-LevelConstants.END_GAME_SCORE_INCREMENT
-HudConstants.AIR_DECREASE_DELAY
-HudConstants.LABEL_HI_SCORE
-HudConstants.COLOR_AIR_BLUE
-```
-
-Other parts of the code may still contain raw strings related to asset loading, tile animation setup, texture keys or screen text. Those should be cleaned up carefully and only when the meaning is clear.
-
-### Tiled properties
-
-The gameplay strongly depends on properties defined in the Tiled map and tilesets:
-
-- `type`
-- `name`
-- `level`
-- `direction`
-- `maxDistance`
-- monster hitbox properties
-
-The most common property names and tile values are now represented by `LevelConstants` and `MonsterConstants`, but the Tiled data remains the source of truth.
-
-These conventions should be documented more precisely if the map is modified.
-
-## Refactorings already done
-
-### Step 1 — Extract end-of-level transition
-
-Created:
+A debug mode would be useful for testing transitions and levels. It should not be active by default in production. A safe approach would be to enable it only through an explicit URL parameter such as:
 
 ```text
-js/levelTransition.js
+?debug=1
 ```
 
-Goal: move the transition between levels out of `Level.goToNext()`.
+### Reduce global variables
 
-### Step 2 — Centralize game states
+A future architecture could group shared runtime objects into a context object, then later move toward ES modules or Phaser scenes.
 
-Created:
+### Prepare TypeScript gradually
 
-```text
-js/gameStates.js
-```
+Before moving to TypeScript, it would be useful to document the shape of:
 
-Goal: replace scattered state strings with centralized constants.
+- Tiled objects;
+- tile properties;
+- monster definitions;
+- player state;
+- level data;
+- game states.
 
-### Step 3 — Document the current implementation
+### Separate gameplay rules from Phaser calls
 
-Created:
+Some gameplay rules could eventually be made less dependent on Phaser objects. This would make the code easier to test and easier to migrate to a newer Phaser version.
 
-```text
-doc/current_implementation.md
-```
+## Manual test checklist
 
-Goal: describe the current architecture, game lifecycle, major files, technical debt, and manual test checklist.
-
-### Step 4 — Split `GameController.update()` into state-specific methods
-
-Updated:
-
-```text
-js/gameController.js
-```
-
-Goal: keep the existing game-state switch, but delegate each state to a named method such as `updatePlaying()`, `updateLoadLevel()`, or `updateShowGameOver()`.
-
-This does not change the game flow. It only makes the responsibilities of each state easier to read and prepares future refactorings.
-
-### Step 5 — Centralize player constants
-
-Created:
-
-```text
-js/playerStates.js
-```
-
-Updated:
-
-```text
-js/player.js
-index.html
-```
-
-Goal: remove repeated raw strings from `player.js` for movement directions and player animation names, while preserving the current player movement logic.
-
-### Step 6 — Centralize monster constants
-
-Created:
-
-```text
-js/monsterConstants.js
-```
-
-Updated:
-
-```text
-js/monster.js
-index.html
-```
-
-Goal: remove repeated raw strings and small magic values from `monster.js` for monster directions, Tiled object property names, monster animation configuration, default movement speed, and the existing vertical Tiled-to-Phaser offset. Monster paths and collision behavior remain unchanged.
-
-### Step 7 — Centralize level constants
-
-Created:
-
-```text
-js/levelConstants.js
-```
-
-Updated:
-
-```text
-js/level.js
-index.html
-doc/current_implementation.md
-```
-
-Goal: remove raw strings and magic values from `level.js` for Tiled layer/property names, the key tile index, sprite keys used by level screens, air and lives reset values, progressive level reveal values, end-level positioning, and end-game scoring/timing values. The level loading, monster reveal, level reveal and end-game behavior remain unchanged.
-
-### Step 8 — Centralize HUD constants
-
-Created:
-
-```text
-js/hudConstants.js
-```
-
-Updated:
-
-```text
-js/HUD.js
-index.html
-doc/current_implementation.md
-```
-
-Goal: remove raw strings and magic values from `HUD.js` for HUD labels, text positions, colors, air bar drawing, air depletion timing, bonus man animation timing, digit formatting, and retro font configuration. The HUD display, air depletion behavior, and bonus man animation remain unchanged.
-
-### Step 9 — Remove unused HUD level helper
-
-Updated:
-
-```text
-js/HUD.js
-doc/current_implementation.md
-```
-
-Goal: remove the unused `HUD.displayLevelInfo()` method. The method was not called anywhere and also referenced an unqualified `level` variable. The active HUD level refresh remains handled by `HUD.update()`, which uses `Level.level`.
-
-### Step 10 — Audit and apply low-risk cleanups
-
-Updated:
-
-```text
-js/HUD.js
-js/gameController.js
-js/level.js
-js/levelConstants.js
-js/levelTransition.js
-js/player.js
-js/playerStates.js
-js/util.js
-doc/current_implementation.md
-```
-
-Goal: turn the audit into concrete low-risk corrections. This step fixes implicit globals in level/player code, removes unused code, replaces several remaining raw Tiled strings and sprite keys with existing constants, makes one collision helper return `false` explicitly, adds a defensive fallback for levels without monsters, and updates this documentation.
-
-### Step 11 — Ignore local IDE metadata
-
-Created:
-
-```text
-.gitignore
-```
-
-Goal: keep local IDE/editor metadata such as `.idea/` or `.vscode/` out of the public repository. This step does not modify runtime code.
-
-### Step 12 — Extract non-gameplay screens
-
-Created:
-
-```text
-js/screenManager.js
-```
-
-Updated:
-
-```text
-index.html
-js/gameController.js
-js/level.js
-doc/current_implementation.md
-```
-
-Goal: move the introduction, help, and game-over screen display logic out of `Level` and into `ScreenManager`. This narrows the responsibility of `Level` without changing the title/help/game-over behaviour.
-
-### Step 13 — Extract final end-game sequence
-
-Created:
-
-```text
-js/endGameSequence.js
-```
-
-Updated:
-
-```text
-index.html
-js/gameController.js
-js/level.js
-js/levelConstants.js
-doc/current_implementation.md
-```
-
-Goal: move the final congratulations sequence out of `Level` and into `EndGameSequence`. This removes the remaining end-game state machine from `Level` while preserving the score conversion, message display, scaling and return-to-title behaviour.
-
-## Future refactoring ideas
-
-### 1. Document Tiled conventions
-
-Create a separate document, for example:
-
-```text
-doc/tiled_map_conventions.md
-```
-
-It would describe layers, expected properties, tile types, `player` objects, `end level` objects, `monsters`, etc.
-
-### 2. Continue centralizing constants
-
-`PlayerStates` centralizes direction, animation and player sprite values used by `player.js`.
-`MonsterConstants` centralizes direction, property name, animation and speed values used by `monster.js`.
-`LevelConstants` centralizes level values, common Tiled conventions, scoring values, transition values and screen positions.
-`HudConstants` centralizes labels, colors, positions, formatting values, and timing values used by `HUD.js`.
-
-A future step could continue with:
-
-- asset keys still hard-coded in `main.js`;
-- animated tile setup values in `main.js` / `Util.createSpritesFromTiles()`;
-- long help text in `screenManager.js`;
-- player movement geometry values such as collision probe offsets.
-
-This should be done carefully, because some strings are gameplay data coming from the Tiled map.
-
-### 3. Isolate HUD logic
-
-HUD constants are now centralized and the unused `displayLevelInfo()` helper has been removed, but the HUD still mixes display, air depletion, and death logic when the air reaches zero.
-
-Eventually, this could be split into:
-
-- air timer logic;
-- air bar display;
-- gameplay effects when air is depleted.
-
-### 4. Prepare a future TypeScript migration
-
-Before moving to TypeScript, it would be useful to:
-
-- reduce global variables;
-- document the shape of Tiled objects;
-- centralize constants;
-- clarify the responsibilities of each object.
-
-## Manual test checklist after refactoring
-
-After each small refactoring step, test at least:
+After any small architecture change, test at least:
 
 - game launch;
 - title screen;
-- access help with `h`;
+- help screen with `h`;
 - return from help;
 - level 1 loading;
+- level reveal;
+- monster reveal;
 - left/right movement;
 - jump;
 - fall;
+- ladders;
 - key collection;
 - collision with an enemy or a trap;
 - losing a life;
 - transition to the next level;
-- score, lives, level number, and air display;
-- no red JavaScript error in the console.
+- score, lives, level number, hi-score, and air display;
+- game-over screen;
+- no red JavaScript error in the browser console.
 
 To quickly test the transition to the next level from the browser console:
 
@@ -1020,4 +871,4 @@ Level.keysTaken = Data.levels[Level.level - 1][0];
 GameController.gameState = GameStates.END_LEVEL;
 ```
 
-This command must not be turned into a keyboard shortcut that is active in production. If a debug system is added later, it should be explicitly enabled, for example through a URL parameter such as `?debug=1`.
+This command must not be turned into a keyboard shortcut that is active in production. If a debug system is added later, it should be explicitly enabled.
