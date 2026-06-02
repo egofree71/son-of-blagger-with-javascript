@@ -110,10 +110,12 @@ var GameController =
 
     /**
      * Run the final end-game sequence.
+     *
+     * The actual frame-by-frame sequence is handled by EndGameSequence.
      */
     updateEndGame : function()
     {
-        Level.endGame();
+        EndGameSequence.update();
     },
 
     /**

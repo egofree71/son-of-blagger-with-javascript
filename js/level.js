@@ -13,10 +13,9 @@ var Level =
   // Counter used to set the animation's speed
   counterDisplayingLevel : LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER,
 
-  // Variables used to run sequences when transitions occur.
-  // The end-level transition itself is handled by LevelTransition.
+  // Variable used to run the progressive level reveal sequence.
+  // The end-level and end-game transitions are handled by dedicated objects.
   stepDisplayLevel : LevelConstants.INITIAL_SEQUENCE_STEP,
-  stepEndGame : LevelConstants.INITIAL_SEQUENCE_STEP,
 
   // air level of the current level
   airLevel : LevelConstants.DEFAULT_AIR_LEVEL,
@@ -35,11 +34,6 @@ var Level =
   reverseExplosions : null,
   // The end level object stores the position of the end's level
   endLevel : null,
-
-  // Image which contains the congratulations message
-  congratulationsImage : null,
-  counter : 0,
-
 
   // Number of keys taken in the current level
   keysTaken : 0,
@@ -142,76 +136,6 @@ var Level =
   },
 
 
-  // Display the congratulations message when the game is finished
-  endGame : function()
-  {
-  	switch(this.stepEndGame)
-  	{
-  		// Increase the score according to the remaining air level
-  		case LevelConstants.END_GAME_STEP_CONVERT_AIR:
-  			if (this.airLevel > 0)
-  			{
-                this.airLevel -= LevelConstants.END_GAME_AIR_DECREMENT;
-  				GameController.score += LevelConstants.END_GAME_SCORE_INCREMENT;
-  				HUD.displayScore();
-  				HUD.displayAirLevel();
-  			}
-  			else
-  			{
-  				HUD.clearAirLevel();
-                this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
-                this.stepEndGame += 1;
-  			}
-
-  			break;
-
-        // Display a congratulations message
-  		case LevelConstants.END_GAME_STEP_SHOW_MESSAGE:
-            this.stepEndGame++;
-  			// Draw a black rectangle
-            this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-            this.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
-
-  			var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
-  			font.setText ("Congratulations !\n      you\nfinished the game", true, 1 ,18);
-
-            this.congratulationsImage = game.add.image(LevelConstants.END_GAME_MESSAGE_X, LevelConstants.END_GAME_MESSAGE_Y, font);
-            this.congratulationsImage.tint = LevelConstants.WHITE_COLOR;
-            this.congratulationsImage.fixedToCamera = true;
-
-  			// Scale down the message
-            this.congratulationsImage.scale.x = LevelConstants.END_GAME_INITIAL_SCALE;
-            this.congratulationsImage.scale.y = LevelConstants.END_GAME_INITIAL_SCALE;
-
-            this.counter = LevelConstants.END_GAME_MESSAGE_WAIT_COUNTER;
-  			break;
-
-  		// Scale up the message
-  		case LevelConstants.END_GAME_STEP_SCALE_MESSAGE:
-            this.congratulationsImage.scale.x += LevelConstants.END_GAME_SCALE_INCREMENT;
-            this.congratulationsImage.scale.y += LevelConstants.END_GAME_SCALE_INCREMENT;
-
-  			if (this.congratulationsImage.scale.x > LevelConstants.END_GAME_MAX_SCALE)
-              this.stepEndGame++;
-
-  			break;
-
-        // Wait a little bit, and show the introduction screen
-  		case LevelConstants.END_GAME_STEP_WAIT_THEN_RESET:
-            this.counter--;
-
-  			if (this.counter == 0)
-  			{
-                this.upperBlackRectangle.clear();
-                this.congratulationsImage.destroy();
-                this.stepEndGame = LevelConstants.INITIAL_SEQUENCE_STEP;
-                this.resetGame();
-  				HUD.displayAirLevel();
-  				GameController.gameState = GameStates.LOAD_INTRODUCTION;
-  			}
-  	}
-  },
-
   // Reset the game properties
   resetGame : function()
   {
@@ -227,6 +151,7 @@ var Level =
   	GameController.lives = LevelConstants.INITIAL_LIVES;
 
     LevelTransition.reset();
+    EndGameSequence.reset();
     HUD.update();
   },
 

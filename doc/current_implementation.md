@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 12**.
+Document updated after **refactoring step 13**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -65,6 +65,7 @@ The logical order is:
 <script src="js/data.js"></script>
 <script src="js/levelTransition.js"></script>
 <script src="js/level.js"></script>
+<script src="js/endGameSequence.js"></script>
 <script src="js/HUD.js"></script>
 <script src="js/gameController.js"></script>
 ```
@@ -233,7 +234,7 @@ State-specific methods:
 - `updateStartLevel()` runs the monster reveal sequence;
 - `updatePlaying()` runs one normal gameplay frame;
 - `updateEndLevel()` delegates to the end-of-level transition;
-- `updateEndGame()` runs the final end-game sequence;
+- `updateEndGame()` delegates the final end-game sequence to `EndGameSequence`;
 - `updateShowGameOver()` delegates game-over display/removal to `ScreenManager` and waits for a key press.
 
 During the `GameStates.PLAYING` state, `updatePlaying()` calls, in order:
@@ -277,10 +278,9 @@ Main responsibilities:
 - manage the level exit object;
 - progressively reveal the level with two black rectangles;
 - reveal monsters at the beginning of a level;
-- handle the final end-game congratulations sequence;
 - reset some game data.
 
-Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`.
+Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`. Since refactoring step 13, the final congratulations sequence is handled by `EndGameSequence`.
 
 Important data:
 
@@ -292,7 +292,6 @@ Important data:
 - `monstersGroup`
 - `endLevel`
 - `stepDisplayLevel`
-- `stepEndGame`
 
 Since refactoring step 1, the end-of-level transition is no longer implemented directly inside `Level`. The method:
 
@@ -306,7 +305,7 @@ now simply delegates to:
 LevelTransition.update()
 ```
 
-Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by `ScreenManager` for the title/help/game-over screens.
+Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, `endGameSequence.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by `ScreenManager` and the final end-game message.
 
 ### `js/levelTransition.js`
 
@@ -335,6 +334,21 @@ Notes:
 - the main movement uses `LevelConstants.END_LEVEL_TRANSITION_TILE_STEP`;
 - the player vertical offset uses `LevelConstants.PLAYER_TILED_Y_OFFSET` because Tiled and Phaser do not reference objects in exactly the same way;
 - the transition grants a `bonusMan` for the next level.
+
+### `js/endGameSequence.js`
+
+Global object responsible for the final congratulations sequence.
+
+This file was added in refactoring step 13 to move the final end-game sequence out of `Level`. Like `LevelTransition`, it is a small frame-by-frame state machine updated by `GameController` while the game state is `GameStates.END_GAME`.
+
+Current phases:
+
+1. convert the remaining air into score;
+2. display the congratulations message;
+3. scale the message up;
+4. wait briefly, reset the game, and return to the introduction screen.
+
+The scoring values, timings, text positioning, scale values, and black background behaviour are preserved from the previous implementation. The final message text is now centralized in `LevelConstants.END_GAME_MESSAGE_TEXT`.
 
 ### `js/player.js`
 
@@ -612,6 +626,7 @@ The project still heavily depends on global variables:
 - `HUD`
 - `Util`
 - `ScreenManager`
+- `EndGameSequence`
 - `Data`
 
 This is acceptable for now, but it will be an important point if the project later migrates to TypeScript or to a modern Phaser version.
@@ -633,11 +648,10 @@ They should not be rewritten too early. Even a small change can alter the feel o
 Some sequences still use counters or numeric steps:
 
 - progressive level reveal;
-- end-game sequence;
 - HUD animation;
 - monster movement.
 
-The transition between levels has already been isolated into `LevelTransition`, but other sequences could be clarified later.
+The transition between levels has already been isolated into `LevelTransition`, and the final congratulations sequence has been isolated into `EndGameSequence`. Other sequences could be clarified later.
 
 ### Directions, animation names, and Tiled property names
 
@@ -653,7 +667,7 @@ Monster directions, monster animation names, and the Tiled property names used b
 js/monsterConstants.js
 ```
 
-Level-related Tiled layer names, some sprite keys, level reveal steps, air values and end-game constants are centralized in:
+Level-related Tiled layer names, some sprite keys, level reveal steps, air values, transition constants and end-game constants are centralized in:
 
 ```text
 js/levelConstants.js
@@ -878,6 +892,26 @@ doc/current_implementation.md
 
 Goal: move the introduction, help, and game-over screen display logic out of `Level` and into `ScreenManager`. This narrows the responsibility of `Level` without changing the title/help/game-over behaviour.
 
+### Step 13 — Extract final end-game sequence
+
+Created:
+
+```text
+js/endGameSequence.js
+```
+
+Updated:
+
+```text
+index.html
+js/gameController.js
+js/level.js
+js/levelConstants.js
+doc/current_implementation.md
+```
+
+Goal: move the final congratulations sequence out of `Level` and into `EndGameSequence`. This removes the remaining end-game state machine from `Level` while preserving the score conversion, message display, scaling and return-to-title behaviour.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -901,7 +935,7 @@ A future step could continue with:
 
 - asset keys still hard-coded in `main.js`;
 - animated tile setup values in `main.js` / `Util.createSpritesFromTiles()`;
-- long help text in `screenManager.js` and end-game text in `level.js`;
+- long help text in `screenManager.js`;
 - player movement geometry values such as collision probe offsets.
 
 This should be done carefully, because some strings are gameplay data coming from the Tiled map.

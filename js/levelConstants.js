@@ -1,5 +1,5 @@
 /**
- * Centralized constants used by level.js.
+ * Centralized constants used by level-related systems.
  *
  * This file gives names to raw strings and magic numbers that were previously
  * scattered through the Level object. The goal is only to make the existing
@@ -106,6 +106,7 @@ var LevelConstants =
     GAME_OVER_X : 140,
     GAME_OVER_Y : 50,
 
+    END_GAME_MESSAGE_TEXT : "Congratulations !\n      you\nfinished the game",
     END_GAME_MESSAGE_X : 60,
     END_GAME_MESSAGE_Y : 100
 };
