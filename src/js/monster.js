@@ -1,5 +1,6 @@
 import { GameStates } from "./gameStates.js";
 import { MonsterConstants } from "./monsterConstants.js";
+import { Level } from "./level.js";
 
 // Monster object
 export function Monster(monsterProperties, tileProperties)

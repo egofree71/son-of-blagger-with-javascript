@@ -1,6 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { HudConstants } from "./hudConstants.js";
 import { Data } from "./data.js";
+import { Level } from "./level.js";
 
 export const HUD =
 {

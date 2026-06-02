@@ -1,6 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { PlayerStates } from "./playerStates.js";
 import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
 
 /**
  * Handles the visual and gameplay consequences of the player's death.

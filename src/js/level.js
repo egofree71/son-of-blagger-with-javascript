@@ -154,8 +154,3 @@ export const Level =
   }
 
 };
-
-// Keep Level available globally while the remaining legacy-style modules are
-// migrated progressively to explicit ES module imports and to preserve
-// convenient browser-console debugging.
-window.Level = Level;

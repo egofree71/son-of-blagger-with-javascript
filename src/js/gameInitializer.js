@@ -4,6 +4,7 @@ import { Util } from "./util.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
 import { Player } from "./player.js";
 import { HUD } from "./HUD.js";
+import { Level } from "./level.js";
 
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.

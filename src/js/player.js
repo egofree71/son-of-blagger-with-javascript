@@ -5,6 +5,7 @@ import { Util } from "./util.js";
 import { PlayerMovement } from "./playerMovement.js";
 import { PlayerInteractions } from "./playerInteractions.js";
 import { PlayerDeathSequence } from "./playerDeathSequence.js";
+import { Level } from "./level.js";
 
 export const Player =
 {

@@ -26,7 +26,7 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Static data such as `Data` is also exported/imported explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`, and `Player` itself is also exported/imported explicitly. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, `LevelTransition`, and `EndGameSequence` are also exported/imported explicitly. Core orchestration modules such as `GameInitializer` and `GameController` are imported explicitly by the Phaser lifecycle bootstrap. Level-object and monster helpers such as `LevelObjectLoader` and `Monster` are also ES module exports. `HUD` and `Level` are also exported as ES modules. These converted objects are still mirrored on `window` during the transition period. The remaining global-object style is mostly limited to Phaser runtime globals such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` export their objects as ES modules, and consumers import them explicitly. Static data such as `Data` is also exported/imported explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are exported/imported explicitly. Player support modules such as `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` are imported explicitly by `Player`, and `Player` itself is also exported/imported explicitly. Screen and sequence helpers such as `AssetLoader`, `ScreenManager`, `LevelRevealSequence`, `LevelTransition`, and `EndGameSequence` are also exported/imported explicitly. Core orchestration modules such as `GameInitializer` and `GameController` are imported explicitly by the Phaser lifecycle bootstrap. Level-object and monster helpers such as `LevelObjectLoader` and `Monster` are also ES module exports. `HUD` and `Level` are also exported as ES modules. `Level` is no longer mirrored on `window`; consumers import it explicitly. Most other converted runtime objects are still mirrored on `window` during the transition period. The remaining global-object style is mostly limited to Phaser runtime globals such as `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
 
 ## Running the game locally
 
@@ -114,7 +114,7 @@ The project is organized around ES module exports defined under `src/js`. Most o
 - `GameInitializer`: runtime startup after asset loading. Exported as an ES module and mirrored on `window` during the transition period.
 - `GameController`: high-level game state orchestration. Exported as an ES module and mirrored on `window` during the transition period.
 - `ScreenManager`: title, help, and game-over screens. Exported as an ES module and mirrored on `window` during the transition period.
-- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic. Exported as an ES module and mirrored on `window` during the transition period.
+- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic. Exported as an ES module and imported explicitly by consumers; it is no longer mirrored on `window`.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage. Exported as an ES module and mirrored on `window` during the transition period.
 - `LevelTransition`: transition between two levels after all keys have been collected. Exported as an ES module and mirrored on `window` during the transition period.
@@ -349,7 +349,7 @@ Important data:
 - `animationCounterMax`
 - `animationCounter`
 
-`Level` still exposes some compatibility-style methods that delegate to more specialized objects:
+`Level` is now imported explicitly by the modules that need current level state. It still exposes some compatibility-style methods that delegate to more specialized objects:
 
 ```js
 Level.display()      // delegates to LevelRevealSequence.update()
@@ -912,11 +912,11 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ### Global state
 
-The project still relies heavily on global gameplay objects and Phaser globals, even though constants, shared helpers, and player support helpers now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
+The project still relies on several global gameplay objects and Phaser globals, even though constants, shared helpers, player support helpers, and `Level` now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
 
 ### Script order
 
-Because most gameplay runtime objects are still exposed globally, import order in `src/main.js` is still part of the architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constants and shared helper dependencies should now be imported directly by the files that use them.
+Because several gameplay runtime objects are still exposed globally, import order in `src/main.js` is still part of the transitional architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constants and shared helper dependencies should now be imported directly by the files that use them.
 
 ### Manual collisions
 
