@@ -26,9 +26,9 @@ var Player =
 		game.physics.arcade.enable(this.playerSprite);
 
 		//  Set the animations for the player
-		this.playerSprite.animations.add('dying', [0, 1, 2, 3, 4, 5, 6, 7], 10, true);
-		this.playerSprite.animations.add('right', [6, 7, 8, 9, 10, 11], 10, true);
-		this.playerSprite.animations.add('left', [0, 1, 2, 3, 4, 5], 10, true);
+		this.playerSprite.animations.add(PlayerStates.ANIMATION_DYING, [0, 1, 2, 3, 4, 5, 6, 7], 10, true);
+		this.playerSprite.animations.add(PlayerStates.ANIMATION_RIGHT, [6, 7, 8, 9, 10, 11], 10, true);
+		this.playerSprite.animations.add(PlayerStates.ANIMATION_LEFT, [0, 1, 2, 3, 4, 5], 10, true);
 	},
 
 	// Reset player's properties
@@ -40,7 +40,7 @@ var Player =
 		//
 		this.playerSprite.reset(results[0].x, results[0].y - 42);
 		this.playerSprite.loadTexture('blagger');
-		this.playerSprite.animations.play('right');
+		this.playerSprite.animations.play(PlayerStates.ANIMATION_RIGHT);
 		this.playerSprite.animations.stop();
 
 		game.camera.follow(this.playerSprite);
@@ -98,14 +98,14 @@ var Player =
 		    if (keyPressed.right.isDown)
 		    {
 		        if (this.jumping)
-					this.jumpingDirection = "RIGHT";
+					this.jumpingDirection = PlayerStates.RIGHT;
 
-				horizontalDirection = "RIGHT";
+				horizontalDirection = PlayerStates.RIGHT;
 
 				// If previously the player was going to the left, reset the animation to the right
-				if (this.playerSprite.animations.currentAnim.name == "left")
+				if (this.playerSprite.animations.currentAnim.name == PlayerStates.ANIMATION_LEFT)
 				{
-					this.playerSprite.animations.play('right');
+					this.playerSprite.animations.play(PlayerStates.ANIMATION_RIGHT);
 					this.playerSprite.animations.stop();
 					this.animationRightCounter = this.animationMaxCounter;
 				}
@@ -118,14 +118,14 @@ var Player =
 		    if (keyPressed.left.isDown)
 		    {
 		        if (this.jumping)
-					this.jumpingDirection = "LEFT";
+					this.jumpingDirection = PlayerStates.LEFT;
 
-				horizontalDirection = "LEFT";
+				horizontalDirection = PlayerStates.LEFT;
 
 				// If previously the player was going to the right, reset the animation to the left
-				if (this.playerSprite.animations.currentAnim.name == "right")
+				if (this.playerSprite.animations.currentAnim.name == PlayerStates.ANIMATION_RIGHT)
 				{
-					this.playerSprite.animations.play('left');
+					this.playerSprite.animations.play(PlayerStates.ANIMATION_LEFT);
 					this.playerSprite.animations.stop();
 					this.animationLeftCounter = this.animationMaxCounter;
 				}
@@ -137,10 +137,10 @@ var Player =
 
 		if (this.jumping)
 		{
-		   if (this.jumpingDirection == "LEFT")
+		   if (this.jumpingDirection == PlayerStates.LEFT)
 			this.playLeft();
 
-		   if (this.jumpingDirection == "RIGHT")
+		   if (this.jumpingDirection == PlayerStates.RIGHT)
 			this.playRight();
 
 			this.jumpIndex +=1;
@@ -190,16 +190,16 @@ var Player =
 			// If the player is on a slide going left
 			if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height + 14, "name", "left slide", false))
 			{
-				horizontalDirection = "LEFT";
-				verticalDirection = "DOWN";
+				horizontalDirection = PlayerStates.LEFT;
+				verticalDirection = PlayerStates.DOWN;
 				this.fallHeight = 0;
 			}
 
 			// If the player is on a slide going right
 			if (Util.horizontalCollisionLine (x + 7, x + 23, y + this.playerSprite.body.height + 14, "name", "right slide", false))
 			{
-				horizontalDirection = "RIGHT";
-				verticalDirection = "DOWN";
+				horizontalDirection = PlayerStates.RIGHT;
+				verticalDirection = PlayerStates.DOWN;
 				this.fallHeight = 0;
 			}
 
@@ -210,7 +210,7 @@ var Player =
 				if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, "type", "solid", false) == false &&
 					Util.collisionLineWithVanishingPlatform(x + 7, x + 23, y + this.playerSprite.body.height) == false)
 				{
-					verticalDirection = "DOWN";
+					verticalDirection = PlayerStates.DOWN;
 					horizontalDirection = null;
 					this.playerSprite.animations.stop();
 
@@ -232,52 +232,52 @@ var Player =
 			// If the player is on a conveyor going right
 			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, "name", "conveyor right", false))
 			{
-				if (horizontalDirection == "LEFT")
+				if (horizontalDirection == PlayerStates.LEFT)
 					horizontalDirection = null;
 				else
-					horizontalDirection = "RIGHT";
+					horizontalDirection = PlayerStates.RIGHT;
 			}
 
 			// If the player is on a conveyor going left
 			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, "name", "conveyor left", false))
 			{
-				if (horizontalDirection == "RIGHT")
+				if (horizontalDirection == PlayerStates.RIGHT)
 					horizontalDirection = null;
 				else
-					horizontalDirection = "LEFT";
+					horizontalDirection = PlayerStates.LEFT;
 			}
 
 			// If the player is on a ladder
 			if (Util.collisionRectangle(x + 7, y + this.playerSprite.body.height - 18, x + 23, y + this.playerSprite.body.height - 1, "name", "ladder"))
-				verticalDirection = "UP";
+				verticalDirection = PlayerStates.UP;
 
 			if (keyPressed.left.isUp && keyPressed.right.isUp)
 				this.playerSprite.animations.stop();
 		}
 
 		// If the player is under a wall
-		if (verticalDirection == "UP" && Util.horizontalCollisionLine (x + 7 , x + 23,  y - 2, "name", "wall"))
+		if (verticalDirection == PlayerStates.UP && Util.horizontalCollisionLine (x + 7 , x + 23,  y - 2, "name", "wall"))
 			verticalDirection = null;
 
 		 // If there is something blocking on the right
-		if (horizontalDirection == "RIGHT" && Util.verticalCollisionLine(y + 6, y + this.playerSprite.body.height - 1, x + 24, "name", "wall", false))
+		if (horizontalDirection == PlayerStates.RIGHT && Util.verticalCollisionLine(y + 6, y + this.playerSprite.body.height - 1, x + 24, "name", "wall", false))
 			horizontalDirection = null;
 
 		// if there nothing blocking on the left
-		if (horizontalDirection == "LEFT" && Util.verticalCollisionLine(y + 6 ,y + this.playerSprite.body.height - 1, x + 5, "name", "wall", false))
+		if (horizontalDirection == PlayerStates.LEFT && Util.verticalCollisionLine(y + 6 ,y + this.playerSprite.body.height - 1, x + 5, "name", "wall", false))
 			horizontalDirection = null;
 
 		// Display the new position of the player
-		if (horizontalDirection == "RIGHT")
+		if (horizontalDirection == PlayerStates.RIGHT)
 			this.playerSprite.body.x += 1;
 
-		if (horizontalDirection == "LEFT")
+		if (horizontalDirection == PlayerStates.LEFT)
 			this.playerSprite.body.x -= 1;
 
-		if (verticalDirection == "DOWN")
+		if (verticalDirection == PlayerStates.DOWN)
 			this.playerSprite.body.y += 1;
 
-		if (verticalDirection == "UP")
+		if (verticalDirection == PlayerStates.UP)
 			this.playerSprite.body.y -= 1;
 
 		// If the player collides with a key
@@ -319,7 +319,7 @@ var Player =
 		if (this.animationLeftCounter == 0)
 		{
 			this.animationLeftCounter = this.animationMaxCounter;
-			this.playerSprite.animations.getAnimation('left').next();
+			this.playerSprite.animations.getAnimation(PlayerStates.ANIMATION_LEFT).next();
 		}
 
 	},
@@ -332,7 +332,7 @@ var Player =
 		if (this.animationRightCounter == 0)
 		{
 			this.animationRightCounter = this.animationMaxCounter;
-			this.playerSprite.animations.getAnimation('right').next();
+			this.playerSprite.animations.getAnimation(PlayerStates.ANIMATION_RIGHT).next();
 		}
 
 	},
@@ -345,7 +345,7 @@ var Player =
 
 		// Display blagger dying
 		this.playerDyingSprite = game.add.sprite(this.playerSprite.body.x, this.playerSprite.body.y - 1, 'blaggerDying');
-		var anim = this.playerDyingSprite.animations.add('blaggerDying');
+		var anim = this.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
 
 		// If it's a deadly fall, display white sprites
 		if (this.deadlyFall)
@@ -377,7 +377,7 @@ var Player =
 				GameController.gameState = GameStates.LOAD_LEVEL;
 		});
 
-		this.playerDyingSprite.animations.play('blaggerDying', 6, false, true);
+		this.playerDyingSprite.animations.play(PlayerStates.ANIMATION_BLAGGER_DYING, 6, false, true);
 	}
 
 }

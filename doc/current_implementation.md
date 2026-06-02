@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 4**.
+Document updated after **refactoring step 5**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -52,16 +52,17 @@ The logical order is:
 
 ```html
 <script src="js/phaser.min.js"></script>
-<script src="js/data.js"></script>
 <script src="js/gameStates.js"></script>
+<script src="js/playerStates.js"></script>
+<script src="js/main.js"></script>
 <script src="js/util.js"></script>
-<script src="js/monster.js"></script>
 <script src="js/player.js"></script>
+<script src="js/monster.js"></script>
+<script src="js/data.js"></script>
 <script src="js/levelTransition.js"></script>
 <script src="js/level.js"></script>
 <script src="js/HUD.js"></script>
 <script src="js/gameController.js"></script>
-<script src="js/main.js"></script>
 ```
 
 If a global object is used before it has been loaded, the game may crash with a `ReferenceError`.
@@ -120,6 +121,31 @@ GameStates.LOAD_LEVEL
 ```
 
 The original string values were preserved to avoid changing the existing behavior.
+
+### `js/playerStates.js`
+
+Centralized list of player-related constants.
+
+Despite the name, this file does not introduce a full player state machine yet. The current player implementation still uses runtime flags such as:
+
+```js
+Player.jumping
+Player.deadlyFall
+```
+
+For this step, `PlayerStates` only centralizes the raw string values used by `player.js` for movement directions and animation names, for example:
+
+```js
+PlayerStates.LEFT
+PlayerStates.RIGHT
+PlayerStates.UP
+PlayerStates.DOWN
+PlayerStates.ANIMATION_LEFT
+PlayerStates.ANIMATION_RIGHT
+PlayerStates.ANIMATION_BLAGGER_DYING
+```
+
+This is deliberately low risk: the existing movement, jump, fall and death logic remain unchanged.
 
 ### `js/gameController.js`
 
@@ -259,6 +285,8 @@ Important data:
 - `deadlyFall`
 - `playerSprite`
 - `playerDyingSprite`
+
+Since refactoring step 5, repeated raw strings for player movement directions and player animation names have been moved to `PlayerStates`. The player logic itself is still the same: jumping, falling and deadly falls are still tracked with the existing booleans and counters.
 
 The jump uses the `Data.jumpPath` array, which contains the vertical and horizontal movement for each jump step. This logic is very specific to the current gameplay and should be modified carefully.
 
@@ -521,22 +549,26 @@ Some sequences still use counters or numeric steps:
 
 The transition between levels has already been isolated into `LevelTransition`, but other sequences could be clarified later.
 
-### Directions as raw strings
+### Directions and animation names
 
-The code still uses several raw strings:
+Player movement directions and player animation names are now centralized in:
 
-```js
-"LEFT"
-"RIGHT"
-"UP"
-"DOWN"
-"left"
-"right"
-"up"
-"down"
+```text
+js/playerStates.js
 ```
 
-A future step could centralize these directions, as was done with `GameStates`.
+This currently covers the strings used by `player.js`, such as:
+
+```js
+PlayerStates.LEFT
+PlayerStates.RIGHT
+PlayerStates.UP
+PlayerStates.DOWN
+PlayerStates.ANIMATION_LEFT
+PlayerStates.ANIMATION_RIGHT
+```
+
+Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or monster directions. Those should be cleaned up carefully and only when the meaning is clear.
 
 ### Tiled properties
 
@@ -595,6 +627,23 @@ Goal: keep the existing game-state switch, but delegate each state to a named me
 
 This does not change the game flow. It only makes the responsibilities of each state easier to read and prepares future refactorings.
 
+### Step 5 — Centralize player constants
+
+Created:
+
+```text
+js/playerStates.js
+```
+
+Updated:
+
+```text
+js/player.js
+index.html
+```
+
+Goal: remove repeated raw strings from `player.js` for movement directions and player animation names, while preserving the current player movement logic.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -607,24 +656,17 @@ doc/tiled_map_conventions.md
 
 It would describe layers, expected properties, tile types, `player` objects, `end level` objects, `monsters`, etc.
 
-### 2. Centralize directions
+### 2. Continue centralizing constants
 
-Create a file such as:
+`PlayerStates` now centralizes the direction and animation strings used by `player.js`.
 
-```text
-js/directions.js
-```
+A future step could decide whether to:
 
-with:
+- reuse `PlayerStates` elsewhere;
+- create a more generic `Directions` object for both player and monsters;
+- centralize Tiled property names and tile names.
 
-```js
-Directions.LEFT
-Directions.RIGHT
-Directions.UP
-Directions.DOWN
-```
-
-This would reduce the risk of typos in `Player` and `Monster`.
+This should be done carefully, because some strings are gameplay data coming from the Tiled map.
 
 ### 3. Clean up implicit global variables
 
