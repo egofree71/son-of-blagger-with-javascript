@@ -57,6 +57,7 @@ Current logical order:
 <script src="js/levelConstants.js"></script>
 <script src="js/hudConstants.js"></script>
 <script src="js/levelRevealSequence.js"></script>
+<script src="js/assetLoader.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/collisionDetector.js"></script>
@@ -81,6 +82,7 @@ If a file uses a global object before that object is loaded, the game will fail 
 
 The project is organized around a set of global objects:
 
+- `AssetLoader`: Phaser asset preloading.
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
 - `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
@@ -180,12 +182,29 @@ Player.update()
 
 This order is part of the current gameplay behavior and should be changed only with care.
 
+## `js/assetLoader.js`
+
+`AssetLoader` centralizes Phaser asset preloading.
+
+Responsibilities:
+
+- load the Tiled JSON map;
+- load tile set images;
+- load player sprites;
+- load monster sprites;
+- load visual effect sprites;
+- load HUD and screen sprites;
+- load animated tile sprites;
+- load the bitmap font image.
+
+The asset keys and sprite dimensions are part of the current runtime contract. Other files still refer to those keys directly, so they should be renamed only with care.
+
 ## `js/main.js`
 
 Main responsibilities:
 
 - create the Phaser instance;
-- load all assets in `preload()`;
+- delegate asset preloading to `AssetLoader`;
 - create the Tiled map and main layer in `create()`;
 - initialize Arcade Physics;
 - create animated tile sprites where needed;
