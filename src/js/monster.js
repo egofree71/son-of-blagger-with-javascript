@@ -1,6 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { MonsterConstants } from "./monsterConstants.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
 
 // Monster object
 export function Monster(monsterProperties, tileProperties)
@@ -106,5 +107,3 @@ Monster.prototype.updatePosition = function()
     this.sprite.x += horizontalSpeed ;
     this.sprite.y += verticalSpeed ;
 };
-
-window.Monster = Monster;

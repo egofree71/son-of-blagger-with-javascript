@@ -4,6 +4,7 @@ import { Util } from "./util.js";
 import { Player } from "./player.js";
 import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
 
 /**
  * Handles the transition played when the player completes a level.
@@ -346,5 +347,3 @@ export const LevelTransition =
     }
 
 };
-
-window.LevelTransition = LevelTransition;

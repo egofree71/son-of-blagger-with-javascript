@@ -6,6 +6,7 @@ import { PlayerMovement } from "./playerMovement.js";
 import { PlayerInteractions } from "./playerInteractions.js";
 import { PlayerDeathSequence } from "./playerDeathSequence.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
 
 export const Player =
 {
@@ -107,5 +108,3 @@ export const Player =
 	}
 
 };
-
-window.Player = Player;

@@ -4,6 +4,7 @@ import { CollisionDetector } from "./collisionDetector.js";
 import { Data } from "./data.js";
 import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
 
 /**
  * Handles gameplay interactions that are triggered by the player's position.
@@ -122,5 +123,3 @@ export const PlayerInteractions =
         }
     }
 };
-
-window.PlayerInteractions = PlayerInteractions;

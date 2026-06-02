@@ -2,6 +2,7 @@ import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { Util } from "./util.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { GameController } from "./gameController.js";
 
 /**
  * ScreenManager owns the non-gameplay screens.
@@ -124,5 +125,3 @@ export const ScreenManager =
         }
     }
 };
-
-window.ScreenManager = ScreenManager;

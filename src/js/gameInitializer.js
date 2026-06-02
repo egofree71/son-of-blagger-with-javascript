@@ -195,4 +195,3 @@ export const GameInitializer =
 
 // Keep the initializer available globally while the remaining runtime objects
 // are migrated progressively to explicit ES module imports.
-window.GameInitializer = GameInitializer;

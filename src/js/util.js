@@ -72,5 +72,3 @@ export const Util =
 	}
 
 };
-
-window.Util = Util;

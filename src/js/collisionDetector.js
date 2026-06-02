@@ -146,5 +146,3 @@ export const CollisionDetector =
         return collision;
     }
 };
-
-window.CollisionDetector = CollisionDetector;

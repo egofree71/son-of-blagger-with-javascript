@@ -3,6 +3,7 @@ import { LevelConstants } from "./levelConstants.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
 import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
 
 /**
  * Handles the final sequence played after the last level has been completed.
@@ -136,5 +137,3 @@ export const EndGameSequence =
         }
     }
 };
-
-window.EndGameSequence = EndGameSequence;

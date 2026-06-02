@@ -92,5 +92,3 @@ export const AssetLoader =
         game.load.image('blaggerFont', 'assets/tileset/fonts.png');
     }
 };
-
-window.AssetLoader = AssetLoader;

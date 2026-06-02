@@ -7,6 +7,7 @@ import { LevelObjectLoader } from "./levelObjectLoader.js";
 import { LevelTransition } from "./levelTransition.js";
 import { Player } from "./player.js";
 import { HUD } from "./HUD.js";
+import { GameController } from "./gameController.js";
 
 export const Level =
 {

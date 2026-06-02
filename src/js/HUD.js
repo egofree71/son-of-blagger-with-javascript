@@ -2,6 +2,8 @@ import { GameStates } from "./gameStates.js";
 import { HudConstants } from "./hudConstants.js";
 import { Data } from "./data.js";
 import { Level } from "./level.js";
+import { GameController } from "./gameController.js";
+import { Player } from "./player.js";
 
 export const HUD =
 {
@@ -186,5 +188,3 @@ export const HUD =
     }
 
 };
-
-window.HUD = HUD;

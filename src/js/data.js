@@ -28,5 +28,3 @@ export const Data =
     // Contains the colors used to display the 'bonus man' sprite
     bonusManColors : [0xffffff, 0xC0C0C0, 0x808080, 0x404040]
 };
-
-window.Data = Data;

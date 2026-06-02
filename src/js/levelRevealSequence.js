@@ -1,5 +1,6 @@
 import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
+import { GameController } from "./gameController.js";
 
 /**
  * Handles the progressive reveal played before each level starts.
@@ -149,5 +150,3 @@ export const LevelRevealSequence =
         GameController.gameState = GameStates.START_LEVEL;
     }
 };
-
-window.LevelRevealSequence = LevelRevealSequence;

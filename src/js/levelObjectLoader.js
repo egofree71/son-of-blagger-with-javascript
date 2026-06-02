@@ -98,5 +98,3 @@ export const LevelObjectLoader =
         return results[0];
     }
 };
-
-window.LevelObjectLoader = LevelObjectLoader;

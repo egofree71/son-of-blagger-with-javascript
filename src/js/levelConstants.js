@@ -113,4 +113,3 @@ export const LevelConstants =
 
 // Keep the constant object available globally while the rest of the legacy
 // runtime is migrated progressively to explicit ES module imports.
-window.LevelConstants = LevelConstants;

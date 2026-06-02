@@ -201,4 +201,3 @@ export const GameController =
 // Keep the controller available globally while the remaining runtime objects
 // are migrated progressively to explicit ES module imports and to preserve
 // convenient browser-console debugging.
-window.GameController = GameController;

@@ -455,5 +455,3 @@ export const PlayerMovement =
         player.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, player.playerSprite.animations.currentAnim.frame);
     }
 };
-
-window.PlayerMovement = PlayerMovement;
