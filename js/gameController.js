@@ -6,7 +6,7 @@ var GameController =
     // Runtime score data.
     score : 0,
     hiScore : null,
-    lives : 3,
+    lives : LevelConstants.INITIAL_LIVES,
 
     /**
      * Main game loop entry point.

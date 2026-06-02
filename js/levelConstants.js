@@ -26,14 +26,32 @@ var LevelConstants =
 
     // Tiled object custom property names and object layer names.
     TILED_PROPERTY_LEVEL : "level",
+    TILED_PROPERTY_NAME : "name",
+    TILED_PROPERTY_TYPE : "type",
     OBJECT_LAYER_MONSTERS : "monsters",
     OBJECT_LAYER_END_LEVEL : "end level",
+    OBJECT_LAYER_PLAYER : "player",
+
+    // Tiled tile property values used by player and utility collision checks.
+    TILE_TYPE_SOLID : "solid",
+    TILE_TYPE_SLIDE : "slide",
+    TILE_TYPE_DEADLY : "deadly",
+
+    TILE_NAME_KEY : "key",
+    TILE_NAME_WALL : "wall",
+    TILE_NAME_LADDER : "ladder",
+    TILE_NAME_LEFT_SLIDE : "left slide",
+    TILE_NAME_RIGHT_SLIDE : "right slide",
+    TILE_NAME_CONVEYOR_RIGHT : "conveyor right",
+    TILE_NAME_CONVEYOR_LEFT : "conveyor left",
+    TILE_NAME_VANISHING_PLATFORM : "vanishing platform",
 
     // Tile indexes used by level.js.
     TILE_KEY_INDEX : 40,
 
     // Sprite and animation keys loaded in main.js.
     SPRITE_EXPLOSION : "explosion",
+    SPRITE_REVERSE_EXPLOSION : "reverseExplosion",
     SPRITE_END_LEVEL : "end level",
     SPRITE_TITLE : "title",
     SPRITE_GAME_OVER : "game over",
@@ -41,6 +59,11 @@ var LevelConstants =
 
     // Phaser/Tiled positioning offsets kept from the original implementation.
     END_LEVEL_Y_OFFSET : 16,
+    PLAYER_TILED_Y_OFFSET : 42,
+
+    // Stage colors used by the normal game and the end-level transition flash.
+    STAGE_COLOR_NORMAL : "#c0c0c0",
+    STAGE_COLOR_TRANSITION : "#ff0000",
 
     // Level reveal animation configuration.
     DISPLAY_REVEAL_INITIAL_COUNTER : 1,
@@ -49,6 +72,14 @@ var LevelConstants =
 
     // Monster reveal animation configuration.
     EXPLOSION_FRAME_RATE : 18,
+
+    // Gameplay scoring values.
+    KEY_SCORE_INCREMENT : 200,
+
+    // End-level transition score conversion values.
+    END_LEVEL_TRANSITION_AIR_DECREMENT : 6,
+    END_LEVEL_TRANSITION_SCORE_INCREMENT : 30,
+    END_LEVEL_TRANSITION_TILE_STEP : 16,
 
     // End-game score conversion and message animation values.
     END_GAME_AIR_DECREMENT : 6,

@@ -117,7 +117,7 @@ var LevelTransition =
      * Moves the logical level index to the next level and retrieves the matching
      * player spawn object from the Tiled map.
      *
-     * The Y offset (-42) is preserved from the original code. It compensates for
+     * The player Y offset is preserved from the original code. It compensates for
      * the difference between the Tiled object position and the Phaser body/sprite
      * position used by the player.
      */
@@ -125,9 +125,9 @@ var LevelTransition =
     {
         Level.level++;
 
-        var results = Util.findObjectsByProperty(map, 'level', Level.level, 'player');
+        var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
         this.nextPlayerPositionX = results[0].x;
-        this.nextPlayerPositionY = results[0].y - 42;
+        this.nextPlayerPositionY = results[0].y - LevelConstants.PLAYER_TILED_Y_OFFSET;
 
         this.phase = this.PHASE_HIDE_MONSTERS;
     },
@@ -143,7 +143,7 @@ var LevelTransition =
      */
     hideMonsters : function()
     {
-        game.stage.backgroundColor = '#ff0000';
+        game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
 
         // Hide monsters from the completed level.
         for (var i = 0; i < Level.monsters.length; i++)
@@ -155,9 +155,9 @@ var LevelTransition =
         // Display one reverse explosion at the last position of each monster.
         for (var j = 0; j < Level.monsters.length; j++)
         {
-            var reverseExplosion = Level.reverseExplosions.create(Level.monsters[j].sprite.body.x, Level.monsters[j].sprite.body.y, 'reverseExplosion');
-            reverseExplosion.animations.add('reverseExplosion');
-            reverseExplosion.animations.play('reverseExplosion', 18, false, true);
+            var reverseExplosion = Level.reverseExplosions.create(Level.monsters[j].sprite.body.x, Level.monsters[j].sprite.body.y, LevelConstants.SPRITE_REVERSE_EXPLOSION);
+            reverseExplosion.animations.add(LevelConstants.SPRITE_REVERSE_EXPLOSION);
+            reverseExplosion.animations.play(LevelConstants.SPRITE_REVERSE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
         }
 
         this.phase = this.PHASE_RESTORE_BACKGROUND;
@@ -172,7 +172,7 @@ var LevelTransition =
      */
     restoreBackground : function()
     {
-        game.stage.backgroundColor = '#c0c0c0';
+        game.stage.backgroundColor = LevelConstants.STAGE_COLOR_NORMAL;
         this.phase = this.PHASE_FINE_ALIGN_PLAYER;
     },
 
@@ -218,7 +218,7 @@ var LevelTransition =
     /**
      * Converts the remaining air into score.
      *
-     * Every frame, the air bar is reduced by 6 and the score is increased by 30.
+     * Every frame, the air bar is reduced and the score is increased using the preserved transition constants.
      * Once air reaches zero, the air display is cleared and the player starts
      * moving toward the next-level spawn.
      */
@@ -226,8 +226,8 @@ var LevelTransition =
     {
         if (Level.airLevel > 0)
         {
-            Level.airLevel -= 6;
-            GameController.score += 30;
+            Level.airLevel -= LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
+            GameController.score += LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
             HUD.displayScore();
             HUD.displayAirLevel();
         }
@@ -245,10 +245,10 @@ var LevelTransition =
      * Moves the player toward the next-level spawn.
      *
      * This is the visible "travel" part of the transition. The player is moved
-     * every MOVE_DELAY frames, by 16 pixels at a time, which corresponds to the
+     * every MOVE_DELAY frames, by one tile-sized step at a time, which corresponds to the
      * tile size used by the map.
      *
-     * If the remaining distance is smaller than 16 pixels, the player is snapped
+     * If the remaining distance is smaller than one tile-sized step, the player is snapped
      * exactly to the target position to avoid overshooting.
      */
     movePlayerToNextLevel : function()
@@ -271,7 +271,7 @@ var LevelTransition =
 
         if (verticalDistance == 0)
         {
-            if (Math.abs(horizontalDistance) < 16)
+            if (Math.abs(horizontalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
                 Player.playerSprite.body.x = this.nextPlayerPositionX;
                 this.phase = this.PHASE_REFILL_AIR;
@@ -279,13 +279,13 @@ var LevelTransition =
             }
 
             if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= 16;
+                Player.playerSprite.body.x -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
             else
-                Player.playerSprite.body.x += 16;
+                Player.playerSprite.body.x += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
         }
         else
         {
-            if (Math.abs(verticalDistance) < 16)
+            if (Math.abs(verticalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
                 Player.playerSprite.body.y = this.nextPlayerPositionY;
                 this.phase = this.PHASE_REFILL_AIR;
@@ -293,22 +293,22 @@ var LevelTransition =
             }
 
             if (verticalDistance > 0)
-                Player.playerSprite.body.y -= 16;
+                Player.playerSprite.body.y -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
             else
-                Player.playerSprite.body.y += 16;
+                Player.playerSprite.body.y += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
         }
     },
 
     /**
      * Refills the air bar before starting the next level.
      *
-     * The air bar goes back to 480, using the same +6 increment as before.
+     * The air bar goes back to the default air level, using the same increment as before.
      */
     refillAir : function()
     {
-        if (Level.airLevel < 480)
+        if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
-            Level.airLevel += 6;
+            Level.airLevel += LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
             HUD.displayAirLevel();
         }
         else

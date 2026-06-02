@@ -82,6 +82,8 @@ var Util =
 		// If there is a collision
 		if (Phaser.Rectangle.intersects(playerRectangle, endLevelRectangle))
 			return true;
+
+		return false;
 	},
 
 	// Check if there is a collision with a monster for a given region
@@ -118,7 +120,7 @@ var Util =
 		{
 			var tile = map.getTileWorldXY(xPosition, yPosition);
 
-			if (tile != null && tile.properties["name"] == "vanishing platform")
+			if (tile != null && tile.properties[LevelConstants.TILED_PROPERTY_NAME] == LevelConstants.TILE_NAME_VANISHING_PLATFORM)
 			{
 				// If the platform has not disappeared and the player is above
 				if (vanishingPlatformGroup.getAt(0).animations.currentAnim.currentFrame.index != 4 &&
@@ -148,10 +150,10 @@ var Util =
 		return group;
 	},
 
-	//find objects in a given layer that containt a property called "type" equal to a certain value
+	// Find objects in a given layer that contains a property called "type" equal to a certain value
 	findObjectsByProperty : function(map, propertyName, propertyValue, layer)
 	{
-		var result = new Array();
+		var result = [];
 
 		map.objects[layer].forEach(function(object)
 		{
@@ -160,18 +162,6 @@ var Util =
 		});
 
 		return result;
-	},
-
-	//create a sprite from an object
-	createFromTiledObject : function(element, group)
-	{
-		var sprite = group.create(element.x, element.y, element.properties.sprite);
-
-		//copy all properties to the sprite
-		Object.keys(element.properties).forEach(function(key)
-		{
-			sprite[key] = element.properties[key];
-		});
 	},
 
 	// In the monsters tileset, return the tile properties of a given type
@@ -189,15 +179,15 @@ var Util =
 	// Draw a text with the 'blagger' font
 	drawFontText : function(text, x, y, color)
 	{
-		var charWidth = 16;
+		var charWidth = HudConstants.CHAR_WIDTH;
 
-	    var font = game.add.retroFont('blaggerFont', 16, 16, Phaser.RetroFont.TEXT_SET2);
+	    var font = game.add.retroFont(HudConstants.FONT_KEY, HudConstants.FONT_CHAR_WIDTH, HudConstants.FONT_CHAR_HEIGHT, Phaser.RetroFont.TEXT_SET2);
 	    font.text = text;
 	    var image = game.add.image(charWidth * x, charWidth * y, font);
 
 	    // If color is not defined, use white
 	    if (!color)
-	        image.tint = 0xFFFFFF;
+	        image.tint = HudConstants.COLOR_WHITE;
 	    else
 	        image.tint = color;
 

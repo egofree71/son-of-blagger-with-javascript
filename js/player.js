@@ -22,11 +22,10 @@ var Player =
 	create : function()
 	{
 		// Create the playerSprite
-		this.playerSprite = game.add.sprite(0, 0, 'blagger');
+		this.playerSprite = game.add.sprite(0, 0, PlayerStates.SPRITE_BLAGGER);
 		game.physics.arcade.enable(this.playerSprite);
 
-		//  Set the animations for the player
-		this.playerSprite.animations.add(PlayerStates.ANIMATION_DYING, [0, 1, 2, 3, 4, 5, 6, 7], 10, true);
+		// Set the animations for the player
 		this.playerSprite.animations.add(PlayerStates.ANIMATION_RIGHT, [6, 7, 8, 9, 10, 11], 10, true);
 		this.playerSprite.animations.add(PlayerStates.ANIMATION_LEFT, [0, 1, 2, 3, 4, 5], 10, true);
 	},
@@ -35,11 +34,11 @@ var Player =
 	reset : function()
 	{
 		// find player's position for the current level
-		var results = Util.findObjectsByProperty(map, 'level', Level.level, 'player');
+		var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
 
 		//
-		this.playerSprite.reset(results[0].x, results[0].y - 42);
-		this.playerSprite.loadTexture('blagger');
+		this.playerSprite.reset(results[0].x, results[0].y - LevelConstants.PLAYER_TILED_Y_OFFSET);
+		this.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER);
 		this.playerSprite.animations.play(PlayerStates.ANIMATION_RIGHT);
 		this.playerSprite.animations.stop();
 
@@ -74,9 +73,9 @@ var Player =
 			this.playerSprite.body.y += 1;
 
 		    // if the player meets anything, end the fall
-		    if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, "type", "solid", true))
+		    if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_SOLID, true))
 		    {
-				fallHeight = 0;
+				this.fallHeight = 0;
 				this.kill();
 		    }
 
@@ -151,8 +150,8 @@ var Player =
 				this.fallHeight += 1;
 
 		        // Test if there is an object under the player
-		        if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, "type", "solid", true) ||
-					Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, "type", "slide", true) ||
+		        if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_SOLID, true) ||
+					Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_SLIDE, true) ||
 					Util.collisionLineWithVanishingPlatform(x + 7, x + 23, y + this.playerSprite.body.height))
 				{
 					this.jumping = false;
@@ -163,7 +162,7 @@ var Player =
 				else if (this.fallHeight == this.fallLimit)
 				{
 					this.deadlyFall = true;
-					this.playerSprite.loadTexture('blaggerWhite', this.playerSprite.animations.currentAnim.frame);
+					this.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, this.playerSprite.animations.currentAnim.frame);
 				}
 
 		    }
@@ -188,7 +187,7 @@ var Player =
 		if (this.jumping == false)
 		{
 			// If the player is on a slide going left
-			if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height + 14, "name", "left slide", false))
+			if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height + 14, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_LEFT_SLIDE, false))
 			{
 				horizontalDirection = PlayerStates.LEFT;
 				verticalDirection = PlayerStates.DOWN;
@@ -196,7 +195,7 @@ var Player =
 			}
 
 			// If the player is on a slide going right
-			if (Util.horizontalCollisionLine (x + 7, x + 23, y + this.playerSprite.body.height + 14, "name", "right slide", false))
+			if (Util.horizontalCollisionLine (x + 7, x + 23, y + this.playerSprite.body.height + 14, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_RIGHT_SLIDE, false))
 			{
 				horizontalDirection = PlayerStates.RIGHT;
 				verticalDirection = PlayerStates.DOWN;
@@ -207,7 +206,7 @@ var Player =
 		    if (verticalDirection == null)
 		    {
 		        // Test if the player is falling
-				if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, "type", "solid", false) == false &&
+				if (Util.horizontalCollisionLine(x + 7, x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_SOLID, false) == false &&
 					Util.collisionLineWithVanishingPlatform(x + 7, x + 23, y + this.playerSprite.body.height) == false)
 				{
 					verticalDirection = PlayerStates.DOWN;
@@ -220,7 +219,7 @@ var Player =
 		            if (this.fallHeight == this.fallLimit)
 		            {
 						this.deadlyFall = true;
-						this.playerSprite.loadTexture('blaggerWhite', this.playerSprite.animations.currentAnim.frame);
+						this.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, this.playerSprite.animations.currentAnim.frame);
 		            }
 		        }
 		        else
@@ -230,7 +229,7 @@ var Player =
 		    }
 
 			// If the player is on a conveyor going right
-			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, "name", "conveyor right", false))
+			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_CONVEYOR_RIGHT, false))
 			{
 				if (horizontalDirection == PlayerStates.LEFT)
 					horizontalDirection = null;
@@ -239,7 +238,7 @@ var Player =
 			}
 
 			// If the player is on a conveyor going left
-			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, "name", "conveyor left", false))
+			if (Util.horizontalCollisionLine(x + 7,  x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_CONVEYOR_LEFT, false))
 			{
 				if (horizontalDirection == PlayerStates.RIGHT)
 					horizontalDirection = null;
@@ -248,7 +247,7 @@ var Player =
 			}
 
 			// If the player is on a ladder
-			if (Util.collisionRectangle(x + 7, y + this.playerSprite.body.height - 18, x + 23, y + this.playerSprite.body.height - 1, "name", "ladder"))
+			if (Util.collisionRectangle(x + 7, y + this.playerSprite.body.height - 18, x + 23, y + this.playerSprite.body.height - 1, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_LADDER))
 				verticalDirection = PlayerStates.UP;
 
 			if (keyPressed.left.isUp && keyPressed.right.isUp)
@@ -256,15 +255,15 @@ var Player =
 		}
 
 		// If the player is under a wall
-		if (verticalDirection == PlayerStates.UP && Util.horizontalCollisionLine (x + 7 , x + 23,  y - 2, "name", "wall"))
+		if (verticalDirection == PlayerStates.UP && Util.horizontalCollisionLine (x + 7 , x + 23,  y - 2, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_WALL))
 			verticalDirection = null;
 
 		 // If there is something blocking on the right
-		if (horizontalDirection == PlayerStates.RIGHT && Util.verticalCollisionLine(y + 6, y + this.playerSprite.body.height - 1, x + 24, "name", "wall", false))
+		if (horizontalDirection == PlayerStates.RIGHT && Util.verticalCollisionLine(y + 6, y + this.playerSprite.body.height - 1, x + 24, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_WALL, false))
 			horizontalDirection = null;
 
 		// if there nothing blocking on the left
-		if (horizontalDirection == PlayerStates.LEFT && Util.verticalCollisionLine(y + 6 ,y + this.playerSprite.body.height - 1, x + 5, "name", "wall", false))
+		if (horizontalDirection == PlayerStates.LEFT && Util.verticalCollisionLine(y + 6 ,y + this.playerSprite.body.height - 1, x + 5, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_WALL, false))
 			horizontalDirection = null;
 
 		// Display the new position of the player
@@ -281,12 +280,12 @@ var Player =
 			this.playerSprite.body.y -= 1;
 
 		// If the player collides with a key
-		if (Util.collisionRectangle(x + 7, y , x + 23, y + this.playerSprite.body.height, "name", "key", false))
+		if (Util.collisionRectangle(x + 7, y , x + 23, y + this.playerSprite.body.height, LevelConstants.TILED_PROPERTY_NAME, LevelConstants.TILE_NAME_KEY, false))
 		{
 			Level.keysTaken++;
 
 			// Increase the score
-			GameController.score += 200;
+			GameController.score += LevelConstants.KEY_SCORE_INCREMENT;
 			HUD.displayScore();
 
 			// Hide the key
@@ -295,7 +294,7 @@ var Player =
 		}
 
 		// If the player meets a deadly object
-		if (Util.collisionRectangle (x + 5, y, x + 27, y + this.playerSprite.body.height - 1, "type", "deadly", false) ||
+		if (Util.collisionRectangle (x + 5, y, x + 27, y + this.playerSprite.body.height - 1, LevelConstants.TILED_PROPERTY_TYPE, LevelConstants.TILE_TYPE_DEADLY, false) ||
 			Util.collisionRectangleWithMonsters(x + 4, y, x + 28, y + this.playerSprite.body.height))
 			this.kill();
 
@@ -344,12 +343,12 @@ var Player =
 		this.playerSprite.visible = false;
 
 		// Display blagger dying
-		this.playerDyingSprite = game.add.sprite(this.playerSprite.body.x, this.playerSprite.body.y - 1, 'blaggerDying');
+		this.playerDyingSprite = game.add.sprite(this.playerSprite.body.x, this.playerSprite.body.y - PlayerStates.DYING_SPRITE_Y_OFFSET, PlayerStates.SPRITE_BLAGGER_DYING);
 		var anim = this.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
 
 		// If it's a deadly fall, display white sprites
 		if (this.deadlyFall)
-			this.playerDyingSprite.loadTexture("blaggerDyingWhite");
+			this.playerDyingSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_DYING_WHITE);
 
 		// When the player has finished to die, reset the level's properties
 		anim.onComplete.add(function()
@@ -377,7 +376,7 @@ var Player =
 				GameController.gameState = GameStates.LOAD_LEVEL;
 		});
 
-		this.playerDyingSprite.animations.play(PlayerStates.ANIMATION_BLAGGER_DYING, 6, false, true);
+		this.playerDyingSprite.animations.play(PlayerStates.ANIMATION_BLAGGER_DYING, PlayerStates.DYING_ANIMATION_FRAME_RATE, false, true);
 	}
 
 }

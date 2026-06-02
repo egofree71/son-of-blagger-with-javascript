@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 8**.
+Document updated after **refactoring step 10**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -14,7 +14,7 @@ The current refactoring goal is to modernize the code gradually while preserving
 
 ## Current technical state
 
-- Engine: **Phaser 2.3**.
+- Engine: **Phaser 2.x**. The bundled `js/phaser.min.js` currently reports `v2.2.8`.
 - Language: classic JavaScript, with no ES6 modules and no TypeScript.
 - Architecture: global objects and constructor functions.
 - Map: Tiled JSON file loaded by Phaser.
@@ -136,7 +136,7 @@ Player.jumping
 Player.deadlyFall
 ```
 
-For this step, `PlayerStates` only centralizes the raw string values used by `player.js` for movement directions and animation names, for example:
+For this step, `PlayerStates` centralizes raw values used by `player.js` for movement directions, animation names, sprite keys and the preserved death animation timing, for example:
 
 ```js
 PlayerStates.LEFT
@@ -145,10 +145,12 @@ PlayerStates.UP
 PlayerStates.DOWN
 PlayerStates.ANIMATION_LEFT
 PlayerStates.ANIMATION_RIGHT
+PlayerStates.SPRITE_BLAGGER
+PlayerStates.SPRITE_BLAGGER_DYING
 PlayerStates.ANIMATION_BLAGGER_DYING
 ```
 
-This is deliberately low risk: the existing movement, jump, fall and death logic remain unchanged.
+This is deliberately low risk: the existing movement, jump, fall and death logic remain unchanged. Refactoring step 10 also removed the unused normal-player `dying` animation registration; the actual death animation still uses the separate `blaggerDying` sprite.
 
 ### `js/monsterConstants.js`
 
@@ -185,7 +187,7 @@ LevelConstants.DISPLAY_STEP_INITIALIZE
 LevelConstants.END_GAME_SCORE_INCREMENT
 ```
 
-Some constants represent conventions coming from the Tiled map, such as the `level` property or the `end level` object layer. These values must stay synchronized with the map data. Others are preserved timing, positioning or scoring values from the previous implementation.
+Some constants represent conventions coming from the Tiled map, such as the `level` property, tile `name` / `type` properties, the `player` object layer, or the `end level` object layer. These values must stay synchronized with the map data. Others are preserved timing, positioning or scoring values from the previous implementation.
 
 ### `js/hudConstants.js`
 
@@ -284,7 +286,7 @@ now simply delegates to:
 LevelTransition.update()
 ```
 
-Since refactoring step 7, raw strings and magic numbers used by `level.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, the key tile index, the end-level Y offset, the default air level, level reveal steps, end-game score conversion values, and screen positions used by the title/help/game-over screens.
+Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by the title/help/game-over screens.
 
 ### `js/levelTransition.js`
 
@@ -310,8 +312,8 @@ The behavior and timings were preserved as closely as possible compared with the
 Notes:
 
 - `MOVE_DELAY` corresponds to the old counter used to slow down tile-based movement;
-- the main movement uses 16-pixel steps;
-- the vertical `-42` offset is preserved because Tiled and Phaser do not reference objects in exactly the same way;
+- the main movement uses `LevelConstants.END_LEVEL_TRANSITION_TILE_STEP`;
+- the player vertical offset uses `LevelConstants.PLAYER_TILED_Y_OFFSET` because Tiled and Phaser do not reference objects in exactly the same way;
 - the transition grants a `bonusMan` for the next level.
 
 ### `js/player.js`
@@ -347,14 +349,14 @@ Important data:
 - `playerSprite`
 - `playerDyingSprite`
 
-Since refactoring step 5, repeated raw strings for player movement directions and player animation names have been moved to `PlayerStates`. The player logic itself is still the same: jumping, falling and deadly falls are still tracked with the existing booleans and counters.
+Since refactoring steps 5 and 10, repeated raw strings for player movement directions, player animation names, player sprite keys, and death-animation timing have been moved to `PlayerStates`. The player logic itself is still the same: jumping, falling and deadly falls are still tracked with the existing booleans and counters. Step 10 also fixed an implicit global assignment by changing `fallHeight = 0` to `this.fallHeight = 0`.
 
 The jump uses the `Data.jumpPath` array, which contains the vertical and horizontal movement for each jump step. This logic is very specific to the current gameplay and should be modified carefully.
 
 When the player picks up a key:
 
 - `Level.keysTaken` increases;
-- the score increases;
+- the score increases by `LevelConstants.KEY_SCORE_INCREMENT`;
 - the touched tile becomes invisible;
 - the layer is marked as `dirty`.
 
@@ -401,7 +403,7 @@ Responsibilities:
 
 Since refactoring step 8, repeated raw strings and magic values used by `HUD.js` have been moved to `HudConstants`. This includes HUD text labels, text positions, colors, air depletion timing, bonus man animation timing, digit formatting, and the retro font configuration.
 
-Since refactoring step 9, the unused `displayLevelInfo()` helper has been removed. The level number is still refreshed by `HUD.update()`, which uses `Level.level`.
+Since refactoring step 9, the unused `displayLevelInfo()` helper has been removed. The level number is still refreshed by `HUD.update()`, which uses `Level.level`. Step 10 also fixed a small formatting typo in the hi-score text creation code without changing the displayed result.
 
 The air bar is decremented in:
 
@@ -432,7 +434,7 @@ Main responsibilities:
 - retrieve monster tile properties;
 - draw text using the game font.
 
-Most player collisions rely on these functions. This makes `Util` very important for gameplay.
+Most player collisions rely on these functions. This makes `Util` very important for gameplay. Refactoring step 10 removed the unused `createFromTiledObject()` helper, made `collisionRectangleWithEndLevel()` return `false` explicitly when there is no collision, and reused centralized constants in the vanishing-platform and font helpers.
 
 ### `js/data.js`
 
@@ -642,7 +644,7 @@ HUD labels, colors, layout positions, air timing, bonus man animation timing, an
 js/hudConstants.js
 ```
 
-This currently covers values such as:
+After refactoring step 10, this currently covers values such as:
 
 ```js
 PlayerStates.LEFT
@@ -654,6 +656,10 @@ MonsterConstants.DIRECTION_LEFT
 MonsterConstants.PROPERTY_MAX_DISTANCE
 MonsterConstants.ANIMATION_DEFAULT
 LevelConstants.OBJECT_LAYER_END_LEVEL
+LevelConstants.OBJECT_LAYER_PLAYER
+LevelConstants.TILED_PROPERTY_NAME
+LevelConstants.TILE_NAME_KEY
+LevelConstants.TILE_TYPE_SOLID
 LevelConstants.TILE_KEY_INDEX
 LevelConstants.DEFAULT_AIR_LEVEL
 LevelConstants.END_GAME_SCORE_INCREMENT
@@ -662,7 +668,7 @@ HudConstants.LABEL_HI_SCORE
 HudConstants.COLOR_AIR_BLUE
 ```
 
-Other parts of the code may still contain raw strings related to Tiled properties, tile names, texture keys or screen names. Those should be cleaned up carefully and only when the meaning is clear.
+Other parts of the code may still contain raw strings related to asset loading, tile animation setup, texture keys or screen text. Those should be cleaned up carefully and only when the meaning is clear.
 
 ### Tiled properties
 
@@ -674,6 +680,8 @@ The gameplay strongly depends on properties defined in the Tiled map and tileset
 - `direction`
 - `maxDistance`
 - monster hitbox properties
+
+The most common property names and tile values are now represented by `LevelConstants` and `MonsterConstants`, but the Tiled data remains the source of truth.
 
 These conventions should be documented more precisely if the map is modified.
 
@@ -802,6 +810,24 @@ doc/current_implementation.md
 
 Goal: remove the unused `HUD.displayLevelInfo()` method. The method was not called anywhere and also referenced an unqualified `level` variable. The active HUD level refresh remains handled by `HUD.update()`, which uses `Level.level`.
 
+### Step 10 — Audit and apply low-risk cleanups
+
+Updated:
+
+```text
+js/HUD.js
+js/gameController.js
+js/level.js
+js/levelConstants.js
+js/levelTransition.js
+js/player.js
+js/playerStates.js
+js/util.js
+doc/current_implementation.md
+```
+
+Goal: turn the audit into concrete low-risk corrections. This step fixes implicit globals in level/player code, removes unused code, replaces several remaining raw Tiled strings and sprite keys with existing constants, makes one collision helper return `false` explicitly, adds a defensive fallback for levels without monsters, and updates this documentation.
+
 ## Future refactoring ideas
 
 ### 1. Document Tiled conventions
@@ -816,33 +842,21 @@ It would describe layers, expected properties, tile types, `player` objects, `en
 
 ### 2. Continue centralizing constants
 
-`PlayerStates` centralizes direction and animation strings used by `player.js`.
+`PlayerStates` centralizes direction, animation and player sprite values used by `player.js`.
 `MonsterConstants` centralizes direction, property name, animation and speed values used by `monster.js`.
-`LevelConstants` centralizes the first batch of raw strings and magic values used by `level.js`.
+`LevelConstants` centralizes level values, common Tiled conventions, scoring values, transition values and screen positions.
 `HudConstants` centralizes labels, colors, positions, formatting values, and timing values used by `HUD.js`.
 
 A future step could continue with:
 
-- utility collision constants;
-- raw tile names still used by `util.js` or `player.js`;
 - asset keys still hard-coded in `main.js`;
-- the remaining Tiled-to-Phaser vertical offsets used outside monster creation.
+- animated tile setup values in `main.js` / `Util.createSpritesFromTiles()`;
+- long help/end-game text blocks in `level.js`;
+- player movement geometry values such as collision probe offsets.
 
 This should be done carefully, because some strings are gameplay data coming from the Tiled map.
 
-### 3. Clean up implicit global variables
-
-Some loops still use variables that are not explicitly declared, for example `i` in several files.
-
-They should gradually be replaced with:
-
-```js
-for (var i = 0; i < ...; i++)
-```
-
-This is a small but important cleanup before a possible TypeScript migration.
-
-### 4. Isolate HUD logic
+### 3. Isolate HUD logic
 
 HUD constants are now centralized and the unused `displayLevelInfo()` helper has been removed, but the HUD still mixes display, air depletion, and death logic when the air reaches zero.
 
@@ -852,7 +866,7 @@ Eventually, this could be split into:
 - air bar display;
 - gameplay effects when air is depleted.
 
-### 5. Prepare a future TypeScript migration
+### 4. Prepare a future TypeScript migration
 
 Before moving to TypeScript, it would be useful to:
 

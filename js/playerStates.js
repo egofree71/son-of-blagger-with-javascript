@@ -15,11 +15,20 @@ var PlayerStates =
     UP : "UP",
     DOWN : "DOWN",
 
+    // Phaser sprite keys loaded in main.js and used by player.js.
+    SPRITE_BLAGGER : "blagger",
+    SPRITE_BLAGGER_WHITE : "blaggerWhite",
+    SPRITE_BLAGGER_DYING : "blaggerDying",
+    SPRITE_BLAGGER_DYING_WHITE : "blaggerDyingWhite",
+
     // Phaser animation names used by the normal player sprite.
     ANIMATION_LEFT : "left",
     ANIMATION_RIGHT : "right",
-    ANIMATION_DYING : "dying",
 
     // Phaser animation name used by the separate death sprite.
-    ANIMATION_BLAGGER_DYING : "blaggerDying"
+    ANIMATION_BLAGGER_DYING : "blaggerDying",
+
+    // Death animation values preserved from the original implementation.
+    DYING_SPRITE_Y_OFFSET : 1,
+    DYING_ANIMATION_FRAME_RATE : 6
 };

@@ -65,7 +65,7 @@ var HUD =
         this.HUDLevel = this.drawText((HudConstants.TWO_DIGITS_PADDING + Level.level).substr(HudConstants.TWO_DIGITS_LENGTH), HudConstants.LEVEL_VALUE_X, HudConstants.LEVEL_VALUE_Y);
 
         this.drawText(HudConstants.LABEL_HI_SCORE, HudConstants.HI_SCORE_LABEL_X, HudConstants.HI_SCORE_LABEL_Y, HudConstants.COLOR_GREY);
-        this.HUDHiScore =this. drawText((HudConstants.SIX_DIGITS_PADDING + GameController.hiScore).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.HI_SCORE_VALUE_X, HudConstants.HI_SCORE_VALUE_Y);
+        this.HUDHiScore = this.drawText((HudConstants.SIX_DIGITS_PADDING + GameController.hiScore).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.HI_SCORE_VALUE_X, HudConstants.HI_SCORE_VALUE_Y);
     },
 
     // If there is a 'bonus man', display the 'bonus man' sprite, and change its color
@@ -152,7 +152,7 @@ var HUD =
     },
 
 
-    // Update all HUD infromation
+    // Update all HUD information
     update : function()
     {
         this.HUDLives.text = (HudConstants.TWO_DIGITS_PADDING + GameController.lives).substr(HudConstants.TWO_DIGITS_LENGTH);

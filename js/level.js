@@ -29,9 +29,9 @@ var Level =
   animationCounterMax : 0,
   animationCounter : 0,
 
-  // Group which contains 'explosion' objecst displayed when showing monsters
+  // Group which contains 'explosion' objects displayed when showing monsters
   explosions : null,
-  // Group which contains ' reverse explosion' objecst displayed when hiding monsters of the previous level
+  // Group which contains ' reverse explosion' objects displayed when hiding monsters of the previous level
   reverseExplosions : null,
   // The end level object stores the position of the end's level
   endLevel : null,
@@ -81,13 +81,13 @@ var Level =
       var monstersProperties = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level, LevelConstants.OBJECT_LAYER_MONSTERS);
 
       // If we are restarting the current level, destroy previous monsters
-      for (i=0; i < this.monsters.length; i++)
+      for (var i = 0; i < this.monsters.length; i++)
         this.monsters[i].sprite.destroy();
 
       this.monsters = [];
 
       // Create new monster objects and store them into monsters
-      for (i=0; i < monstersProperties.length; i++)
+      for (var i = 0; i < monstersProperties.length; i++)
       {
         // get the bounding box properties for collision stored in the tilset properties
         var tileProperties = Util.getMonstersTileProperties(monstersProperties[i].type);
@@ -101,14 +101,14 @@ var Level =
       this.animationCounter = this.animationCounterMax;
 
       // Hide the monsters
-      for (i=0; i < this.monsters.length; i++)
+      for (var i = 0; i < this.monsters.length; i++)
         this.monsters[i].sprite.visible = false;
   },
 
   // Update monsters position
   updateMonsters : function()
   {
-      for (i=0; i < this.monsters.length; i++)
+      for (var i = 0; i < this.monsters.length; i++)
           this.monsters[i].updatePosition();
   },
 
@@ -117,19 +117,24 @@ var Level =
   {
     this.explosions.removeAll(true);
 
+    // Defensive fallback: all current levels have monsters, but if a future
+    // level has none, do not leave the game stuck in DISPLAYING_MONSTERS.
+    if (this.monsters.length == 0)
+    {
+        GameController.gameState = GameStates.PLAYING;
+        return;
+    }
+
     // Display an explosion for each monster
-    for (i=0; i < this.monsters.length; i++)
+    for (var i = 0; i < this.monsters.length; i++)
     {
   		var explosion = this.explosions.create(this.monsters[i].firstPositionX, this.monsters[i].firstPositionY, LevelConstants.SPRITE_EXPLOSION);
   		var anim = explosion.animations.add(LevelConstants.SPRITE_EXPLOSION);
 
   		anim.onComplete.add(function()
   		{
-  			// Show the monsters and start playing
-            Level.monsters.alpha = 1;
-
-            // Show the monsters
-            for (i=0; i < Level.monsters.length; i++)
+  			// Show the monsters and start playing.
+            for (var i = 0; i < Level.monsters.length; i++)
                 Level.monsters[i].sprite.visible = true;
 
   			GameController.gameState = GameStates.PLAYING;
@@ -144,7 +149,7 @@ var Level =
   // Display the introduction title
   displayIntroduction : function()
   {
-  	// Draw a blakc rectangle behind the title
+  	// Draw a black rectangle behind the title
     this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
     this.upperBlackRectangle.drawRect(0, 0, game.camera.width,  game.camera.height);
 
@@ -172,13 +177,13 @@ var Level =
   // Display a screen with instructions
   displayInstructions : function()
   {
-  	// Draw a blakc rectangle
+  	// Draw a black rectangle
     this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
     this.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
 
   	var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
   	font.setText ("Players control Slippery Sid, who is an\n" +
-  				  "an espionage agent and son of blagger.\n" +
+  				  "espionage agent and son of blagger.\n" +
   		          "Like the first game, the task is to \n" +
   				  "collect a series of keys scattered \n" +
   				  "around the level. Sid must navigate \n" +
@@ -331,12 +336,12 @@ var Level =
 
   },
 
-  // Display progressively the map with two dissapearing black rectangles
+  // Display progressively the map with two disappearing black rectangles
   display : function()
   {
   	switch (this.stepDisplayLevel)
   	{
-  		// Initalize the rectangles and reset the keys
+  		// Initialize the rectangles and reset the keys
   		case LevelConstants.DISPLAY_STEP_INITIALIZE:
 
             this.rectangleHeight = game.camera.height/2;
