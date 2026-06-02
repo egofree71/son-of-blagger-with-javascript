@@ -12,16 +12,11 @@ var Level =
 
   // Counter used to set the animation's speed
   counterDisplayingLevel : 1,
-  counterEndLevel : 4,
 
-  // Variables used to run sequences when transition occurs between levels
+  // Variables used to run sequences when transitions occur.
+  // The end-level transition itself is handled by LevelTransition.
   stepDisplayLevel : 1,
-  stepEndLevel : 1,
   stepEndGame : 1,
-
-  // Player's position for the next level
-  nextLevelPlayerPositionX : 0,
-  nextLevelPlayerPositionY : 0,
 
   // air level of the current level
   airLevel : 480,
@@ -299,180 +294,14 @@ var Level =
   	GameController.score = 0;
   	GameController.lives = 3;
 
+    LevelTransition.reset();
     HUD.update();
   },
 
   // Move the player to the next level and increase score according to the air's level
   goToNext : function()
   {
-  	switch(this.stepEndLevel)
-  	{
-        // Get the player's position for the next level
-  	    case 1:
-            this.level++;
-  			var results = Util.findObjectsByProperty(map, 'level', this.level, 'player');
-
-            this.nextLevelPlayerPositionX = results[0].x
-            this.nextLevelPlayerPositionY = results[0].y - 42;
-
-            this.stepEndLevel++;
-  			break;
-
-  		// Set the background color to red and display an explosion for each monster
-  		case 2:
-  			game.stage.backgroundColor = '#ff0000';
-
-  			// Hide monsters
-            for (i=0; i < Level.monsters.length; i++)
-                Level.monsters[i].sprite.visible = false;
-
-            this.reverseExplosions.removeAll(true);
-
-  			// Display an 'reverse explosion' for each monster
-            for (i=0; i < this.monsters.length; i++)
-            {
-  				var reverseExplosion = this.reverseExplosions.create(this.monsters[i].sprite.body.x, this.monsters[i].sprite.body.y, 'reverseExplosion');
-  				var anim = reverseExplosion.animations.add('reverseExplosion');
-
-                reverseExplosion.animations.play('reverseExplosion', 18, false, true);
-  			}
-
-            this.stepEndLevel += 1;
-  			break;
-
-  		// Switch back the background to the original color
-  		case 3:
-            this.counterEndLevel -= 1;
-
-  			if (this.counterEndLevel == 0)
-                this.stepEndLevel += 1;
-
-  			game.stage.backgroundColor = '#c0c0c0';
-
-            this.stepEndLevel += 1;
-
-          	break;
-
-  		// Decrease slowly the small horizontal/vertical distance to the next level
-  	    case 4:
-  	        // Horizontal and vertical distances to the next level
-  	        horizontalDistance = Player.playerSprite.body.x - this.nextLevelPlayerPositionX;
-  	        verticalDistance = Player.playerSprite.body.y - this.nextLevelPlayerPositionY;
-
-  	        if (Math.abs(verticalDistance == 0) || Math.abs(horizontalDistance == 0))
-  	        {
-                this.stepEndLevel += 1;
-  	            break;
-  	        }
-
-  	        if (Math.abs(verticalDistance) < Math.abs(horizontalDistance))
-  	        {
-  	            if (verticalDistance > 0)
-  					Player.playerSprite.body.y -= 1;
-  	            else
-  					Player.playerSprite.body.y += 1;
-  	        }
-  	        else
-  	        {
-  	            if (horizontalDistance > 0)
-  					Player.playerSprite.body.x -= 1;
-  	            else
-  					Player.playerSprite.body.x += 1;
-  	        }
-
-  	        break;
-
-  		// Increase the score according to the remaining air level
-  	    case 5:
-  	        if (this.airLevel > 0)
-  	        {
-                this.airLevel -=6;
-  				GameController.score += 30;
-  				HUD.displayScore();
-  				HUD.displayAirLevel();
-  	        }
-  	        else
-  	        {
-  				HUD.clearAirLevel();
-                this.stepEndLevel += 1;
-  	        }
-
-            this.counterEndLevel = 4;
-
-  		break;
-
-  		//  Move the player to the position of the next level
-  		case 6:
-            this.counterEndLevel -= 1;
-  			if (this.counterEndLevel > 0) break;
-            this.counterEndLevel = 4;
-
-  			horizontalDistance = Player.playerSprite.body.x - this.nextLevelPlayerPositionX;
-  			verticalDistance = Player.playerSprite.body.y - this.nextLevelPlayerPositionY;
-
-  			if (verticalDistance == 0 && horizontalDistance == 0)
-  			{
-                this.stepEndLevel += 1;
-  				break;
-  			}
-
-  			if (verticalDistance == 0)
-  			{
-  				if (Math.abs(horizontalDistance) < 16)
-  				{
-  					Player.playerSprite.body.x = this.nextLevelPlayerPositionX;
-                    this.stepEndLevel += 1;
-  					break;
-  				}
-
-  				if (horizontalDistance > 0)
-  					Player.playerSprite.body.x -= 16;
-  				else
-  					Player.playerSprite.body.x += 16;
-  			}
-  			else
-  			{
-  				if (Math.abs(verticalDistance) < 16)
-  				{
-  					Player.playerSprite.body.y = this.nextLevelPlayerPositionY;
-                    this.stepEndLevel += 1;
-  					break;
-  				}
-
-  				if (verticalDistance > 0)
-  					Player.playerSprite.body.y -= 16;
-  				else
-  					Player.playerSprite.body.y += 16;
-  			}
-
-  			break;
-
-  		// Replenish the air
-  		case 7:
-  			if (this.airLevel < 480)
-  			{
-                this.airLevel +=6;
-  				HUD.displayAirLevel();
-  			}
-  			else
-  			{
-                this.stepEndLevel += 1;
-  			}
-
-  			break;
-
-  		// Load next level and start playing
-  		case 8:
-  			this.load();
-  			HUD.update();
-            this.stepEndLevel = 1;
-  			// On every new level, the user gets a 'bonus man'
-            this.bonusMan = true;
-  			GameController.gameState = "start level";
-  			break;
-
-
-  	}
+      LevelTransition.update();
   },
 
   // Load the objects needed for a given level
