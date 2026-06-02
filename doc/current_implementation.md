@@ -19,14 +19,14 @@ The current engineering goal is to keep the original gameplay behavior intact wh
 - Engine: **Phaser 2.3.0**.
 - Language: classic JavaScript.
 - Development/build tool: **Vite**.
-- Module system: Vite ES module entry point. Constant modules now use explicit ES module exports/imports. Most runtime objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
-- Main architecture style: transitional hybrid: ES module constants plus global runtime objects and constructor functions.
+- Module system: Vite ES module entry point. Constants and shared helper modules now use explicit ES module exports/imports. Most gameplay runtime objects are still exposed globally through `window` for compatibility with the existing Phaser 2.3 code.
+- Main architecture style: transitional hybrid: ES module constants/helpers plus global gameplay objects and constructor functions.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` now export their objects as ES modules, and consumers import them explicitly. Most gameplay runtime objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
+The codebase is still close to its original browser-JavaScript style, but it is now loaded through a Vite module entry point. The internal game files live under `src/js` and are imported by `src/main.js`. Constant files such as `gameStates.js`, `levelConstants.js`, and `playerStates.js` now export their objects as ES modules, and consumers import them explicitly. Shared helper modules such as `util.js` and `collisionDetector.js` are also exported/imported explicitly. Most gameplay runtime objects are still attached to `window`, so the rest of the code can keep using the existing global-object style until later migration steps.
 
 ## Running the game locally
 
@@ -102,13 +102,13 @@ doc/
 
 Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through `src/main.js`.
 
-The constant files are now real ES modules: they export named constants and the files that use them import those constants explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
+The constant files and shared helper files are now real ES modules: they export named objects and the files that use them import those objects explicitly. They are still mirrored on `window` as a temporary compatibility layer and to keep browser-console debugging convenient.
 
 Most gameplay runtime objects still register themselves on `window`. This keeps the current code compatible while removing the long list of manual script tags from `index.html`. If a legacy runtime object is used before its module has registered it, the game will fail with a `ReferenceError`.
 
 ## Main runtime objects
 
-The project is organized around a set of global objects defined by modules under `src/js`:
+The project is organized around a mix of ES module exports and global gameplay objects defined under `src/js`:
 
 - `AssetLoader`: Phaser asset preloading.
 - `GameInitializer`: runtime startup after asset loading.
@@ -710,7 +710,7 @@ The values that mirror the Tiled map must remain synchronized with the map data.
 
 ## `src/js/collisionDetector.js`
 
-`CollisionDetector` contains manual collision checks used by the player and gameplay interactions.
+`CollisionDetector` contains manual collision checks used by the player and gameplay interactions. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 Main responsibilities:
 
@@ -725,7 +725,7 @@ Most player movement and interaction checks depend on this file, so it is gamepl
 
 ## `src/js/util.js`
 
-`Util` contains shared non-collision helper functions.
+`Util` contains shared non-collision helper functions. It is exported as an ES module and mirrored on `window` for the current transition period.
 
 Main responsibilities:
 
@@ -912,11 +912,11 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ### Global state
 
-The project still relies heavily on global runtime objects and Phaser globals, even though constant modules now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
+The project still relies heavily on global gameplay objects and Phaser globals, even though constants and shared helpers now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
 
 ### Script order
 
-Because most runtime objects are still exposed globally, import order in `src/main.js` is still part of the architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constant dependencies should now be imported directly by the files that use them.
+Because most gameplay runtime objects are still exposed globally, import order in `src/main.js` is still part of the architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constants and shared helper dependencies should now be imported directly by the files that use them.
 
 ### Manual collisions
 

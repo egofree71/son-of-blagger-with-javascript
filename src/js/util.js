@@ -1,6 +1,13 @@
 import { HudConstants } from "./hudConstants.js";
 
-window.Util =
+/**
+ * Shared helper functions that are not gameplay collision checks.
+ *
+ * Util is now exported as an ES module so files can depend on it explicitly.
+ * It is still mirrored on window during the migration to keep the browser
+ * console and any remaining legacy-style code working as before.
+ */
+export const Util =
 {
 	// Create sprites from a given tile and put them into the group
 	createSpritesFromTiles : function(tileIndex, spriteSheet, animationSpeed)
@@ -64,4 +71,6 @@ window.Util =
 		return font;
 	}
 
-}
+};
+
+window.Util = Util;

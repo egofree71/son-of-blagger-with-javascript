@@ -1,6 +1,7 @@
 import { GameStates } from "./gameStates.js";
 import { PlayerStates } from "./playerStates.js";
 import { LevelConstants } from "./levelConstants.js";
+import { Util } from "./util.js";
 
 window.Player =
 {

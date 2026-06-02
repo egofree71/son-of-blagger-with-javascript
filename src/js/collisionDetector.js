@@ -7,8 +7,12 @@ import { LevelConstants } from "./levelConstants.js";
  * Phaser rectangles. These checks are gameplay-sensitive, so this object keeps
  * the existing algorithms and offsets untouched while giving collision logic a
  * clearer home than the generic Util object.
+ *
+ * CollisionDetector is now exported as an ES module so movement and interaction
+ * modules can depend on it explicitly. It is still mirrored on window during
+ * the migration to preserve console debugging and legacy-style access.
  */
-window.CollisionDetector =
+export const CollisionDetector =
 {
     // Store the last tile hit by a tile-based collision check.
     // Key collection uses this reference to hide the collected key tile.
@@ -141,3 +145,5 @@ window.CollisionDetector =
         return collision;
     }
 };
+
+window.CollisionDetector = CollisionDetector;
