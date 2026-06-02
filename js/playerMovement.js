@@ -1,40 +1,64 @@
 /**
  * PlayerMovement owns the frame-by-frame movement rules for Slippery Sid.
  *
- * The code is intentionally close to the original Player.update() logic:
- * most collision probes still use hard-coded pixel offsets because these values
- * define the actual feel of the old platforming behavior.
+ * The code is intentionally close to the original Player.update() logic. Most
+ * collision probes still use hard-coded pixel offsets because these values define
+ * the actual feel of the old platforming behavior: how close the player can get
+ * to walls, when a jump starts falling, when a landing is detected, and when a
+ * fall becomes deadly.
  *
  * This object does not handle gameplay interactions such as collecting keys,
  * touching deadly tiles, touching monsters, or reaching the exit. Those checks
- * remain in PlayerInteractions.
+ * remain in PlayerInteractions. This separation lets PlayerMovement focus only
+ * on deciding the player's next one-pixel movement for the current frame.
  */
 var PlayerMovement =
 {
+    // Horizontal foot probes. These are used to test the tiles below the player.
+    // They intentionally do not span the full sprite width, so the player can
+    // stand near edges without instantly falling.
     FOOT_LEFT_OFFSET : 7,
     FOOT_RIGHT_OFFSET : 23,
+
+    // Slides are detected slightly below the feet so the player starts following
+    // the slope only when already standing on it.
     SLIDE_PROBE_Y_OFFSET : 14,
 
+    // Ladder detection uses a small rectangle around the lower part of the
+    // player. This makes ladders feel forgiving without allowing climbing from
+    // too far away.
     LADDER_LEFT_OFFSET : 7,
     LADDER_RIGHT_OFFSET : 23,
     LADDER_TOP_FROM_BOTTOM_OFFSET : 18,
     LADDER_BOTTOM_FROM_BOTTOM_OFFSET : 1,
 
+    // Wall probes. The side probes are narrower than the sprite to preserve the
+    // original movement tolerance around corners.
     WALL_ABOVE_Y_OFFSET : -2,
     RIGHT_WALL_X_OFFSET : 24,
     LEFT_WALL_X_OFFSET : 5,
     SIDE_WALL_TOP_OFFSET : 6,
     SIDE_WALL_BOTTOM_OFFSET : 1,
 
+    // The remake moves the player one pixel per frame. Jump movement comes from
+    // Data.jumpPath, but horizontal/vertical application still happens in one-
+    // pixel increments.
     MOVE_STEP : 1,
+
+    // Data.jumpPath starts with the rising part of the jump. Once this index is
+    // reached, the player is considered to be falling and fall height starts to
+    // count again.
     JUMP_FALL_START_INDEX : 50,
 
     /**
      * Updates movement for one frame.
      *
-     * Returns the coordinates captured at the beginning of the frame. Player
-     * interactions intentionally use these original coordinates to preserve the
-     * collision timing of the pre-refactoring implementation.
+     * The returned coordinates are the coordinates captured at the beginning of
+     * the frame. PlayerInteractions intentionally uses these original coordinates
+     * to preserve the collision timing of the pre-refactoring implementation.
+     *
+     * @param {object} player The global Player object.
+     * @returns {{x: number, y: number, checkInteractions: boolean}}
      */
     update : function(player)
     {
@@ -48,6 +72,9 @@ var PlayerMovement =
             y : player.playerSprite.body.y
         };
 
+        // During a deadly fall, normal controls and interactions are suspended.
+        // The player simply keeps falling until a solid tile is reached, then the
+        // death sequence starts.
         if (player.deadlyFall)
         {
             this.updateDeadlyFall(player, startPosition.x, startPosition.y);
@@ -58,6 +85,8 @@ var PlayerMovement =
             };
         }
 
+        // Ground input is accepted only when the player is not already falling or
+        // jumping. This preserves the old rigid platformer feel.
         if (player.fallHeight == 0 && player.jumping == false)
             this.handleGroundInput(player, direction);
 
@@ -77,6 +106,13 @@ var PlayerMovement =
         };
     },
 
+    /**
+     * Handles the special falling state used after the player has fallen too far.
+     *
+     * A deadly fall cannot be cancelled by input. When the player eventually hits
+     * solid ground, Player.kill() is called and the death animation uses the
+     * white falling sprite.
+     */
     updateDeadlyFall : function(player, x, y)
     {
         player.playerSprite.body.y += this.MOVE_STEP;
@@ -88,6 +124,11 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Reads jump and horizontal movement input while the player is on stable
+     * ground. Jump direction is remembered at jump start so the player keeps the
+     * same horizontal impulse during the jump path.
+     */
     handleGroundInput : function(player, direction)
     {
         if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR))
@@ -118,6 +159,12 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Resets the walking animation when the player changes horizontal direction.
+     *
+     * Without this reset, switching from one direction to the other can keep the
+     * previous animation frame/counter and make the first frame look wrong.
+     */
     resetAnimationIfChangingDirection : function(player, previousAnimation, newAnimation)
     {
         if (player.playerSprite.animations.currentAnim.name == previousAnimation)
@@ -132,6 +179,14 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Advances the jump path and decides whether the player has landed.
+     *
+     * Data.jumpPath controls both the vertical path and whether horizontal motion
+     * is allowed for each jump frame. The falling part of the jump starts at
+     * JUMP_FALL_START_INDEX, at which point fallHeight is counted so a very long
+     * drop after a jump can still become deadly.
+     */
     updateJump : function(player, direction, x, y)
     {
         if (player.jumpingDirection == PlayerStates.LEFT)
@@ -172,6 +227,12 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Applies environment-driven movement when the player is not jumping.
+     *
+     * This includes slides, falling, conveyors, ladders, and stopping the walking
+     * animation when no horizontal key is pressed.
+     */
     updateGroundAndEnvironment : function(player, direction, x, y)
     {
         if (this.isOnTileByName(player, x, y, LevelConstants.TILE_NAME_LEFT_SLIDE, this.SLIDE_PROBE_Y_OFFSET))
@@ -200,6 +261,12 @@ var PlayerMovement =
             player.playerSprite.animations.stop();
     },
 
+    /**
+     * Starts or continues normal falling when there is no ground below.
+     *
+     * Vanishing platforms are treated as temporary ground while their sprite still
+     * collides with the player's foot line.
+     */
     updateFalling : function(player, direction, x, y)
     {
         if (this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, false) == false &&
@@ -223,6 +290,12 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Applies conveyor belt movement.
+     *
+     * Walking against a conveyor cancels horizontal movement for the frame. Not
+     * pressing against it makes the conveyor move the player automatically.
+     */
     applyConveyorBelts : function(player, direction, x, y)
     {
         if (this.isOnTileByName(player, x, y, LevelConstants.TILE_NAME_CONVEYOR_RIGHT, 0))
@@ -242,6 +315,13 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Cancels movement that would enter a blocking wall tile.
+     *
+     * Movement is decided first, then validated here. This keeps input handling,
+     * environment effects, and collision blocking separated while preserving the
+     * original one-pixel movement style.
+     */
     blockInvalidMovement : function(player, direction, x, y)
     {
         if (direction.vertical == PlayerStates.UP &&
@@ -280,6 +360,9 @@ var PlayerMovement =
         }
     },
 
+    /**
+     * Applies the final one-pixel movement selected for this frame.
+     */
     applyMovement : function(player, direction)
     {
         if (direction.horizontal == PlayerStates.RIGHT)
@@ -295,6 +378,11 @@ var PlayerMovement =
             player.playerSprite.body.y -= this.MOVE_STEP;
     },
 
+    /**
+     * Checks whether the player has landed during the falling part of a jump.
+     *
+     * Landing can happen on a solid tile, a slide tile, or a vanishing platform.
+     */
     isLandingAfterJump : function(player, x, y)
     {
         return this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, true) ||
@@ -305,6 +393,9 @@ var PlayerMovement =
                 y + player.playerSprite.body.height);
     },
 
+    /**
+     * Tests the short horizontal foot line against tiles of a given type.
+     */
     hasGroundBelow : function(player, x, y, tileType, onTop)
     {
         return CollisionDetector.horizontalCollisionLine(
@@ -316,6 +407,9 @@ var PlayerMovement =
             onTop);
     },
 
+    /**
+     * Tests whether the player is standing on a tile with a specific Tiled name.
+     */
     isOnTileByName : function(player, x, y, tileName, yOffset)
     {
         return CollisionDetector.horizontalCollisionLine(
@@ -327,6 +421,12 @@ var PlayerMovement =
             false);
     },
 
+    /**
+     * Checks the small rectangle used for ladder climbing.
+     *
+     * The rectangle is intentionally located near the player's feet/body rather
+     * than covering the full sprite. This reproduces the existing ladder behavior.
+     */
     isOnLadder : function(player, x, y)
     {
         return CollisionDetector.collisionRectangle(
@@ -338,6 +438,12 @@ var PlayerMovement =
             LevelConstants.TILE_NAME_LADDER);
     },
 
+    /**
+     * Switches the player into the uncontrollable deadly-fall state.
+     *
+     * The white sprite is used only for this fall-to-death sequence, matching the
+     * behavior of the original implementation.
+     */
     startDeadlyFall : function(player)
     {
         player.deadlyFall = true;
