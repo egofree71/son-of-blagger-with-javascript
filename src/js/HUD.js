@@ -1,5 +1,6 @@
 import { GameStates } from "./gameStates.js";
 import { HudConstants } from "./hudConstants.js";
+import { Data } from "./data.js";
 
 window.HUD =
 {

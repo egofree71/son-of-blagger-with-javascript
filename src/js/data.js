@@ -1,4 +1,4 @@
-window.Data =
+export const Data =
 {
     // Each element of the array contains the horizontal and vertical movements for each jump's step
     jumpPath : [[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"], [false,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],
@@ -27,4 +27,6 @@ window.Data =
 
     // Contains the colors used to display the 'bonus man' sprite
     bonusManColors : [0xffffff, 0xC0C0C0, 0x808080, 0x404040]
-}
+};
+
+window.Data = Data;

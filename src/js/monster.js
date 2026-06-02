@@ -2,7 +2,7 @@ import { GameStates } from "./gameStates.js";
 import { MonsterConstants } from "./monsterConstants.js";
 
 // Monster object
-window.Monster = function Monster(monsterProperties, tileProperties)
+export function Monster(monsterProperties, tileProperties)
 {
     this.firstPositionX = monsterProperties.x;
     this.firstPositionY = monsterProperties.y - MonsterConstants.TILED_TO_PHASER_Y_OFFSET;
@@ -104,4 +104,6 @@ Monster.prototype.updatePosition = function()
 
     this.sprite.x += horizontalSpeed ;
     this.sprite.y += verticalSpeed ;
-}
+};
+
+window.Monster = Monster;

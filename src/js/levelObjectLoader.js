@@ -1,5 +1,6 @@
 import { LevelConstants } from "./levelConstants.js";
 import { Util } from "./util.js";
+import { Monster } from "./monster.js";
 
 /**
  * Loads Phaser objects that belong to the current Tiled level.
@@ -9,7 +10,7 @@ import { Util } from "./util.js";
  * This keeps Level.load() focused on orchestration instead of low-level map
  * parsing and sprite creation.
  */
-window.LevelObjectLoader =
+export const LevelObjectLoader =
 {
     /**
      * Creates all monster instances for the requested level.
@@ -97,3 +98,5 @@ window.LevelObjectLoader =
         return results[0];
     }
 };
+
+window.LevelObjectLoader = LevelObjectLoader;

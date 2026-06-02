@@ -2,6 +2,8 @@ import { GameStates } from "./gameStates.js";
 import { LevelConstants } from "./levelConstants.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
 import { EndGameSequence } from "./endGameSequence.js";
+import { Data } from "./data.js";
+import { LevelObjectLoader } from "./levelObjectLoader.js";
 
 window.Level =
 {
