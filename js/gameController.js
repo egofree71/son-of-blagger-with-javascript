@@ -10,7 +10,7 @@ var GameController =
     {
         switch(this.gameState)
         {
-            case "load introduction":
+            case GameStates.LOAD_INTRODUCTION:
                 Level.displayIntroduction();
 
                 // If the user pressed a key, start a new game
@@ -20,50 +20,50 @@ var GameController =
                     game.input.keyboard.onPressCallback = null;
 
                     if (key == 'h')
-                        GameController.gameState = "load help";
+                        GameController.gameState = GameStates.LOAD_HELP;
                     else
-                        GameController.gameState = "load level";
+                        GameController.gameState = GameStates.LOAD_LEVEL;
                 };
 
-                this.gameState = "introduction";
+                this.gameState = GameStates.INTRODUCTION;
                 break;
 
             // The player has finished the level, go to the next level
-            case "load help":
+            case GameStates.LOAD_HELP:
                 Level.displayInstructions();
-                this.gameState = "help";
+                this.gameState = GameStates.HELP;
 
                 break;
 
             // The player has finished the level, go to the next level
-            case "end level":
+            case GameStates.END_LEVEL:
                 Level.goToNext();
                 break;
 
             // The player has finished the game
-            case "end game":
+            case GameStates.END_GAME:
                 Level.endGame();
                 break;
 
             // Load level's objects
-            case "load level":
+            case GameStates.LOAD_LEVEL:
                 Level.load();
                 HUD.update();
-                this.gameState = "display level";
+                this.gameState = GameStates.DISPLAY_LEVEL;
                 break;
 
             // Display progressively the level
-            case "display level":
+            case GameStates.DISPLAY_LEVEL:
                 Level.display();
                 break;
 
             // Before displaying monsters, show explosions
-            case "start level":
+            case GameStates.START_LEVEL:
                 Level.displayMonsters();
                 break;
 
             // The game has ended, reset game and show game over
-            case "show game over":
+            case GameStates.SHOW_GAME_OVER:
                 Level.resetGame();
                 Level.displayGameOver();
 
@@ -71,13 +71,13 @@ var GameController =
                 game.input.keyboard.onPressCallback = function( ){
                     game.input.keyboard.onPressCallback = null;
                     Level.gameOver.destroy();
-                    GameController.gameState = "load introduction";
+                    GameController.gameState = GameStates.LOAD_INTRODUCTION;
                 };
 
-                this.gameState = "game over";
+                this.gameState = GameStates.GAME_OVER;
                 break;
 
-            case "playing":
+            case GameStates.PLAYING:
                 HUD.updateAirLevel();
                 HUD.displayBonusMan();
                 Level.updateMonsters();

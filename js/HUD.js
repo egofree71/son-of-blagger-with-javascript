@@ -105,7 +105,7 @@ var HUD =
     // Decrease air level and display it
     updateAirLevel : function()
     {
-        if (GameController.gameState != "playing") return ;
+        if (GameController.gameState != GameStates.PLAYING) return ;
 
         this.counter -= 1;
 

@@ -132,13 +132,13 @@ var Level =
             for (i=0; i < Level.monsters.length; i++)
                 Level.monsters[i].sprite.visible = true;
 
-  			GameController.gameState = "playing";
+  			GameController.gameState = GameStates.PLAYING;
   		});
 
   		explosion.animations.play('explosion', 18, false, true);
   	}
 
-  	GameController.gameState = "displaying monsters";
+  	GameController.gameState = GameStates.DISPLAYING_MONSTERS;
   },
 
   // Display the introduction title
@@ -205,7 +205,7 @@ var Level =
         Level.upperBlackRectangle.clear();
   		game.input.keyboard.onPressCallback = null;
 
-  		GameController.gameState = "load introduction";
+  		GameController.gameState = GameStates.LOAD_INTRODUCTION;
   	};
 
   },
@@ -275,7 +275,7 @@ var Level =
                 this.stepEndGame = 1;
                 this.resetGame();
   				HUD.displayAirLevel();
-  				GameController.gameState = "load introduction";
+  				GameController.gameState = GameStates.LOAD_INTRODUCTION;
   			}
   	}
   },
@@ -379,7 +379,7 @@ var Level =
                 this.upperBlackRectangle.clear();
                 this.lowerblackRectangle.clear();
                 this.stepDisplayLevel = 1;
-  				GameController.gameState = "start level";
+  				GameController.gameState = GameStates.START_LEVEL;
   			}
 
   	}

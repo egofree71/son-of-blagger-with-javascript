@@ -58,7 +58,7 @@ var Player =
 
 	update : function()
 	{
-		if (GameController.gameState != "playing") return ;
+		if (GameController.gameState != GameStates.PLAYING) return ;
 
 		// Store the direction of the playerSprite
 		var horizontalDirection = null;
@@ -305,9 +305,9 @@ var Player =
 		{
 			// If the player has finished the last level
 			if (Level.level == Data.levels.length)
-				GameController.gameState = "end game";
+				GameController.gameState = GameStates.END_GAME;
 			else
-				GameController.gameState = "end level";
+				GameController.gameState = GameStates.END_LEVEL;
 		}
 	},
 
@@ -340,7 +340,7 @@ var Player =
 	// When the player is killed, display the 'dying' animation
 	kill : function()
 	{
-		GameController.gameState = "killPlayer";
+		GameController.gameState = GameStates.KILL_PLAYER;
 		this.playerSprite.visible = false;
 
 		// Display blagger dying
@@ -372,9 +372,9 @@ var Player =
 			
 			// If there are no lives left, the game is over
 			if (GameController.lives == 0)
-				GameController.gameState = "show game over";
+				GameController.gameState = GameStates.SHOW_GAME_OVER;
 			else
-				GameController.gameState = "load level";
+				GameController.gameState = GameStates.LOAD_LEVEL;
 		});
 
 		this.playerDyingSprite.animations.play('blaggerDying', 6, false, true);

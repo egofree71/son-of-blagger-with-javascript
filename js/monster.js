@@ -25,7 +25,7 @@ function Monster(monsterProperties, tileProperties)
 
 Monster.prototype.updatePosition = function()
 {
-    if (GameController.gameState != "playing") return ;
+    if (GameController.gameState != GameStates.PLAYING) return ;
 
     Level.animationCounter -= 1;
 

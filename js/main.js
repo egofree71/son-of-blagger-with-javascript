@@ -114,7 +114,7 @@ function create()
 	// Create the black rectangles used to display progressively the map
 	Level.createBlackRectangles();
 
-	GameController.gameState = "load introduction";
+	GameController.gameState = GameStates.LOAD_INTRODUCTION;
 }
 
 

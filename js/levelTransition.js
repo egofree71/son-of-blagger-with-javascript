@@ -72,7 +72,7 @@ var LevelTransition =
     /**
      * Advances the transition by one frame.
      *
-     * GameController calls Level.goToNext() while the game state is "end level".
+     * GameController calls Level.goToNext() while the game state is GameStates.END_LEVEL.
      * Level.goToNext() delegates to this method.
      */
     update : function()
@@ -335,6 +335,6 @@ var LevelTransition =
         Level.bonusMan = true;
 
         this.reset();
-        GameController.gameState = "start level";
+        GameController.gameState = GameStates.START_LEVEL;
     }
 };
