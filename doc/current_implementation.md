@@ -56,14 +56,15 @@ Current logical order:
 <script src="js/monsterConstants.js"></script>
 <script src="js/levelConstants.js"></script>
 <script src="js/hudConstants.js"></script>
+<script src="js/levelRevealSequence.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
 <script src="js/player.js"></script>
 <script src="js/monster.js"></script>
 <script src="js/data.js"></script>
+<script src="js/levelObjectLoader.js"></script>
 <script src="js/levelTransition.js"></script>
-<script src="js/levelRevealSequence.js"></script>
 <script src="js/level.js"></script>
 <script src="js/endGameSequence.js"></script>
 <script src="js/HUD.js"></script>
@@ -78,7 +79,8 @@ The project is organized around a set of global objects:
 
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
-- `Level`: current level data, level loading, monsters, exit object, and level reset logic.
+- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
+- `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
@@ -256,11 +258,11 @@ Main responsibilities:
 
 - keep track of the current level number;
 - reset level-specific data;
-- load the current level objects from Tiled;
-- position the player at the current level start;
-- create the monsters for the current level;
-- manage monster display and monster updates;
-- find and position the invisible level-exit sprite;
+- orchestrate current-level loading;
+- position the player at the current level start through `Player.reset()`;
+- keep the current monster list and update monster movement;
+- manage the monster reveal sequence;
+- keep the invisible level-exit sprite reference;
 - create explosion and reverse-explosion groups;
 - reset the whole game when needed.
 
@@ -273,7 +275,8 @@ Important data:
 - `monsters`
 - `monstersGroup`
 - `endLevel`
-- `stepDisplayMonsters`
+- `animationCounterMax`
+- `animationCounter`
 
 `Level` still exposes some compatibility-style methods that delegate to more specialized objects:
 
@@ -286,11 +289,25 @@ Level.goToNext()     // delegates to LevelTransition.update()
 
 1. resets air, collected keys, and bonus man state;
 2. resets the player;
-3. creates the level monsters;
-4. finds the level exit object in Tiled;
-5. creates or repositions the invisible exit sprite.
+3. asks `LevelObjectLoader` to create the current level monsters;
+4. asks `LevelObjectLoader` to create or reposition the invisible exit sprite.
 
 `Level.resetGame()` updates the hi-score when necessary and resets score, lives, level number, air, keys, and bonus-man state.
+
+## `js/levelObjectLoader.js`
+
+`LevelObjectLoader` isolates Tiled object lookup and Phaser sprite creation for objects that belong to a level.
+
+Responsibilities:
+
+- find monster objects for the current level in the Tiled `monsters` object layer;
+- destroy old monster sprites when a level is reloaded;
+- create `Monster` instances and add their sprites to `Level.monstersGroup`;
+- hide monster sprites until the monster reveal animation finishes;
+- find the current level exit object in the Tiled `end level` object layer;
+- create or reposition the invisible exit sprite used by player/exit collision checks.
+
+This object does not own gameplay state. It returns created objects to `Level`, which remains the runtime owner of `monsters` and `endLevel`.
 
 ## `js/levelRevealSequence.js`
 
@@ -306,7 +323,10 @@ Main data:
 
 - `upperBlackRectangle`
 - `lowerBlackRectangle`
-- `stepDisplayLevel`
+- `phase`
+- `counter`
+- `rectangleHeight`
+- `rectangleWidth`
 
 The same upper rectangle is also reused as a black background by some non-gameplay screens. This is a legacy-style shared object, but it keeps the current rendering simple.
 
@@ -628,8 +648,8 @@ Level.load()
   -> reset level data
   -> Player.reset()
   -> Level.addMonsters()
-  -> find Tiled exit object
-  -> create or reposition invisible exit sprite
+      -> LevelObjectLoader.loadMonsters()
+  -> LevelObjectLoader.loadEndLevel()
   -> HUD.update()
 ```
 

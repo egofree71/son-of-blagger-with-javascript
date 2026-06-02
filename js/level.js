@@ -40,35 +40,15 @@ var Level =
 
   },
 
-  // Add the monsters for the current level
+  // Add the monsters for the current level.
+  // Tiled parsing and sprite creation are delegated to LevelObjectLoader.
   addMonsters : function()
   {
-      // find all monsters in the map for the given level
-      var monstersProperties = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level, LevelConstants.OBJECT_LAYER_MONSTERS);
+      this.monsters = LevelObjectLoader.loadMonsters(this.level, this.monsters, this.monstersGroup);
 
-      // If we are restarting the current level, destroy previous monsters
-      for (var i = 0; i < this.monsters.length; i++)
-        this.monsters[i].sprite.destroy();
-
-      this.monsters = [];
-
-      // Create new monster objects and store them into monsters
-      for (var i = 0; i < monstersProperties.length; i++)
-      {
-        // get the bounding box properties for collision stored in the tilset properties
-        var tileProperties = Util.getMonstersTileProperties(monstersProperties[i].type);
-        var monster = new Monster(monstersProperties[i], tileProperties);
-        this.monstersGroup.add(monster.sprite);
-        this.monsters.push(monster);
-      }
-
-      // Get the animation counter maximum used to set the animation's speed
+      // Get the animation counter maximum used to set the animation's speed.
       this.animationCounterMax = Data.levels[this.level-1][1];
       this.animationCounter = this.animationCounterMax;
-
-      // Hide the monsters
-      for (var i = 0; i < this.monsters.length; i++)
-        this.monsters[i].sprite.visible = false;
   },
 
   // Update monsters position
@@ -138,31 +118,22 @@ var Level =
       LevelTransition.update();
   },
 
-  // Load the objects needed for a given level
+  // Reset runtime data that belongs to the current level attempt.
+  resetLevelState : function()
+  {
+      this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
+      this.keysTaken = 0;
+      this.bonusMan = false;
+  },
+
+  // Load the objects needed for a given level.
   load : function()
   {
-  	// Reset level properties
-    this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
-    this.keysTaken = 0;
-    this.bonusMan = false;
+      this.resetLevelState();
 
-    Player.reset();
-    this.addMonsters();
-
-  	// find all 'end level' objects in the map
-  	var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level, LevelConstants.OBJECT_LAYER_END_LEVEL);
-
-  	// If the 'end level' object is not yet defined for the current level, create it
-  	if (!this.endLevel)
-  	{
-        this.endLevel = game.add.sprite(results[0].x, results[0].y - LevelConstants.END_LEVEL_Y_OFFSET, LevelConstants.SPRITE_END_LEVEL);
-        this.endLevel.alpha = 0;
-  	}
-  	else
-  	{
-        this.endLevel.reset(results[0].x, results[0].y - LevelConstants.END_LEVEL_Y_OFFSET);
-  	}
-
+      Player.reset();
+      this.addMonsters();
+      this.endLevel = LevelObjectLoader.loadEndLevel(this.level, this.endLevel);
   },
 
   // Display progressively the map with two disappearing black rectangles.
