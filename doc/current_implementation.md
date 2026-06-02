@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 2**.
+Document updated after **refactoring step 4**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -127,19 +127,7 @@ Main orchestrator of the game.
 
 `GameController.update()` is called once per frame from `updateGame()` in `main.js`.
 
-It uses `GameController.gameState` to decide which part of the game should run.
-
-Responsibilities:
-
-- handle the introduction screen;
-- handle the help screen;
-- load a level;
-- progressively reveal the level;
-- start the monster reveal sequence;
-- run the main gameplay loop;
-- start the end-of-level transition;
-- start the end-game sequence;
-- handle game over.
+It uses `GameController.gameState` to decide which part of the game should run. Since refactoring step 4, the main `update()` method only dispatches to one small method per state. This keeps the game loop easier to scan while preserving the original state flow.
 
 Main data:
 
@@ -148,7 +136,19 @@ Main data:
 - `hiScore`
 - `lives`
 
-During the `GameStates.PLAYING` state, it mainly calls:
+State-specific methods:
+
+- `updateLoadIntroduction()` displays the title screen and installs the first key-press callback;
+- `updateLoadHelp()` displays the help screen;
+- `updateLoadLevel()` loads the current level and refreshes the HUD;
+- `updateDisplayLevel()` runs the progressive level reveal;
+- `updateStartLevel()` runs the monster reveal sequence;
+- `updatePlaying()` runs one normal gameplay frame;
+- `updateEndLevel()` delegates to the end-of-level transition;
+- `updateEndGame()` runs the final end-game sequence;
+- `updateShowGameOver()` shows the game-over screen and waits for a key press.
+
+During the `GameStates.PLAYING` state, `updatePlaying()` calls, in order:
 
 ```js
 HUD.updateAirLevel();
@@ -156,6 +156,8 @@ HUD.displayBonusMan();
 Level.updateMonsters();
 Player.update();
 ```
+
+This order is important and was preserved from the previous implementation.
 
 ### `js/level.js`
 
@@ -376,10 +378,10 @@ Every frame:
 ```text
 main.updateGame()
   -> GameController.update()
-      -> action depending on GameController.gameState
+      -> dispatch to one state-specific update method
 ```
 
-During the `PLAYING` state:
+For example, during the `PLAYING` state:
 
 ```text
 HUD.updateAirLevel()
@@ -570,6 +572,28 @@ js/gameStates.js
 ```
 
 Goal: replace scattered state strings with centralized constants.
+
+### Step 3 — Document the current implementation
+
+Created:
+
+```text
+doc/current_implementation.md
+```
+
+Goal: describe the current architecture, game lifecycle, major files, technical debt, and manual test checklist.
+
+### Step 4 — Split `GameController.update()` into state-specific methods
+
+Updated:
+
+```text
+js/gameController.js
+```
+
+Goal: keep the existing game-state switch, but delegate each state to a named method such as `updatePlaying()`, `updateLoadLevel()`, or `updateShowGameOver()`.
+
+This does not change the game flow. It only makes the responsibilities of each state easier to read and prepares future refactorings.
 
 ## Future refactoring ideas
 
