@@ -1,6 +1,6 @@
 # Son of Blagger — Current Implementation
 
-Document updated after **refactoring step 13**.
+Document updated after **refactoring step 14**.
 
 This document describes the current state of the JavaScript / Phaser remake of **Son of Blagger**. It is meant to be a practical entry point when returning to the project after a break, understanding the responsibilities of the main files, and preparing future refactorings without breaking the existing gameplay.
 
@@ -57,6 +57,7 @@ The logical order is:
 <script src="js/monsterConstants.js"></script>
 <script src="js/levelConstants.js"></script>
 <script src="js/hudConstants.js"></script>
+<script src="js/levelRevealSequence.js"></script>
 <script src="js/main.js"></script>
 <script src="js/util.js"></script>
 <script src="js/screenManager.js"></script>
@@ -91,7 +92,7 @@ var game = new Phaser.Game(640, 400, Phaser.AUTO, '', { preload: preload, create
 - create the player;
 - initialize monsters;
 - initialize the HUD;
-- create the black rectangles used for the progressive level reveal;
+- create the black rectangles used by the progressive level reveal and screen overlays;
 - start the game with the `GameStates.LOAD_INTRODUCTION` state;
 - delegate every frame to `GameController.update()`.
 
@@ -261,7 +262,7 @@ Main responsibilities:
 - display the help/instructions screen;
 - display and remove the game-over logo.
 
-`ScreenManager` still reuses `Level.upperBlackRectangle` for the black screen background, because that graphic object already exists and is used by several legacy sequences. This keeps the refactoring small and preserves the current rendering behaviour.
+`ScreenManager` reuses `LevelRevealSequence.upperBlackRectangle` for the black screen background, because the same fixed-camera graphic object is already used by the reveal and final end-game sequences. This preserves the current rendering behaviour while keeping screen overlay ownership in one place.
 
 The help screen still owns its temporary keyboard callback: pressing any key destroys the help text, clears the black rectangle, and returns to `GameStates.LOAD_INTRODUCTION`.
 
@@ -276,11 +277,11 @@ Main responsibilities:
 - create the monsters associated with the level;
 - manage explosion and reverse-explosion groups;
 - manage the level exit object;
-- progressively reveal the level with two black rectangles;
+- delegate the progressive level reveal to `LevelRevealSequence`;
 - reveal monsters at the beginning of a level;
 - reset some game data.
 
-Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`. Since refactoring step 13, the final congratulations sequence is handled by `EndGameSequence`.
+Since refactoring step 12, the introduction, help, and game-over screens are handled by `ScreenManager` instead of `Level`. Since refactoring step 13, the final congratulations sequence is handled by `EndGameSequence`. Since refactoring step 14, the progressive level reveal is handled by `LevelRevealSequence`.
 
 Important data:
 
@@ -291,7 +292,13 @@ Important data:
 - `monsters`
 - `monstersGroup`
 - `endLevel`
-- `stepDisplayLevel`
+
+Since refactoring step 14, `Level.display()` is now a compatibility-style delegating method:
+
+```js
+Level.display()
+  -> LevelRevealSequence.update()
+```
 
 Since refactoring step 1, the end-of-level transition is no longer implemented directly inside `Level`. The method:
 
@@ -306,6 +313,31 @@ LevelTransition.update()
 ```
 
 Since refactoring steps 7 and 10, raw strings and magic numbers used by `level.js`, `player.js`, `levelTransition.js`, `endGameSequence.js`, and part of `util.js` have been moved to `LevelConstants`. This includes Tiled layer/property names, common tile `name` / `type` values, the key tile index, the player and end-level Y offsets, the default air level, key scoring, level reveal steps, end-level transition values, end-game score conversion values, and screen positions used by `ScreenManager` and the final end-game message.
+
+### `js/levelRevealSequence.js`
+
+Global object responsible for the progressive reveal played before each level starts.
+
+This file was added in refactoring step 14 to move the small reveal state machine out of `Level.display()`.
+
+Main responsibilities:
+
+- create the two fixed-camera black rectangles used by the reveal;
+- make all key tiles visible again before the level starts;
+- shrink the upper and lower black rectangles over several frames;
+- clear the overlay when the reveal is complete;
+- switch the game to `GameStates.START_LEVEL`.
+
+Important data:
+
+- `upperBlackRectangle`
+- `lowerBlackRectangle`
+- `rectangleHeight`
+- `rectangleWidth`
+- `counter`
+- `phase`
+
+`ScreenManager` and `EndGameSequence` also reuse `LevelRevealSequence.upperBlackRectangle` as a simple full-screen black overlay. This is still a legacy-style shared graphic object, but it is now owned by a dedicated sequence object rather than by `Level`.
 
 ### `js/levelTransition.js`
 
@@ -545,12 +577,15 @@ Then `HUD.update()` refreshes the displayed information.
 
 The progressive reveal is handled by:
 
-```js
-Level.display()
+```text
+GameController.updateDisplayLevel()
+  -> Level.display()
+      -> LevelRevealSequence.update()
 ```
 
 Principle:
 
+- `LevelRevealSequence` resets the reveal phase and makes all key tiles visible;
 - two black rectangles hide the map;
 - the rectangles gradually move away;
 - when the rectangles are gone, the state changes to `GameStates.START_LEVEL`;

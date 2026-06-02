@@ -3,20 +3,6 @@ var Level =
   // Current level
   level : LevelConstants.INITIAL_LEVEL,
 
-  // Rectangles which are used to display progressively the map
-  upperBlackRectangle : null,
-  lowerblackRectangle : null,
-
-  rectangleHeight : 0,
-  rectangleWidth : 0,
-
-  // Counter used to set the animation's speed
-  counterDisplayingLevel : LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER,
-
-  // Variable used to run the progressive level reveal sequence.
-  // The end-level and end-game transitions are handled by dedicated objects.
-  stepDisplayLevel : LevelConstants.INITIAL_SEQUENCE_STEP,
-
   // air level of the current level
   airLevel : LevelConstants.DEFAULT_AIR_LEVEL,
 
@@ -42,15 +28,6 @@ var Level =
   resetAirLevel : function()
   {
       this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
-  },
-
-  // Create black rectangles used to display progressively the map
-  createBlackRectangles : function()
-  {
-      this.upperBlackRectangle  = game.add.graphics();
-      this.upperBlackRectangle.fixedToCamera = true;
-      this.lowerblackRectangle  = game.add.graphics();
-      this.lowerblackRectangle.fixedToCamera = true;
   },
 
   initMonsters : function()
@@ -188,59 +165,11 @@ var Level =
 
   },
 
-  // Display progressively the map with two disappearing black rectangles
+  // Display progressively the map with two disappearing black rectangles.
+  // The actual frame-by-frame sequence is handled by LevelRevealSequence.
   display : function()
   {
-  	switch (this.stepDisplayLevel)
-  	{
-  		// Initialize the rectangles and reset the keys
-  		case LevelConstants.DISPLAY_STEP_INITIALIZE:
-
-            this.rectangleHeight = game.camera.height/2;
-            this.rectangleWidth = game.camera.width;
-
-  			// Show again all keys
-  			map.forEach(function(tile)
-  			{
-  				if (tile.index == LevelConstants.TILE_KEY_INDEX) tile.alpha = 1;
-  			});
-
-            this.stepDisplayLevel++;
-  			break;
-
-  		case LevelConstants.DISPLAY_STEP_REVEAL:
-            this.counterDisplayingLevel -= 1;
-
-  			// Draw the upper black background
-            this.upperBlackRectangle.clear();
-            this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-            this.upperBlackRectangle.drawRect(0, 0, game.camera.width, this.rectangleHeight);
-            this.upperBlackRectangle.endFill();
-
-  			// Draw the lower black background
-            this.lowerblackRectangle.clear();
-            this.lowerblackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-            this.lowerblackRectangle.drawRect(0, game.camera.height - this.rectangleHeight, game.camera.width, this.rectangleHeight);
-            this.lowerblackRectangle.endFill();
-
-
-  			if (this.counterDisplayingLevel == 0)
-  			{
-                this.counterDisplayingLevel = LevelConstants.DISPLAY_REVEAL_COUNTER_RESET;
-                this.rectangleHeight -= LevelConstants.DISPLAY_REVEAL_HEIGHT_STEP;
-  			}
-
-  			// If the rectangles are gone, start the game
-  			if (this.rectangleHeight <= 0)
-  			{
-                this.upperBlackRectangle.clear();
-                this.lowerblackRectangle.clear();
-                this.stepDisplayLevel = LevelConstants.INITIAL_SEQUENCE_STEP;
-  				GameController.gameState = GameStates.START_LEVEL;
-  			}
-
-  	}
-
+      LevelRevealSequence.update();
   }
 
 }

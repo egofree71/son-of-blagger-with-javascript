@@ -17,14 +17,14 @@ var ScreenManager =
     /**
      * Display the introduction title screen.
      *
-     * The black background still reuses Level.upperBlackRectangle because that
-     * graphic object already exists and is also used by other screen sequences.
+     * The black background reuses LevelRevealSequence.upperBlackRectangle because the
+     * same fixed graphic object is already used by other screen sequences.
      */
     displayIntroduction : function()
     {
         // Draw a black rectangle behind the title.
-        Level.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        Level.upperBlackRectangle.drawRect(0, 0, game.camera.width,  game.camera.height);
+        LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
+        LevelRevealSequence.upperBlackRectangle.drawRect(0, 0, game.camera.width,  game.camera.height);
 
         // Display the title.
         this.introductionLogo = game.add.sprite(LevelConstants.TITLE_X, LevelConstants.TITLE_Y, LevelConstants.SPRITE_TITLE);
@@ -62,8 +62,8 @@ var ScreenManager =
     displayInstructions : function()
     {
         // Draw a black rectangle.
-        Level.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        Level.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
+        LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
+        LevelRevealSequence.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
 
         var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
         font.setText ("Players control Slippery Sid, who is an\n" +
@@ -91,7 +91,7 @@ var ScreenManager =
         game.input.keyboard.onPressCallback = function(key)
         {
             image.destroy();
-            Level.upperBlackRectangle.clear();
+            LevelRevealSequence.upperBlackRectangle.clear();
             game.input.keyboard.onPressCallback = null;
 
             GameController.gameState = GameStates.LOAD_INTRODUCTION;

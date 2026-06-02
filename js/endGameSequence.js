@@ -81,8 +81,8 @@ var EndGameSequence =
         this.phase = LevelConstants.END_GAME_STEP_SCALE_MESSAGE;
 
         // Draw a black rectangle.
-        Level.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        Level.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
+        LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
+        LevelRevealSequence.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
 
         var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
         font.setText (LevelConstants.END_GAME_MESSAGE_TEXT, true, 1 ,18);
@@ -119,7 +119,7 @@ var EndGameSequence =
 
         if (this.counter == 0)
         {
-            Level.upperBlackRectangle.clear();
+            LevelRevealSequence.upperBlackRectangle.clear();
 
             if (this.congratulationsImage)
                 this.congratulationsImage.destroy();

@@ -111,8 +111,8 @@ function create()
 	// Initialize HUD
 	HUD.init();
 
-	// Create the black rectangles used to display progressively the map
-	Level.createBlackRectangles();
+	// Create the black rectangles used by the level reveal and screen overlays.
+	LevelRevealSequence.createBlackRectangles();
 
 	GameController.gameState = GameStates.LOAD_INTRODUCTION;
 }
