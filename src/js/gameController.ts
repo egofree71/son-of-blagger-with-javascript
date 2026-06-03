@@ -4,7 +4,7 @@ import { ScreenManager } from "./screenManager.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
 import { HUD } from "./HUD.ts";
 import { Player } from "./player.ts";
-import { Level } from "./level.js";
+import { Level } from "./level.ts";
 
 export const GameController =
 {

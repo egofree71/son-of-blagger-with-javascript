@@ -5,11 +5,11 @@ declare global {
   // globals by src/js/main.js / Phaser itself. These loose declarations keep the
   // first TypeScript migration pragmatic: they describe the current architecture
   // without forcing a full Phaser 2 type model yet.
-  const game: any;
-  const map: any;
-  const layer: any;
-  const keyPressed: any;
-  const vanishingPlatformGroup: any;
+  var game: any;
+  var map: any;
+  var layer: any;
+  var keyPressed: any;
+  var vanishingPlatformGroup: any;
 
   interface Window {
     game: any;

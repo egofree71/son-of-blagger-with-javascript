@@ -7,7 +7,7 @@ import { LevelObjectLoader } from "./levelObjectLoader.ts";
 import { LevelTransition } from "./levelTransition.ts";
 import { Player } from "./player.ts";
 import { HUD } from "./HUD.ts";
-import { GameController } from "./gameController.js";
+import { GameController } from "./gameController.ts";
 
 export const Level =
 {
@@ -110,7 +110,7 @@ export const Level =
       // If there is a new hi-score, store it in the local storage
       if (GameController.score > GameController.hiScore)
       {
-            localStorage.setItem('hiScore', GameController.score);
+            localStorage.setItem('hiScore', String(GameController.score));
   	       GameController.hiScore = GameController.score;
       }
 
