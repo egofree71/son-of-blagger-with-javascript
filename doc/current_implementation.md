@@ -66,6 +66,26 @@ To preview that production build locally:
 npm run preview
 ```
 
+## Deployment to GitHub Pages
+
+The production site is deployed through GitHub Actions.
+
+The workflow lives in:
+
+```text
+.github/workflows/deploy.yml
+```
+
+On each push to `master`, GitHub Actions installs dependencies with `npm ci`, runs `npm run build`, uploads the generated `dist/` folder as a GitHub Pages artifact, and deploys that artifact to GitHub Pages.
+
+The repository Pages setting should use:
+
+```text
+Settings -> Pages -> Build and deployment -> Source -> GitHub Actions
+```
+
+The generated `dist/` folder is build output and should not be edited by hand or committed.
+
 ## Project structure
 
 The current Vite-based layout is:
@@ -257,7 +277,7 @@ These are still part of the current architecture and should be treated as shared
 
 ## `src/js/gameInitializer.js`
 
-`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameInitializer` during the migration.
+`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback. It is exported as an ES module and imported by `src/js/main.js`.
 
 Main responsibilities:
 
@@ -275,7 +295,7 @@ Main responsibilities:
 
 ## `src/js/gameController.js`
 
-`GameController` is the high-level state orchestrator. It is exported as an ES module and imported by `src/js/main.js`, while remaining available as `window.GameController` during the migration.
+`GameController` is the high-level state orchestrator. It is exported as an ES module and imported by `src/js/main.js`.
 
 Main data:
 
@@ -910,11 +930,11 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ### Global state
 
-The project still relies on several global gameplay objects and Phaser globals, even though constants, shared helpers, player support helpers, and `Level` now use explicit ES module imports. This compatibility layer is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to explicit imports, TypeScript, or a modern Phaser scene structure.
+The project no longer exposes core gameplay objects through `window.*` compatibility mirrors. It still relies on a small shared Phaser runtime context created in `src/js/main.js`: `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`. This shared context is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to an explicit runtime context, TypeScript, or a modern Phaser scene structure.
 
 ### Script order
 
-Because several gameplay runtime objects are still exposed globally, import order in `src/main.js` is still part of the transitional architecture. Adding a new global runtime object usually requires importing its file at the correct position in `src/main.js`. Constants and shared helper dependencies should now be imported directly by the files that use them.
+Runtime file order is now mostly handled by ES module imports. New dependencies should be imported explicitly by the files that use them. `src/main.js` only connects Vite to the Phaser bootstrap in `src/js/main.js`.
 
 ### Manual collisions
 
@@ -999,9 +1019,14 @@ After any small architecture change, test at least:
 - game-over screen;
 - no red JavaScript error in the browser console.
 
-To quickly test the transition to the next level from the browser console:
+To quickly test the transition to the next level from the browser console, import the ES modules explicitly:
 
 ```js
+const { Level } = await import('/src/js/level.js');
+const { Data } = await import('/src/js/data.js');
+const { GameStates } = await import('/src/js/gameStates.js');
+const { GameController } = await import('/src/js/gameController.js');
+
 Level.keysTaken = Data.levels[Level.level - 1][0];
 GameController.gameState = GameStates.END_LEVEL;
 ```
