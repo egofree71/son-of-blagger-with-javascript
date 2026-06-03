@@ -1,16 +1,29 @@
 import { HudConstants } from "./hudConstants.ts";
 
+export interface TiledObject {
+	x: number;
+	y: number;
+	width?: number;
+	height?: number;
+	properties: Record<string, any>;
+}
+
+export interface MonsterTileProperties {
+	type?: string;
+	[key: string]: any;
+}
+
 /**
  * Shared helper functions that are not gameplay collision checks.
  *
  * Util is now exported as an ES module so files can depend on it explicitly.
- * It is still mirrored on window during the migration to keep the browser
- * console and any remaining legacy-style code working as before.
+ * It is still intentionally pragmatic: Phaser 2.3 objects are typed loosely
+ * while the migration is still focused on preserving gameplay behavior.
  */
 export const Util =
 {
 	// Create sprites from a given tile and put them into the group
-	createSpritesFromTiles : function(tileIndex, spriteSheet, animationSpeed)
+	createSpritesFromTiles : function(tileIndex: number, spriteSheet: string, animationSpeed: number): any
 	{
 		var group = game.add.group();
 		group.enableBody = true;
@@ -25,11 +38,11 @@ export const Util =
 	},
 
 	// Find objects in a given layer that contains a property called "type" equal to a certain value
-	findObjectsByProperty : function(map, propertyName, propertyValue, layer)
+	findObjectsByProperty : function(tileMap: any, propertyName: string, propertyValue: any, layerName: string): TiledObject[]
 	{
-		var result = [];
+		var result: TiledObject[] = [];
 
-		map.objects[layer].forEach(function(object)
+		tileMap.objects[layerName].forEach(function(object: TiledObject)
 		{
 			if (object.properties[propertyName] == propertyValue)
 				result.push(object);
@@ -39,9 +52,9 @@ export const Util =
 	},
 
 	// In the monsters tileset, return the tile properties of a given type
-	getMonstersTileProperties : function(type)
+	getMonstersTileProperties : function(type: string): MonsterTileProperties | undefined
 	{
-		var tileProperties = map.tilesets[1].tileProperties;
+		var tileProperties: Record<string, MonsterTileProperties> = map.tilesets[1].tileProperties;
 
 		// Loop through all properties of the tileset
 		for (var key in tileProperties)
@@ -51,7 +64,7 @@ export const Util =
 	},
 
 	// Draw a text with the 'blagger' font
-	drawFontText : function(text, x, y, color)
+	drawFontText : function(text: string, x: number, y: number, color?: number): any
 	{
 		var charWidth = HudConstants.CHAR_WIDTH;
 
