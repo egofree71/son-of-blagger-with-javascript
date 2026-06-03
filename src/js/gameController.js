@@ -1,5 +1,5 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
 import { ScreenManager } from "./screenManager.js";
 import { EndGameSequence } from "./endGameSequence.js";
 import { HUD } from "./HUD.js";

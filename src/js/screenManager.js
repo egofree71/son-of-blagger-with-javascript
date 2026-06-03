@@ -1,5 +1,5 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";
 import { GameController } from "./gameController.js";

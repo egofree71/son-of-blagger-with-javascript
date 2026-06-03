@@ -1,4 +1,4 @@
-import { LevelConstants } from "./levelConstants.js";
+import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.js";
 import { Monster } from "./monster.js";
 

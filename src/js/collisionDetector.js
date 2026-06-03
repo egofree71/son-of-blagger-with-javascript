@@ -1,4 +1,4 @@
-import { LevelConstants } from "./levelConstants.js";
+import { LevelConstants } from "./levelConstants.ts";
 import { Level } from "./level.js";
 
 /**

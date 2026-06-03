@@ -1,4 +1,4 @@
-import { HudConstants } from "./hudConstants.js";
+import { HudConstants } from "./hudConstants.ts";
 
 /**
  * Shared helper functions that are not gameplay collision checks.

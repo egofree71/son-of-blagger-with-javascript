@@ -1,6 +1,6 @@
-import { GameStates } from "./gameStates.js";
-import { PlayerStates } from "./playerStates.js";
-import { LevelConstants } from "./levelConstants.js";
+import { GameStates } from "./gameStates.ts";
+import { PlayerStates } from "./playerStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.js";
 import { PlayerMovement } from "./playerMovement.js";
 import { PlayerInteractions } from "./playerInteractions.js";

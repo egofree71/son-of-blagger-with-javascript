@@ -1,5 +1,5 @@
-import { PlayerStates } from "./playerStates.js";
-import { LevelConstants } from "./levelConstants.js";
+import { PlayerStates } from "./playerStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.js";
 import { Data } from "./data.js";
 

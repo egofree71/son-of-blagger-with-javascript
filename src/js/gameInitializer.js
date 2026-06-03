@@ -1,4 +1,4 @@
-import { GameStates } from "./gameStates.js";
+import { GameStates } from "./gameStates.ts";
 import { GameController } from "./gameController.js";
 import { Util } from "./util.js";
 import { LevelRevealSequence } from "./levelRevealSequence.js";

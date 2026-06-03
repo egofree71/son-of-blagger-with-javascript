@@ -82,5 +82,11 @@ export const HudConstants =
     FONT_KEY : "blaggerFont",
     FONT_CHAR_WIDTH : 16,
     FONT_CHAR_HEIGHT : 16
-};
+} as const;
 
+export type HudLabel =
+    | typeof HudConstants.LABEL_AIR
+    | typeof HudConstants.LABEL_LIVES
+    | typeof HudConstants.LABEL_SCORE
+    | typeof HudConstants.LABEL_LEVEL
+    | typeof HudConstants.LABEL_HI_SCORE;

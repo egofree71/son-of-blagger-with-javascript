@@ -1,5 +1,5 @@
-import { GameStates } from "./gameStates.js";
-import { MonsterConstants } from "./monsterConstants.js";
+import { GameStates } from "./gameStates.ts";
+import { MonsterConstants } from "./monsterConstants.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 

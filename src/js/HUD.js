@@ -1,5 +1,5 @@
-import { GameStates } from "./gameStates.js";
-import { HudConstants } from "./hudConstants.js";
+import { GameStates } from "./gameStates.ts";
+import { HudConstants } from "./hudConstants.ts";
 import { Data } from "./data.js";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";

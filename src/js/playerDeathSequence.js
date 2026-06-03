@@ -1,5 +1,5 @@
-import { GameStates } from "./gameStates.js";
-import { PlayerStates } from "./playerStates.js";
+import { GameStates } from "./gameStates.ts";
+import { PlayerStates } from "./playerStates.ts";
 import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
