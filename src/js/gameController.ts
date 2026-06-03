@@ -265,7 +265,41 @@ class GameControllerController
      */
     private updateEndGame(): void
     {
-        EndGameSequence.update();
+        const endGameResult = EndGameSequence.update(Level.airLevel);
+
+        if (endGameResult.airDecreaseAmount > 0)
+            Level.decreaseAir(endGameResult.airDecreaseAmount);
+
+        if (endGameResult.scoreDelta > 0)
+        {
+            this.addScore(endGameResult.scoreDelta);
+            HUD.displayScore(this.score);
+        }
+
+        if (endGameResult.airChanged)
+            HUD.displayAirLevel(Level.airLevel);
+
+        if (endGameResult.airCleared)
+            HUD.clearAirLevel();
+
+        if (endGameResult.airResetRequired)
+            Level.resetAirLevel();
+
+        if (endGameResult.finished)
+            this.returnToIntroductionAfterEndGame();
+    }
+
+    /**
+     * Applies the global consequences after the final congratulations sequence finishes.
+     */
+    private returnToIntroductionAfterEndGame(): void
+    {
+        this.updateHiScoreIfNeeded();
+        this.resetScoreAndLives();
+        Level.resetGame();
+        HUD.update(this.lives, this.score, this.hiScore, Level.level);
+        HUD.displayAirLevel(Level.airLevel);
+        this.loadIntroduction();
     }
 
     /**

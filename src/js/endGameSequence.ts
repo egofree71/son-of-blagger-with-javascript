@@ -1,8 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
-import { HUD } from "./HUD.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
 
 type EndGamePhase =
     | typeof LevelConstants.END_GAME_STEP_CONVERT_AIR
@@ -10,25 +7,44 @@ type EndGamePhase =
     | typeof LevelConstants.END_GAME_STEP_SCALE_MESSAGE
     | typeof LevelConstants.END_GAME_STEP_WAIT_THEN_RESET;
 
+export interface EndGameSequenceResult
+{
+    /** Score points earned during this frame, usually while converting air. */
+    scoreDelta: number;
+
+    /** Air amount to remove from the current level during this frame. */
+    airDecreaseAmount: number;
+
+    /** True when the visible air bar should be redrawn from Level.airLevel. */
+    airChanged: boolean;
+
+    /** True when the air bar should be cleared visually. */
+    airCleared: boolean;
+
+    /** True when the level air value should be reset after conversion finishes. */
+    airResetRequired: boolean;
+
+    /** True when the final sequence has completed and the game should return to the title screen. */
+    finished: boolean;
+}
+
 /**
- * Handles the final sequence played after the last level has been completed.
+ * Handles the final visual sequence played after the last level has been completed.
  *
- * This logic used to live in Level.endGame(). It is now isolated for the same
- * reason as LevelTransition: the sequence is a small frame-by-frame state
- * machine, and keeping it outside Level makes the level object easier to read.
- *
- * The behaviour, scoring values and timings are intentionally preserved.
+ * The sequence no longer updates score, HUD, Level or GameController directly.
+ * It reports what happened during the current frame through EndGameSequenceResult,
+ * and GameController applies the corresponding gameplay/runtime consequences.
  */
 class EndGameSequenceController
 {
     // Current phase of the final sequence.
-    phase: EndGamePhase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
+    private phase: EndGamePhase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
 
     // Image containing the congratulations message.
-    congratulationsImage: any | null = null;
+    private congratulationsImage: any | null = null;
 
     // Generic frame counter used by the final wait phase.
-    counter = 0;
+    private counter = 0;
 
     /**
      * Resets the sequence to its initial state.
@@ -43,52 +59,51 @@ class EndGameSequenceController
     /**
      * Advances the final sequence by one frame.
      */
-    update(): void
+    update(remainingAirLevel: number): EndGameSequenceResult
     {
         switch(this.phase)
         {
             case LevelConstants.END_GAME_STEP_CONVERT_AIR:
-                this.convertAirToScore();
-                break;
+                return this.convertAirToScore(remainingAirLevel);
 
             case LevelConstants.END_GAME_STEP_SHOW_MESSAGE:
-                this.showCongratulationsMessage();
-                break;
+                return this.showCongratulationsMessage();
 
             case LevelConstants.END_GAME_STEP_SCALE_MESSAGE:
-                this.scaleCongratulationsMessage();
-                break;
+                return this.scaleCongratulationsMessage();
 
             case LevelConstants.END_GAME_STEP_WAIT_THEN_RESET:
-                this.waitThenReturnToIntroduction();
-                break;
+                return this.waitThenReturnToIntroduction();
         }
     }
 
     /**
      * Converts the remaining air into score before displaying the final message.
      */
-    private convertAirToScore(): void
+    private convertAirToScore(remainingAirLevel: number): EndGameSequenceResult
     {
-        if (Level.airLevel > 0)
+        const result = this.createResult();
+
+        if (remainingAirLevel > 0)
         {
-            Level.decreaseAir(LevelConstants.END_GAME_AIR_DECREMENT);
-            GameController.addScore(LevelConstants.END_GAME_SCORE_INCREMENT);
-            HUD.displayScore(GameController.score);
-            HUD.displayAirLevel(Level.airLevel);
+            result.airDecreaseAmount = LevelConstants.END_GAME_AIR_DECREMENT;
+            result.scoreDelta = LevelConstants.END_GAME_SCORE_INCREMENT;
+            result.airChanged = true;
         }
         else
         {
-            HUD.clearAirLevel();
-            Level.resetAirLevel();
+            result.airCleared = true;
+            result.airResetRequired = true;
             this.phase = LevelConstants.END_GAME_STEP_SHOW_MESSAGE;
         }
+
+        return result;
     }
 
     /**
      * Displays the congratulations message on a black background.
      */
-    private showCongratulationsMessage(): void
+    private showCongratulationsMessage(): EndGameSequenceResult
     {
         this.phase = LevelConstants.END_GAME_STEP_SCALE_MESSAGE;
 
@@ -108,25 +123,31 @@ class EndGameSequenceController
         this.congratulationsImage.scale.y = LevelConstants.END_GAME_INITIAL_SCALE;
 
         this.counter = LevelConstants.END_GAME_MESSAGE_WAIT_COUNTER;
+
+        return this.createResult();
     }
 
     /**
      * Scales the congratulations message up until it reaches its preserved size.
      */
-    private scaleCongratulationsMessage(): void
+    private scaleCongratulationsMessage(): EndGameSequenceResult
     {
         this.congratulationsImage.scale.x += LevelConstants.END_GAME_SCALE_INCREMENT;
         this.congratulationsImage.scale.y += LevelConstants.END_GAME_SCALE_INCREMENT;
 
         if (this.congratulationsImage.scale.x > LevelConstants.END_GAME_MAX_SCALE)
             this.phase = LevelConstants.END_GAME_STEP_WAIT_THEN_RESET;
+
+        return this.createResult();
     }
 
     /**
-     * Waits briefly, clears the message, resets the game and returns to the title screen.
+     * Waits briefly, clears the message, and reports that the final sequence is done.
      */
-    private waitThenReturnToIntroduction(): void
+    private waitThenReturnToIntroduction(): EndGameSequenceResult
     {
+        const result = this.createResult();
+
         this.counter--;
 
         if (this.counter == 0)
@@ -136,13 +157,25 @@ class EndGameSequenceController
             if (this.congratulationsImage)
                 this.congratulationsImage.destroy();
 
-            GameController.updateHiScoreIfNeeded();
-            GameController.resetScoreAndLives();
-            Level.resetGame();
-            HUD.update(GameController.lives, GameController.score, GameController.hiScore, Level.level);
-            HUD.displayAirLevel(Level.airLevel);
-            GameController.loadIntroduction();
+            result.finished = true;
         }
+
+        return result;
+    }
+
+    /**
+     * Creates a neutral result for one sequence frame.
+     */
+    private createResult(): EndGameSequenceResult
+    {
+        return {
+            scoreDelta: 0,
+            airDecreaseAmount: 0,
+            airChanged: false,
+            airCleared: false,
+            airResetRequired: false,
+            finished: false
+        };
     }
 }
 
