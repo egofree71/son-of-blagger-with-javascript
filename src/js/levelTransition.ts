@@ -1,7 +1,7 @@
 import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { Player } from "./player.js";
+import { Player } from "./player.ts";
 import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";

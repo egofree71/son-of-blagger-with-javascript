@@ -5,7 +5,7 @@ import { EndGameSequence } from "./endGameSequence.ts";
 import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
 import { LevelTransition } from "./levelTransition.ts";
-import { Player } from "./player.js";
+import { Player } from "./player.ts";
 import { HUD } from "./HUD.js";
 import { GameController } from "./gameController.js";
 

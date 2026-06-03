@@ -1,7 +1,21 @@
 import { PlayerStates } from "./playerStates.ts";
+import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
 import { Data } from "./data.ts";
+
+type NullablePlayerDirection = PlayerDirection | null;
+
+interface MovementDirection {
+    horizontal: NullablePlayerDirection;
+    vertical: NullablePlayerDirection;
+}
+
+export interface PlayerMovementResult {
+    x: number;
+    y: number;
+    checkInteractions: boolean;
+}
 
 /**
  * PlayerMovement owns the frame-by-frame movement rules for Slippery Sid.
@@ -65,14 +79,14 @@ export const PlayerMovement =
      * @param {object} player The global Player object.
      * @returns {{x: number, y: number, checkInteractions: boolean}}
      */
-    update : function(player)
+    update : function(player: any): PlayerMovementResult
     {
-        var direction = {
+        const direction: MovementDirection = {
             horizontal : null,
             vertical : null
         };
 
-        var startPosition = {
+        const startPosition = {
             x : player.playerSprite.body.x,
             y : player.playerSprite.body.y
         };
@@ -118,7 +132,7 @@ export const PlayerMovement =
      * solid ground, Player.kill() is called and the death animation uses the
      * white falling sprite.
      */
-    updateDeadlyFall : function(player, x, y)
+    updateDeadlyFall : function(player: any, x: number, y: number): void
     {
         player.playerSprite.body.y += this.MOVE_STEP;
 
@@ -134,7 +148,7 @@ export const PlayerMovement =
      * ground. Jump direction is remembered at jump start so the player keeps the
      * same horizontal impulse during the jump path.
      */
-    handleGroundInput : function(player, direction)
+    handleGroundInput : function(player: any, direction: MovementDirection): void
     {
         if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR))
         {
@@ -170,7 +184,7 @@ export const PlayerMovement =
      * Without this reset, switching from one direction to the other can keep the
      * previous animation frame/counter and make the first frame look wrong.
      */
-    resetAnimationIfChangingDirection : function(player, previousAnimation, newAnimation)
+    resetAnimationIfChangingDirection : function(player: any, previousAnimation: PlayerAnimationName, newAnimation: PlayerAnimationName): void
     {
         if (player.playerSprite.animations.currentAnim.name == previousAnimation)
         {
@@ -192,7 +206,7 @@ export const PlayerMovement =
      * JUMP_FALL_START_INDEX, at which point fallHeight is counted so a very long
      * drop after a jump can still become deadly.
      */
-    updateJump : function(player, direction, x, y)
+    updateJump : function(player: any, direction: MovementDirection, x: number, y: number): void
     {
         if (player.jumpingDirection == PlayerStates.LEFT)
             player.playLeft();
@@ -238,7 +252,7 @@ export const PlayerMovement =
      * This includes slides, falling, conveyors, ladders, and stopping the walking
      * animation when no horizontal key is pressed.
      */
-    updateGroundAndEnvironment : function(player, direction, x, y)
+    updateGroundAndEnvironment : function(player: any, direction: MovementDirection, x: number, y: number): void
     {
         if (this.isOnTileByName(player, x, y, LevelConstants.TILE_NAME_LEFT_SLIDE, this.SLIDE_PROBE_Y_OFFSET))
         {
@@ -272,7 +286,7 @@ export const PlayerMovement =
      * Vanishing platforms are treated as temporary ground while their sprite still
      * collides with the player's foot line.
      */
-    updateFalling : function(player, direction, x, y)
+    updateFalling : function(player: any, direction: MovementDirection, x: number, y: number): void
     {
         if (this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, false) == false &&
             CollisionDetector.collisionLineWithVanishingPlatform(
@@ -301,7 +315,7 @@ export const PlayerMovement =
      * Walking against a conveyor cancels horizontal movement for the frame. Not
      * pressing against it makes the conveyor move the player automatically.
      */
-    applyConveyorBelts : function(player, direction, x, y)
+    applyConveyorBelts : function(player: any, direction: MovementDirection, x: number, y: number): void
     {
         if (this.isOnTileByName(player, x, y, LevelConstants.TILE_NAME_CONVEYOR_RIGHT, 0))
         {
@@ -327,7 +341,7 @@ export const PlayerMovement =
      * environment effects, and collision blocking separated while preserving the
      * original one-pixel movement style.
      */
-    blockInvalidMovement : function(player, direction, x, y)
+    blockInvalidMovement : function(player: any, direction: MovementDirection, x: number, y: number): void
     {
         if (direction.vertical == PlayerStates.UP &&
             CollisionDetector.horizontalCollisionLine(
@@ -368,7 +382,7 @@ export const PlayerMovement =
     /**
      * Applies the final one-pixel movement selected for this frame.
      */
-    applyMovement : function(player, direction)
+    applyMovement : function(player: any, direction: MovementDirection): void
     {
         if (direction.horizontal == PlayerStates.RIGHT)
             player.playerSprite.body.x += this.MOVE_STEP;
@@ -388,7 +402,7 @@ export const PlayerMovement =
      *
      * Landing can happen on a solid tile, a slide tile, or a vanishing platform.
      */
-    isLandingAfterJump : function(player, x, y)
+    isLandingAfterJump : function(player: any, x: number, y: number): boolean
     {
         return this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, true) ||
             this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SLIDE, true) ||
@@ -401,7 +415,7 @@ export const PlayerMovement =
     /**
      * Tests the short horizontal foot line against tiles of a given type.
      */
-    hasGroundBelow : function(player, x, y, tileType, onTop)
+    hasGroundBelow : function(player: any, x: number, y: number, tileType: string, onTop: boolean): boolean
     {
         return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
@@ -415,7 +429,7 @@ export const PlayerMovement =
     /**
      * Tests whether the player is standing on a tile with a specific Tiled name.
      */
-    isOnTileByName : function(player, x, y, tileName, yOffset)
+    isOnTileByName : function(player: any, x: number, y: number, tileName: string, yOffset: number): boolean
     {
         return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
@@ -432,7 +446,7 @@ export const PlayerMovement =
      * The rectangle is intentionally located near the player's feet/body rather
      * than covering the full sprite. This reproduces the existing ladder behavior.
      */
-    isOnLadder : function(player, x, y)
+    isOnLadder : function(player: any, x: number, y: number): boolean
     {
         return CollisionDetector.collisionRectangle(
             x + this.LADDER_LEFT_OFFSET,
@@ -449,7 +463,7 @@ export const PlayerMovement =
      * The white sprite is used only for this fall-to-death sequence, matching the
      * behavior of the original implementation.
      */
-    startDeadlyFall : function(player)
+    startDeadlyFall : function(player: any): void
     {
         player.deadlyFall = true;
         player.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, player.playerSprite.animations.currentAnim.frame);

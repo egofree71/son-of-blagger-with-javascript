@@ -3,7 +3,7 @@ import { LevelConstants } from "./levelConstants.ts";
 import { ScreenManager } from "./screenManager.js";
 import { EndGameSequence } from "./endGameSequence.ts";
 import { HUD } from "./HUD.js";
-import { Player } from "./player.js";
+import { Player } from "./player.ts";
 import { Level } from "./level.js";
 
 export const GameController =

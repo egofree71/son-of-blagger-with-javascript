@@ -25,7 +25,7 @@ export const CollisionDetector =
     lastTileHit : null as TileWithProperties | null,
 
     // Check if there are some tiles with a given property on a horizontal line.
-    horizontalCollisionLine : function(xStart: number, xEnd: number, yPosition: number, propertyName: string, propertyValue: any, onTop: boolean): boolean
+    horizontalCollisionLine : function(xStart: number, xEnd: number, yPosition: number, propertyName: string, propertyValue: any, onTop?: boolean): boolean
     {
         var collision = false;
 
@@ -50,7 +50,7 @@ export const CollisionDetector =
     },
 
     // Check if there are some tiles with a given property on a vertical line.
-    verticalCollisionLine : function(yStart: number, yEnd: number, xPosition: number, propertyName: string, propertyValue: any, onTop: boolean): boolean
+    verticalCollisionLine : function(yStart: number, yEnd: number, xPosition: number, propertyName: string, propertyValue: any, onTop?: boolean): boolean
     {
         var collision = false;
 
