@@ -236,8 +236,8 @@ class LevelTransitionController
         {
             Level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
             GameController.addScore(LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT);
-            HUD.displayScore();
-            HUD.displayAirLevel();
+            HUD.displayScore(GameController.score);
+            HUD.displayAirLevel(Level.airLevel);
         }
         else
         {
@@ -317,7 +317,7 @@ class LevelTransitionController
         if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
             Level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
-            HUD.displayAirLevel();
+            HUD.displayAirLevel(Level.airLevel);
         }
         else
         {
@@ -337,7 +337,7 @@ class LevelTransitionController
     private loadNextLevel(): void
     {
         Level.load();
-        HUD.update();
+        HUD.update(GameController.lives, GameController.score, GameController.hiScore, Level.level);
 
         // On every new level, the user gets a bonus man.
         Level.enableBonusMan();

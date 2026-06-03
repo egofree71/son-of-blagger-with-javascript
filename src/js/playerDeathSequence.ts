@@ -67,9 +67,9 @@ class PlayerDeathSequenceController
     {
         this.consumeBonusManOrLife();
 
-        HUD.displayLives();
+        HUD.displayLives(GameController.lives);
         Level.resetAirLevel();
-        HUD.displayAirLevel();
+        HUD.displayAirLevel(Level.airLevel);
 
         if (GameController.hasNoLives())
             GameController.showGameOver();

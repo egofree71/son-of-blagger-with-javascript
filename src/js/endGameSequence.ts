@@ -74,8 +74,8 @@ class EndGameSequenceController
         {
             Level.decreaseAir(LevelConstants.END_GAME_AIR_DECREMENT);
             GameController.addScore(LevelConstants.END_GAME_SCORE_INCREMENT);
-            HUD.displayScore();
-            HUD.displayAirLevel();
+            HUD.displayScore(GameController.score);
+            HUD.displayAirLevel(Level.airLevel);
         }
         else
         {
@@ -139,7 +139,8 @@ class EndGameSequenceController
             GameController.updateHiScoreIfNeeded();
             GameController.resetScoreAndLives();
             Level.resetGame();
-            HUD.displayAirLevel();
+            HUD.update(GameController.lives, GameController.score, GameController.hiScore, Level.level);
+            HUD.displayAirLevel(Level.airLevel);
             GameController.loadIntroduction();
         }
     }

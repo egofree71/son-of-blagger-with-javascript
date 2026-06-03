@@ -66,7 +66,7 @@ export const PlayerInteractions =
 
             // Increase the score.
             GameController.addScore(LevelConstants.KEY_SCORE_INCREMENT);
-            HUD.displayScore();
+            HUD.displayScore(GameController.score);
 
             // Hide the key tile and force the tilemap layer to redraw.
             CollisionDetector.lastTileHit.alpha = 0;

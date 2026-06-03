@@ -257,7 +257,7 @@ class GameControllerController
     private updateLoadLevel(): void
     {
         Level.load();
-        HUD.update();
+        HUD.update(this.lives, this.score, this.hiScore, Level.level);
         this.displayLevel();
     }
 
@@ -301,6 +301,7 @@ class GameControllerController
         this.updateHiScoreIfNeeded();
         this.resetScoreAndLives();
         Level.resetGame();
+        HUD.update(this.lives, this.score, this.hiScore, Level.level);
         ScreenManager.displayGameOver();
 
         const controller = this;
@@ -327,10 +328,10 @@ class GameControllerController
      */
     private updatePlaying(): void
     {
-        HUD.updateAirLevel();
-        HUD.displayBonusMan();
+        this.updateAirLevelDuringGameplay();
+        HUD.displayBonusMan(Level.bonusMan);
 
-        // HUD.updateAirLevel() can kill the player and leave PLAYING during this frame.
+        // updateAirLevelDuringGameplay() can kill the player and leave PLAYING during this frame.
         // Preserve the previous behaviour: monsters are asked to update, but Level
         // skips their movement if gameplay has already stopped.
         Level.updateMonsters(this.isPlaying());
@@ -338,6 +339,26 @@ class GameControllerController
         if (!this.isPlaying()) return;
 
         Player.update();
+    }
+
+    /**
+     * Handles the gameplay rule that consumes air and kills the player when air
+     * reaches zero. HUD only owns the visual depletion counter and rendering.
+     */
+    private updateAirLevelDuringGameplay(): void
+    {
+        const airDecreaseAmount = HUD.consumeAirDecreaseAmount();
+
+        if (airDecreaseAmount > 0)
+            Level.decreaseAir(airDecreaseAmount);
+
+        if (Level.airLevel <= 0)
+        {
+            Player.kill();
+            return;
+        }
+
+        HUD.displayAirLevel(Level.airLevel);
     }
 }
 

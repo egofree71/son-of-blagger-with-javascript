@@ -161,7 +161,7 @@ export const GameInitializer =
      */
     initializeHud : function()
     {
-        HUD.init();
+        HUD.init(GameController.lives, GameController.score, Level.level, GameController.hiScore, Level.airLevel);
     },
 
     /**

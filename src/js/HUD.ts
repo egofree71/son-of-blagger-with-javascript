@@ -1,19 +1,12 @@
 import { HudConstants } from "./hudConstants.ts";
 import { Data } from "./data.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
-import { Player } from "./player.ts";
 
 /**
  * Handles the lower status area of the game.
  *
- * The public API is intentionally unchanged: the rest of the game still imports
- * the exported `HUD` singleton and calls methods such as `HUD.init()`,
- * `HUD.updateAirLevel()` or `HUD.displayScore()`.
- *
- * Internally, the previous object literal has been replaced by a class so the
- * HUD state is grouped in one explicit runtime object instead of a large bag of
- * properties separated by commas.
+ * HUD is now limited to display responsibilities and HUD-specific counters.
+ * It no longer imports Level, Player or GameController directly. Runtime values
+ * such as score, lives, current level and air are passed in by the caller.
  */
 class HUDController
 {
@@ -44,7 +37,7 @@ class HUDController
      * Called once during Phaser create(), after the level and controller state
      * have been initialized.
      */
-    init(): void
+    init(lives: number, score: number, levelNumber: number, hiScore: number, airLevel: number): void
     {
         // Initialize HUD.
         game.camera.height = 200;
@@ -69,7 +62,7 @@ class HUDController
         // Draw air level.
         this.airLevelRectangle  = game.add.graphics();
         this.airLevelRectangle.beginFill(HudConstants.COLOR_BLACK, HudConstants.OPAQUE_ALPHA);
-        this.airLevelRectangle.drawRect(this.charWidth * HudConstants.AIR_BAR_LEFT_CHAR + HudConstants.AIR_BAR_INNER_X_OFFSET, game.camera.height + this.charWidth * HudConstants.AIR_BAR_Y_CHAR + HudConstants.AIR_BAR_INNER_Y_OFFSET, Level.airLevel, this.charWidth - HudConstants.AIR_BAR_INNER_HEIGHT_REDUCTION);
+        this.airLevelRectangle.drawRect(this.charWidth * HudConstants.AIR_BAR_LEFT_CHAR + HudConstants.AIR_BAR_INNER_X_OFFSET, game.camera.height + this.charWidth * HudConstants.AIR_BAR_Y_CHAR + HudConstants.AIR_BAR_INNER_Y_OFFSET, airLevel, this.charWidth - HudConstants.AIR_BAR_INNER_HEIGHT_REDUCTION);
         this.airLevelRectangle.endFill();
         this.airLevelRectangle.fixedToCamera = true;
 
@@ -80,45 +73,45 @@ class HUDController
         this.bonusManSprite.fixedToCamera = true;
 
         this.drawText(HudConstants.LABEL_LIVES, HudConstants.LIVES_LABEL_X, HudConstants.LIVES_LABEL_Y, HudConstants.COLOR_GREY);
-        this.HUDLives = this.drawText((HudConstants.TWO_DIGITS_PADDING + GameController.lives).substr(HudConstants.TWO_DIGITS_LENGTH), HudConstants.LIVES_VALUE_X, HudConstants.LIVES_VALUE_Y);
+        this.HUDLives = this.drawText((HudConstants.TWO_DIGITS_PADDING + lives).substr(HudConstants.TWO_DIGITS_LENGTH), HudConstants.LIVES_VALUE_X, HudConstants.LIVES_VALUE_Y);
 
         this.drawText(HudConstants.LABEL_SCORE, HudConstants.SCORE_LABEL_X, HudConstants.SCORE_LABEL_Y, HudConstants.COLOR_GREY);
-        this.HUDScore = this.drawText((HudConstants.SIX_DIGITS_PADDING + GameController.score).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.SCORE_VALUE_X, HudConstants.SCORE_VALUE_Y);
+        this.HUDScore = this.drawText((HudConstants.SIX_DIGITS_PADDING + score).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.SCORE_VALUE_X, HudConstants.SCORE_VALUE_Y);
 
         this.drawText(HudConstants.LABEL_LEVEL, HudConstants.LEVEL_LABEL_X, HudConstants.LEVEL_LABEL_Y, HudConstants.COLOR_GREY);
-        this.HUDLevel = this.drawText((HudConstants.TWO_DIGITS_PADDING + Level.level).substr(HudConstants.TWO_DIGITS_LENGTH), HudConstants.LEVEL_VALUE_X, HudConstants.LEVEL_VALUE_Y);
+        this.HUDLevel = this.drawText((HudConstants.TWO_DIGITS_PADDING + levelNumber).substr(HudConstants.TWO_DIGITS_LENGTH), HudConstants.LEVEL_VALUE_X, HudConstants.LEVEL_VALUE_Y);
 
         this.drawText(HudConstants.LABEL_HI_SCORE, HudConstants.HI_SCORE_LABEL_X, HudConstants.HI_SCORE_LABEL_Y, HudConstants.COLOR_GREY);
-        this.HUDHiScore = this.drawText((HudConstants.SIX_DIGITS_PADDING + GameController.hiScore).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.HI_SCORE_VALUE_X, HudConstants.HI_SCORE_VALUE_Y);
+        this.HUDHiScore = this.drawText((HudConstants.SIX_DIGITS_PADDING + hiScore).substr(HudConstants.SIX_DIGITS_LENGTH), HudConstants.HI_SCORE_VALUE_X, HudConstants.HI_SCORE_VALUE_Y);
     }
 
     /**
      * If there is a bonus man, display the sprite and animate its color.
      */
-    displayBonusMan(): void
+    displayBonusMan(hasBonusMan: boolean): void
     {
-        if (Level.bonusMan)
+        if (!hasBonusMan)
+            return;
+
+        this.colorCounter -= 1;
+
+        if (this.colorCounter == 0)
         {
-            this.colorCounter -= 1;
+            this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
 
-            if (this.colorCounter == 0)
-            {
-                this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+            if (this.increaseColorIndex)
+                this.colorIndex += 1;
+            else
+                this.colorIndex -= 1;
 
-                if (this.increaseColorIndex)
-                    this.colorIndex += 1;
-                else
-                    this.colorIndex -= 1;
+            if (this.colorIndex == HudConstants.BONUS_MAN_MAX_COLOR_INDEX)
+                this.increaseColorIndex = false;
 
-                if (this.colorIndex == HudConstants.BONUS_MAN_MAX_COLOR_INDEX)
-                    this.increaseColorIndex = false;
-
-                if (this.colorIndex == HudConstants.BONUS_MAN_MIN_COLOR_INDEX)
-                    this.increaseColorIndex = true;
-            }
-
-            this.bonusManSprite.tint = Data.bonusManColors[this.colorIndex];
+            if (this.colorIndex == HudConstants.BONUS_MAN_MIN_COLOR_INDEX)
+                this.increaseColorIndex = true;
         }
+
+        this.bonusManSprite.tint = Data.bonusManColors[this.colorIndex];
     }
 
     /**
@@ -130,27 +123,20 @@ class HUDController
     }
 
     /**
-     * Decrease air level and redraw the air bar.
+     * Advances the HUD-owned air depletion counter.
+     *
+     * Returns the air amount that should be consumed during this frame. Returning
+     * zero means the level air value should not change this frame.
      */
-    updateAirLevel(): void
+    consumeAirDecreaseAmount(): number
     {
-        if (!GameController.isPlaying()) return;
-
         this.counter -= 1;
 
-        if (this.counter == 0)
-        {
-            this.counter = HudConstants.AIR_DECREASE_DELAY;
-            Level.decreaseAir(HudConstants.AIR_DECREASE_AMOUNT);
-        }
+        if (this.counter != 0)
+            return 0;
 
-        if (Level.airLevel <= 0)
-        {
-            Player.kill();
-            return;
-        }
-
-        this.displayAirLevel();
+        this.counter = HudConstants.AIR_DECREASE_DELAY;
+        return HudConstants.AIR_DECREASE_AMOUNT;
     }
 
     clearAirLevel(): void
@@ -158,40 +144,40 @@ class HUDController
         this.airLevelRectangle.clear();
     }
 
-    displayAirLevel(): void
+    displayAirLevel(airLevel: number): void
     {
         // Display the air bar.
         this.airLevelRectangle.clear();
         this.airLevelRectangle.beginFill(HudConstants.COLOR_BLACK, HudConstants.OPAQUE_ALPHA);
-        this.airLevelRectangle.drawRect(this.charWidth * HudConstants.AIR_BAR_LEFT_CHAR + HudConstants.AIR_BAR_INNER_X_OFFSET, game.camera.height + this.charWidth * HudConstants.AIR_BAR_Y_CHAR + HudConstants.AIR_BAR_INNER_Y_OFFSET, Level.airLevel, this.charWidth - HudConstants.AIR_BAR_INNER_HEIGHT_REDUCTION);
+        this.airLevelRectangle.drawRect(this.charWidth * HudConstants.AIR_BAR_LEFT_CHAR + HudConstants.AIR_BAR_INNER_X_OFFSET, game.camera.height + this.charWidth * HudConstants.AIR_BAR_Y_CHAR + HudConstants.AIR_BAR_INNER_Y_OFFSET, airLevel, this.charWidth - HudConstants.AIR_BAR_INNER_HEIGHT_REDUCTION);
         this.airLevelRectangle.endFill();
     }
 
     /**
      * Update the lives display.
      */
-    displayLives(): void
+    displayLives(lives: number): void
     {
-        this.HUDLives.text = (HudConstants.TWO_DIGITS_PADDING + GameController.lives).substr(HudConstants.TWO_DIGITS_LENGTH);
+        this.HUDLives.text = (HudConstants.TWO_DIGITS_PADDING + lives).substr(HudConstants.TWO_DIGITS_LENGTH);
     }
 
     /**
      * Update the score display.
      */
-    displayScore(): void
+    displayScore(score: number): void
     {
-        this.HUDScore.text = (HudConstants.SIX_DIGITS_PADDING + GameController.score).substr(HudConstants.SIX_DIGITS_LENGTH);
+        this.HUDScore.text = (HudConstants.SIX_DIGITS_PADDING + score).substr(HudConstants.SIX_DIGITS_LENGTH);
     }
 
     /**
      * Update all HUD information.
      */
-    update(): void
+    update(lives: number, score: number, hiScore: number, levelNumber: number): void
     {
-        this.HUDLives.text = (HudConstants.TWO_DIGITS_PADDING + GameController.lives).substr(HudConstants.TWO_DIGITS_LENGTH);
-        this.HUDScore.text = (HudConstants.SIX_DIGITS_PADDING + GameController.score).substr(HudConstants.SIX_DIGITS_LENGTH);
-        this.HUDHiScore.text = (HudConstants.SIX_DIGITS_PADDING + GameController.hiScore).substr(HudConstants.SIX_DIGITS_LENGTH);
-        this.HUDLevel.text = (HudConstants.TWO_DIGITS_PADDING + Level.level).substr(HudConstants.TWO_DIGITS_LENGTH);
+        this.HUDLives.text = (HudConstants.TWO_DIGITS_PADDING + lives).substr(HudConstants.TWO_DIGITS_LENGTH);
+        this.HUDScore.text = (HudConstants.SIX_DIGITS_PADDING + score).substr(HudConstants.SIX_DIGITS_LENGTH);
+        this.HUDHiScore.text = (HudConstants.SIX_DIGITS_PADDING + hiScore).substr(HudConstants.SIX_DIGITS_LENGTH);
+        this.HUDLevel.text = (HudConstants.TWO_DIGITS_PADDING + levelNumber).substr(HudConstants.TWO_DIGITS_LENGTH);
     }
 
     /**
