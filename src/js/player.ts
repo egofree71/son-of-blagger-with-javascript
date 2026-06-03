@@ -3,7 +3,7 @@ import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { Data } from "./data.ts";
 import { PlayerMovement } from "./playerMovement.ts";
-import { PlayerInteractions } from "./playerInteractions.ts";
+import { PlayerInteractions, type PlayerInteractionResult } from "./playerInteractions.ts";
 import { PlayerDeathSequence } from "./playerDeathSequence.ts";
 import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 
@@ -84,12 +84,18 @@ export class PlayerController
         this.fallHeight = 0;
     }
 
-    public update(): void
+    public update(): PlayerInteractionResult
     {
         const movementResult = PlayerMovement.update(this);
 
         if (movementResult.checkInteractions)
-            PlayerInteractions.update(this, movementResult.x, movementResult.y);
+            return PlayerInteractions.update(this, movementResult.x, movementResult.y);
+
+        return {
+            keyCollected: false,
+            playerKilled: false,
+            exitReached: false
+        };
     }
 
     /**

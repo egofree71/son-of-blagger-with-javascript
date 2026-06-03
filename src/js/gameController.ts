@@ -338,7 +338,21 @@ class GameControllerController
 
         if (!this.isPlaying()) return;
 
-        Player.update();
+        const playerResult = Player.update();
+
+        if (playerResult.keyCollected)
+        {
+            this.addScore(LevelConstants.KEY_SCORE_INCREMENT);
+            HUD.displayScore(this.score);
+        }
+
+        if (playerResult.exitReached)
+        {
+            if (Level.isLastLevel())
+                this.endGame();
+            else
+                this.endLevel();
+        }
     }
 
     /**

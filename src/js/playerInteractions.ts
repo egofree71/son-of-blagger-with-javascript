@@ -1,9 +1,14 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { HUD } from "./HUD.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
+import { Level } from "./level.ts";
 import type { PlayerController } from "./player.ts";
+
+export interface PlayerInteractionResult
+{
+    keyCollected: boolean;
+    playerKilled: boolean;
+    exitReached: boolean;
+}
 
 /**
  * Handles gameplay interactions that are triggered by the player's position.
@@ -12,49 +17,56 @@ import type { PlayerController } from "./player.ts";
  * movement intent has been applied, it delegates key collection, deadly
  * collisions, and exit detection to this object.
  *
+ * PlayerInteractions detects what happened and performs the level-local mutation
+ * that belongs to the collision itself, such as collecting a key tile. It does
+ * not update the HUD and does not decide the global game state anymore.
+ * GameController consumes the returned result and owns score/HUD/state flow.
+ *
  * The x/y values passed by Player.update() are intentionally the coordinates
  * captured at the beginning of the frame. This preserves the timing of the old
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-export const PlayerInteractions =
+class PlayerInteractionsController
 {
     // Collision rectangle offsets used when collecting keys.
-    KEY_LEFT_OFFSET : 7,
-    KEY_RIGHT_OFFSET : 23,
-    KEY_TOP_OFFSET : 0,
-    KEY_BOTTOM_OFFSET : 0,
+    private readonly KEY_LEFT_OFFSET = 7;
+    private readonly KEY_RIGHT_OFFSET = 23;
+    private readonly KEY_TOP_OFFSET = 0;
+    private readonly KEY_BOTTOM_OFFSET = 0;
 
     // Collision rectangle offsets used for deadly tile checks.
-    DEADLY_LEFT_OFFSET : 5,
-    DEADLY_RIGHT_OFFSET : 27,
-    DEADLY_TOP_OFFSET : 0,
-    DEADLY_BOTTOM_OFFSET : -1,
+    private readonly DEADLY_LEFT_OFFSET = 5;
+    private readonly DEADLY_RIGHT_OFFSET = 27;
+    private readonly DEADLY_TOP_OFFSET = 0;
+    private readonly DEADLY_BOTTOM_OFFSET = -1;
 
     // Collision rectangle offsets used for monster and exit checks.
-    BODY_LEFT_OFFSET : 4,
-    BODY_RIGHT_OFFSET : 28,
-    BODY_TOP_OFFSET : 0,
-    BODY_BOTTOM_OFFSET : 0,
+    private readonly BODY_LEFT_OFFSET = 4;
+    private readonly BODY_RIGHT_OFFSET = 28;
+    private readonly BODY_TOP_OFFSET = 0;
+    private readonly BODY_BOTTOM_OFFSET = 0;
 
     /**
      * Runs all non-movement interactions for the player.
      */
-    update : function(player: PlayerController, x: number, y: number): void
+    public update(player: PlayerController, x: number, y: number): PlayerInteractionResult
     {
-        this.collectKeyIfNeeded(player, x, y);
-        this.killPlayerIfNeeded(player, x, y);
-        this.exitLevelIfNeeded(player, x, y);
-    },
+        return {
+            keyCollected: this.collectKeyIfNeeded(player, x, y),
+            playerKilled: this.killPlayerIfNeeded(player, x, y),
+            exitReached: this.exitLevelIfNeeded(player, x, y)
+        };
+    }
 
     /**
      * Collects a key tile if the player's key collision box touches one.
      */
-    collectKeyIfNeeded : function(player: PlayerController, x: number, y: number): void
+    private collectKeyIfNeeded(player: PlayerController, x: number, y: number): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
-        if (CollisionDetector.collisionRectangle(
+        if (!CollisionDetector.collisionRectangle(
             x + this.KEY_LEFT_OFFSET,
             y + this.KEY_TOP_OFFSET,
             x + this.KEY_RIGHT_OFFSET,
@@ -62,22 +74,22 @@ export const PlayerInteractions =
             LevelConstants.TILED_PROPERTY_NAME,
             LevelConstants.TILE_NAME_KEY))
         {
-            Level.collectKey();
-
-            // Increase the score.
-            GameController.addScore(LevelConstants.KEY_SCORE_INCREMENT);
-            HUD.displayScore(GameController.score);
-
-            // Hide the key tile and force the tilemap layer to redraw.
-            CollisionDetector.lastTileHit.alpha = 0;
-            layer.dirty = true;
+            return false;
         }
-    },
+
+        Level.collectKey();
+
+        // Hide the key tile and force the tilemap layer to redraw.
+        CollisionDetector.lastTileHit.alpha = 0;
+        layer.dirty = true;
+
+        return true;
+    }
 
     /**
      * Kills the player if the current collision box touches a deadly tile or a monster.
      */
-    killPlayerIfNeeded : function(player: PlayerController, x: number, y: number): void
+    private killPlayerIfNeeded(player: PlayerController, x: number, y: number): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
@@ -95,28 +107,26 @@ export const PlayerInteractions =
                 y + playerHeight + this.BODY_BOTTOM_OFFSET))
         {
             player.kill();
+            return true;
         }
-    },
+
+        return false;
+    }
 
     /**
-     * Starts the end-level or end-game sequence when all keys have been collected
-     * and the player touches the level exit.
+     * Reports that the player touched the level exit after collecting all keys.
      */
-    exitLevelIfNeeded : function(player: PlayerController, x: number, y: number): void
+    private exitLevelIfNeeded(player: PlayerController, x: number, y: number): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
-        if (Level.hasCollectedAllKeys() &&
+        return Level.hasCollectedAllKeys() &&
             Level.collidesWithExitArea(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
-                y + playerHeight + this.BODY_BOTTOM_OFFSET))
-        {
-            if (Level.isLastLevel())
-                GameController.endGame();
-            else
-                GameController.endLevel();
-        }
+                y + playerHeight + this.BODY_BOTTOM_OFFSET);
     }
-};
+}
+
+export const PlayerInteractions = new PlayerInteractionsController();
