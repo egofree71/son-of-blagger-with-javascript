@@ -324,7 +324,7 @@ class LevelController
     {
         this.resetLevelState();
 
-        Player.reset();
+        Player.reset(this.currentLevel);
         this.addMonsters();
         this.levelExit = LevelObjectLoader.loadEndLevel(this.currentLevel, this.levelExit);
     }

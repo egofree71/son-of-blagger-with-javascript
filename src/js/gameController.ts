@@ -313,6 +313,12 @@ class GameControllerController
         HUD.updateAirLevel();
         HUD.displayBonusMan();
         Level.updateMonsters();
+
+        // HUD.updateAirLevel() can kill the player and leave PLAYING during this frame.
+        // Keep the previous behaviour: monsters and bonus-man display still update,
+        // but the player itself does not move once gameplay has been stopped.
+        if (!this.isPlaying()) return;
+
         Player.update();
     }
 }

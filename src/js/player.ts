@@ -5,16 +5,14 @@ import { Data } from "./data.ts";
 import { PlayerMovement } from "./playerMovement.ts";
 import { PlayerInteractions } from "./playerInteractions.ts";
 import { PlayerDeathSequence } from "./playerDeathSequence.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
 import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 
 /**
  * Owns the playable character sprite and player-specific runtime state.
  *
  * The exported Player value remains a singleton so existing callers can keep
- * using Player.create(), Player.reset(), Player.update(), and Player.kill(). The
- * class only replaces the previous object-literal container; movement rules,
+ * using Player.create(), Player.reset(levelNumber), Player.update(), and
+ * Player.kill(). The class only replaces the previous object-literal container; movement rules,
  * interaction checks, animation timings, and death handling still live in their
  * dedicated modules.
  */
@@ -63,10 +61,10 @@ export class PlayerController
     /**
      * Resets player's properties at the beginning of a level.
      */
-    public reset(): void
+    public reset(levelNumber: number): void
     {
         // Find player's position for the current level.
-        const results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
+        const results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, levelNumber, LevelConstants.OBJECT_LAYER_PLAYER);
 
         this.playerSprite.reset(results[0].x, results[0].y - LevelConstants.PLAYER_TILED_Y_OFFSET);
         this.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER);
@@ -88,8 +86,6 @@ export class PlayerController
 
     public update(): void
     {
-        if (!GameController.isPlaying()) return;
-
         const movementResult = PlayerMovement.update(this);
 
         if (movementResult.checkInteractions)
