@@ -38,7 +38,7 @@ export class PlayerController
     public deadlyFall: boolean = false;
 
     public playerSprite: any = null;
-    public playerDyingSprite: any = null;
+    private playerDyingSprite: any = null;
 
     public animationMaxCounter: number = 5;
     public animationLeftCounter: number = 0;
@@ -117,6 +117,130 @@ export class PlayerController
             this.animationRightCounter = this.animationMaxCounter;
             this.playerSprite.animations.getAnimation(PlayerStates.ANIMATION_RIGHT).next();
         }
+    }
+
+    /**
+     * Returns the current Phaser body X coordinate.
+     */
+    public getBodyX(): number
+    {
+        return this.playerSprite.body.x;
+    }
+
+    /**
+     * Returns the current Phaser body Y coordinate.
+     */
+    public getBodyY(): number
+    {
+        return this.playerSprite.body.y;
+    }
+
+    /**
+     * Returns the current Phaser body height.
+     */
+    public getBodyHeight(): number
+    {
+        return this.playerSprite.body.height;
+    }
+
+    /**
+     * Calculates the horizontal distance from the player to a target X coordinate.
+     */
+    public getHorizontalDistanceFrom(targetX: number): number
+    {
+        return this.getBodyX() - targetX;
+    }
+
+    /**
+     * Calculates the vertical distance from the player to a target Y coordinate.
+     */
+    public getVerticalDistanceFrom(targetY: number): number
+    {
+        return this.getBodyY() - targetY;
+    }
+
+    /**
+     * Moves the Phaser body on the X axis.
+     */
+    public moveBodyX(delta: number): void
+    {
+        this.playerSprite.body.x += delta;
+    }
+
+    /**
+     * Moves the Phaser body on the Y axis.
+     */
+    public moveBodyY(delta: number): void
+    {
+        this.playerSprite.body.y += delta;
+    }
+
+    /**
+     * Snaps the Phaser body X coordinate to an exact value.
+     */
+    public setBodyX(x: number): void
+    {
+        this.playerSprite.body.x = x;
+    }
+
+    /**
+     * Snaps the Phaser body Y coordinate to an exact value.
+     */
+    public setBodyY(y: number): void
+    {
+        this.playerSprite.body.y = y;
+    }
+
+    /**
+     * Keeps the player sprite visually above the map and animated tile overlays.
+     */
+    public bringToTop(): void
+    {
+        this.playerSprite.bringToTop();
+    }
+
+    /**
+     * Hides the normal player sprite while the death animation is playing.
+     */
+    public hideSprite(): void
+    {
+        this.playerSprite.visible = false;
+    }
+
+    /**
+     * Tells whether the current death was caused by a deadly fall.
+     */
+    public isDeadlyFall(): boolean
+    {
+        return this.deadlyFall;
+    }
+
+    /**
+     * Stores the temporary sprite used by the death animation.
+     */
+    public setDyingSprite(sprite: any): void
+    {
+        this.playerDyingSprite = sprite;
+    }
+
+    /**
+     * Adds the death animation to the temporary death sprite and returns it.
+     */
+    public addDyingAnimation(): any
+    {
+        return this.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
+    }
+
+    /**
+     * Starts the temporary death animation sprite.
+     */
+    public playDyingAnimation(): void
+    {
+        this.playerDyingSprite.animations.play(
+            PlayerStates.ANIMATION_BLAGGER_DYING,
+            PlayerStates.DYING_ANIMATION_FRAME_RATE,
+            false,
+            true);
     }
 
     /**

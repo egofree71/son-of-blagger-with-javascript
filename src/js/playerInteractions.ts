@@ -4,6 +4,7 @@ import { CollisionDetector } from "./collisionDetector.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
+import type { PlayerController } from "./player.ts";
 
 /**
  * Handles gameplay interactions that are triggered by the player's position.
@@ -40,7 +41,7 @@ export const PlayerInteractions =
     /**
      * Runs all non-movement interactions for the player.
      */
-    update : function(player: any, x: number, y: number): void
+    update : function(player: PlayerController, x: number, y: number): void
     {
         this.collectKeyIfNeeded(player, x, y);
         this.killPlayerIfNeeded(player, x, y);
@@ -50,9 +51,9 @@ export const PlayerInteractions =
     /**
      * Collects a key tile if the player's key collision box touches one.
      */
-    collectKeyIfNeeded : function(player: any, x: number, y: number): void
+    collectKeyIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
         if (CollisionDetector.collisionRectangle(
             x + this.KEY_LEFT_OFFSET,
@@ -77,9 +78,9 @@ export const PlayerInteractions =
     /**
      * Kills the player if the current collision box touches a deadly tile or a monster.
      */
-    killPlayerIfNeeded : function(player: any, x: number, y: number): void
+    killPlayerIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
         if (CollisionDetector.collisionRectangle(
                 x + this.DEADLY_LEFT_OFFSET,
@@ -102,9 +103,9 @@ export const PlayerInteractions =
      * Starts the end-level or end-game sequence when all keys have been collected
      * and the player touches the level exit.
      */
-    exitLevelIfNeeded : function(player: any, x: number, y: number): void
+    exitLevelIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
         if (Level.hasCollectedAllKeys() &&
             CollisionDetector.collisionRectangleWithEndLevel(

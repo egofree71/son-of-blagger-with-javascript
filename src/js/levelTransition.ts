@@ -197,8 +197,8 @@ class LevelTransitionController
      */
     private fineAlignPlayer(): void
     {
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
+        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         // Preserve the original behaviour: leave this phase as soon as one axis is aligned.
         if (verticalDistance == 0 || horizontalDistance == 0)
@@ -211,16 +211,16 @@ class LevelTransitionController
         if (Math.abs(verticalDistance) < Math.abs(horizontalDistance))
         {
             if (verticalDistance > 0)
-                Player.playerSprite.body.y -= 1;
+                Player.moveBodyY(-1);
             else
-                Player.playerSprite.body.y += 1;
+                Player.moveBodyY(1);
         }
         else
         {
             if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= 1;
+                Player.moveBodyX(-1);
             else
-                Player.playerSprite.body.x += 1;
+                Player.moveBodyX(1);
         }
     }
 
@@ -269,8 +269,8 @@ class LevelTransitionController
 
         this.counter = this.MOVE_DELAY;
 
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
+        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         if (verticalDistance == 0 && horizontalDistance == 0)
         {
@@ -282,29 +282,29 @@ class LevelTransitionController
         {
             if (Math.abs(horizontalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.playerSprite.body.x = this.nextPlayerPositionX;
+                Player.setBodyX(this.nextPlayerPositionX);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyX(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.playerSprite.body.x += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyX(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
         else
         {
             if (Math.abs(verticalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.playerSprite.body.y = this.nextPlayerPositionY;
+                Player.setBodyY(this.nextPlayerPositionY);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (verticalDistance > 0)
-                Player.playerSprite.body.y -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyY(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.playerSprite.body.y += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyY(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
     }
 

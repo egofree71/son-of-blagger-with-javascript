@@ -135,7 +135,7 @@ export const GameInitializer =
 
         // The player must stay visually above the tile layer and most animated
         // tile overlays, especially during the level reveal sequence.
-        Player.playerSprite.bringToTop();
+        Player.bringToTop();
     },
 
     /**
