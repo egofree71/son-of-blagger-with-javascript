@@ -1,6 +1,6 @@
 import { GameStates } from "./gameStates.ts";
 import { HudConstants } from "./hudConstants.ts";
-import { Data } from "./data.js";
+import { Data } from "./data.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 import { Player } from "./player.js";

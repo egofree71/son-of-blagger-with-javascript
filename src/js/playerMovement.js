@@ -1,7 +1,7 @@
 import { PlayerStates } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { Data } from "./data.js";
+import { Data } from "./data.ts";
 
 /**
  * PlayerMovement owns the frame-by-frame movement rules for Slippery Sid.

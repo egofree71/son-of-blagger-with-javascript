@@ -5,11 +5,16 @@ export interface TiledObject {
 	y: number;
 	width?: number;
 	height?: number;
+	type?: string;
 	properties: Record<string, any>;
 }
 
 export interface MonsterTileProperties {
 	type?: string;
+	width?: string | number;
+	height?: string | number;
+	offsetX?: string | number;
+	offsetY?: string | number;
 	[key: string]: any;
 }
 
