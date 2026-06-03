@@ -1,7 +1,6 @@
 import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { Data } from "./data.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
@@ -63,10 +62,10 @@ export const PlayerInteractions =
             LevelConstants.TILED_PROPERTY_NAME,
             LevelConstants.TILE_NAME_KEY))
         {
-            Level.keysTaken++;
+            Level.collectKey();
 
             // Increase the score.
-            GameController.score += LevelConstants.KEY_SCORE_INCREMENT;
+            GameController.addScore(LevelConstants.KEY_SCORE_INCREMENT);
             HUD.displayScore();
 
             // Hide the key tile and force the tilemap layer to redraw.
@@ -107,17 +106,17 @@ export const PlayerInteractions =
     {
         const playerHeight: number = player.playerSprite.body.height;
 
-        if (Level.keysTaken == Data.levels[Level.level - 1][0] &&
+        if (Level.hasCollectedAllKeys() &&
             CollisionDetector.collisionRectangleWithEndLevel(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
                 y + playerHeight + this.BODY_BOTTOM_OFFSET))
         {
-            if (Level.level == Data.levels.length)
-                GameController.gameState = GameStates.END_GAME;
+            if (Level.isLastLevel())
+                GameController.setState(GameStates.END_GAME);
             else
-                GameController.gameState = GameStates.END_LEVEL;
+                GameController.setState(GameStates.END_LEVEL);
         }
     }
 };

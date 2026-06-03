@@ -145,7 +145,7 @@ class LevelTransitionController
      */
     private prepareNextLevel(): void
     {
-        Level.level++;
+        Level.advanceToNextLevel();
 
         var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
         this.nextPlayerPositionX = results[0].x;
@@ -248,8 +248,8 @@ class LevelTransitionController
     {
         if (Level.airLevel > 0)
         {
-            Level.airLevel -= LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
-            GameController.score += LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
+            Level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
+            GameController.addScore(LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT);
             HUD.displayScore();
             HUD.displayAirLevel();
         }
@@ -330,7 +330,7 @@ class LevelTransitionController
     {
         if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
-            Level.airLevel += LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
+            Level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
             HUD.displayAirLevel();
         }
         else
@@ -354,10 +354,10 @@ class LevelTransitionController
         HUD.update();
 
         // On every new level, the user gets a bonus man.
-        Level.bonusMan = true;
+        Level.enableBonusMan();
 
         this.reset();
-        GameController.gameState = GameStates.START_LEVEL;
+        GameController.setState(GameStates.START_LEVEL);
     }
 }
 

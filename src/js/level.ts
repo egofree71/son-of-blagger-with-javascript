@@ -12,34 +12,98 @@ import type { Monster } from "./monster.ts";
 
 class LevelController
 {
-    // Current level
-    level = LevelConstants.INITIAL_LEVEL;
+    // Current level and level-attempt data are stored privately. The legacy
+    // property names remain available as read-only getters for existing checks.
+    private currentLevel: number = LevelConstants.INITIAL_LEVEL;
+    private currentAirLevel: number = LevelConstants.DEFAULT_AIR_LEVEL;
+    private collectedKeys: number = 0;
+    private bonusManAvailable = false;
 
-    // air level of the current level
-    airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
-
-    // Array which contains all monsters for a given level
+    // Array which contains all monsters for a given level.
     monsters: Monster[] = [];
-    // Group which contains the monsters (used for display order)
+
+    // Group which contains the monsters (used for display order).
     monstersGroup: any = null;
 
     animationCounterMax = 0;
     animationCounter = 0;
 
-    // Group which contains 'explosion' objects displayed when showing monsters
+    // Group which contains 'explosion' objects displayed when showing monsters.
     explosions: any = null;
-    // Group which contains ' reverse explosion' objects displayed when hiding monsters of the previous level
+
+    // Group which contains 'reverse explosion' objects displayed when hiding monsters of the previous level.
     reverseExplosions: any = null;
-    // The end level object stores the position of the end's level
+
+    // The end level object stores the position of the end's level.
     endLevel: any = null;
 
-    // Number of keys taken in the current level
-    keysTaken = 0;
-    bonusMan = false;
+    get level(): number
+    {
+        return this.currentLevel;
+    }
+
+    get airLevel(): number
+    {
+        return this.currentAirLevel;
+    }
+
+    get keysTaken(): number
+    {
+        return this.collectedKeys;
+    }
+
+    get bonusMan(): boolean
+    {
+        return this.bonusManAvailable;
+    }
 
     resetAirLevel(): void
     {
-        this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
+        this.currentAirLevel = LevelConstants.DEFAULT_AIR_LEVEL;
+    }
+
+    decreaseAir(amount: number): void
+    {
+        this.currentAirLevel -= amount;
+    }
+
+    increaseAir(amount: number): void
+    {
+        this.currentAirLevel += amount;
+    }
+
+    advanceToNextLevel(): void
+    {
+        this.currentLevel += 1;
+    }
+
+    collectKey(): void
+    {
+        this.collectedKeys += 1;
+    }
+
+    hasCollectedAllKeys(): boolean
+    {
+        return this.collectedKeys == Data.levels[this.currentLevel - 1][0];
+    }
+
+    isLastLevel(): boolean
+    {
+        return this.currentLevel == Data.levels.length;
+    }
+
+    enableBonusMan(): void
+    {
+        this.bonusManAvailable = true;
+    }
+
+    consumeBonusMan(): boolean
+    {
+        if (!this.bonusManAvailable)
+            return false;
+
+        this.bonusManAvailable = false;
+        return true;
     }
 
     initMonsters(): void
@@ -57,10 +121,10 @@ class LevelController
      */
     addMonsters(): void
     {
-        this.monsters = LevelObjectLoader.loadMonsters(this.level, this.monsters, this.monstersGroup);
+        this.monsters = LevelObjectLoader.loadMonsters(this.currentLevel, this.monsters, this.monstersGroup);
 
         // Get the animation counter maximum used to set the animation's speed.
-        this.animationCounterMax = Data.levels[this.level - 1][1];
+        this.animationCounterMax = Data.levels[this.currentLevel - 1][1];
         this.animationCounter = this.animationCounterMax;
     }
 
@@ -84,7 +148,7 @@ class LevelController
         // level has none, do not leave the game stuck in DISPLAYING_MONSTERS.
         if (this.monsters.length == 0)
         {
-            GameController.gameState = GameStates.PLAYING;
+            GameController.setState(GameStates.PLAYING);
             return;
         }
 
@@ -102,13 +166,13 @@ class LevelController
                 for (var i = 0; i < level.monsters.length; i++)
                     level.monsters[i].sprite.visible = true;
 
-                GameController.gameState = GameStates.PLAYING;
+                GameController.setState(GameStates.PLAYING);
             });
 
             explosion.animations.play(LevelConstants.SPRITE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
         }
 
-        GameController.gameState = GameStates.DISPLAYING_MONSTERS;
+        GameController.setState(GameStates.DISPLAYING_MONSTERS);
     }
 
     /**
@@ -116,16 +180,10 @@ class LevelController
      */
     resetGame(): void
     {
-        // If there is a new hi-score, store it in the local storage.
-        if (GameController.score > GameController.hiScore)
-        {
-            localStorage.setItem('hiScore', String(GameController.score));
-            GameController.hiScore = GameController.score;
-        }
+        GameController.updateHiScoreIfNeeded();
 
-        this.level = LevelConstants.INITIAL_LEVEL;
-        GameController.score = 0;
-        GameController.lives = LevelConstants.INITIAL_LIVES;
+        this.currentLevel = LevelConstants.INITIAL_LEVEL;
+        GameController.resetScoreAndLives();
 
         LevelTransition.reset();
         EndGameSequence.reset();
@@ -145,9 +203,9 @@ class LevelController
      */
     resetLevelState(): void
     {
-        this.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
-        this.keysTaken = 0;
-        this.bonusMan = false;
+        this.currentAirLevel = LevelConstants.DEFAULT_AIR_LEVEL;
+        this.collectedKeys = 0;
+        this.bonusManAvailable = false;
     }
 
     /**
@@ -159,7 +217,7 @@ class LevelController
 
         Player.reset();
         this.addMonsters();
-        this.endLevel = LevelObjectLoader.loadEndLevel(this.level, this.endLevel);
+        this.endLevel = LevelObjectLoader.loadEndLevel(this.currentLevel, this.endLevel);
     }
 
     /**

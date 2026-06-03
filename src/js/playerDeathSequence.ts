@@ -34,7 +34,7 @@ class PlayerDeathSequenceController
      */
     start(player: DeathSequencePlayer): void
     {
-        GameController.gameState = GameStates.KILL_PLAYER;
+        GameController.setState(GameStates.KILL_PLAYER);
         player.playerSprite.visible = false;
 
         player.playerDyingSprite = this.createDeathSprite(player);
@@ -82,10 +82,10 @@ class PlayerDeathSequenceController
         Level.resetAirLevel();
         HUD.displayAirLevel();
 
-        if (Number(GameController.lives) == 0)
-            GameController.gameState = GameStates.SHOW_GAME_OVER;
+        if (GameController.hasNoLives())
+            GameController.setState(GameStates.SHOW_GAME_OVER);
         else
-            GameController.gameState = GameStates.LOAD_LEVEL;
+            GameController.setState(GameStates.LOAD_LEVEL);
     }
 
     /**
@@ -93,14 +93,13 @@ class PlayerDeathSequenceController
      */
     private consumeBonusManOrLife(): void
     {
-        if (Level.bonusMan == true)
+        if (Level.consumeBonusMan())
         {
             HUD.hideBonusMan();
-            Level.bonusMan = false;
         }
         else
         {
-            GameController.lives -= 1;
+            GameController.loseLife();
         }
     }
 }
