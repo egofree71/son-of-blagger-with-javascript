@@ -21,13 +21,13 @@ export const PlayerDeathSequence =
      * death sprite is displayed, then the level is reloaded or the game-over
      * screen is shown when the animation completes.
      */
-    start : function(player)
+    start : function(player: any): void
     {
         GameController.gameState = GameStates.KILL_PLAYER;
         player.playerSprite.visible = false;
 
         player.playerDyingSprite = this.createDeathSprite(player);
-        var animation = player.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
+        const animation = player.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
 
         animation.onComplete.add(function()
         {
@@ -47,9 +47,9 @@ export const PlayerDeathSequence =
      * A deadly fall uses the white dying sprite, preserving the original visual
      * feedback from the previous implementation.
      */
-    createDeathSprite : function(player)
+    createDeathSprite : function(player: any): any
     {
-        var deathSprite = game.add.sprite(
+        const deathSprite = game.add.sprite(
             player.playerSprite.body.x,
             player.playerSprite.body.y - PlayerStates.DYING_SPRITE_Y_OFFSET,
             PlayerStates.SPRITE_BLAGGER_DYING);
@@ -63,7 +63,7 @@ export const PlayerDeathSequence =
     /**
      * Applies the consequences of the completed death animation.
      */
-    finish : function()
+    finish : function(): void
     {
         this.consumeBonusManOrLife();
 
@@ -71,7 +71,7 @@ export const PlayerDeathSequence =
         Level.resetAirLevel();
         HUD.displayAirLevel();
 
-        if (GameController.lives == 0)
+        if (Number(GameController.lives) == 0)
             GameController.gameState = GameStates.SHOW_GAME_OVER;
         else
             GameController.gameState = GameStates.LOAD_LEVEL;
@@ -80,7 +80,7 @@ export const PlayerDeathSequence =
     /**
      * The bonus man prevents losing one life once, then disappears.
      */
-    consumeBonusManOrLife : function()
+    consumeBonusManOrLife : function(): void
     {
         if (Level.bonusMan == true)
         {

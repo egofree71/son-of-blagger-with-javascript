@@ -3,8 +3,8 @@ import { PlayerStates } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { PlayerMovement } from "./playerMovement.js";
-import { PlayerInteractions } from "./playerInteractions.js";
-import { PlayerDeathSequence } from "./playerDeathSequence.js";
+import { PlayerInteractions } from "./playerInteractions.ts";
+import { PlayerDeathSequence } from "./playerDeathSequence.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 
