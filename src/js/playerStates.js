@@ -33,5 +33,3 @@ export const PlayerStates =
     DYING_ANIMATION_FRAME_RATE : 6
 };
 
-// Keep the constant object available globally while the rest of the legacy
-// runtime is migrated progressively to explicit ES module imports.

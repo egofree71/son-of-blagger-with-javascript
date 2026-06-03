@@ -84,5 +84,3 @@ export const HudConstants =
     FONT_CHAR_HEIGHT : 16
 };
 
-// Keep the constant object available globally while the rest of the legacy
-// runtime is migrated progressively to explicit ES module imports.

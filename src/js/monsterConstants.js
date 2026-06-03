@@ -35,5 +35,3 @@ export const MonsterConstants =
     TILED_TO_PHASER_Y_OFFSET : 42
 };
 
-// Keep the constant object available globally while the rest of the legacy
-// runtime is migrated progressively to explicit ES module imports.
