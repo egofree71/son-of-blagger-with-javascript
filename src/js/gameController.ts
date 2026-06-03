@@ -237,7 +237,25 @@ class GameControllerController
      */
     private updateEndLevel(): void
     {
-        Level.goToNext();
+        const transitionResult = Level.goToNext();
+
+        if (transitionResult.scoreDelta > 0)
+        {
+            this.addScore(transitionResult.scoreDelta);
+            HUD.displayScore(this.score);
+        }
+
+        if (transitionResult.airChanged)
+            HUD.displayAirLevel(Level.airLevel);
+
+        if (transitionResult.airCleared)
+            HUD.clearAirLevel();
+
+        if (transitionResult.nextLevelLoaded)
+        {
+            HUD.update(this.lives, this.score, this.hiScore, Level.level);
+            this.startLevel();
+        }
     }
 
     /**

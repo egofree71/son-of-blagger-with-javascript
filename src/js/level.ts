@@ -3,7 +3,7 @@ import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
 import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
-import { LevelTransition } from "./levelTransition.ts";
+import { LevelTransition, type LevelTransitionResult } from "./levelTransition.ts";
 import { Player } from "./player.ts";
 import type { Monster } from "./monster.ts";
 
@@ -303,9 +303,9 @@ class LevelController
     /**
      * Move the player to the next level and increase score according to the air's level.
      */
-    goToNext(): void
+    goToNext(): LevelTransitionResult
     {
-        LevelTransition.update();
+        return LevelTransition.update();
     }
 
     /**

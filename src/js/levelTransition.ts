@@ -1,9 +1,7 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { Player } from "./player.ts";
-import { HUD } from "./HUD.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
+import { Level } from "./level.ts";
 
 const PHASE_PREPARE_NEXT_LEVEL = 1;
 const PHASE_HIDE_MONSTERS = 2;
@@ -23,6 +21,21 @@ type LevelTransitionPhase =
     | typeof PHASE_MOVE_PLAYER_TO_NEXT_LEVEL
     | typeof PHASE_REFILL_AIR
     | typeof PHASE_LOAD_NEXT_LEVEL;
+
+export interface LevelTransitionResult
+{
+    /** Score points earned during this frame, usually while converting air. */
+    scoreDelta: number;
+
+    /** True when the visible air bar should be redrawn from Level.airLevel. */
+    airChanged: boolean;
+
+    /** True when the air bar should be cleared visually. */
+    airCleared: boolean;
+
+    /** True when the next level has just been loaded and GameController should continue the level-start flow. */
+    nextLevelLoaded: boolean;
+}
 
 /**
  * Handles the transition played when the player completes a level.
@@ -76,6 +89,16 @@ class LevelTransitionController
     private nextPlayerPositionX = 0;
     private nextPlayerPositionY = 0;
 
+    private createResult(): LevelTransitionResult
+    {
+        return {
+            scoreDelta: 0,
+            airChanged: false,
+            airCleared: false,
+            nextLevelLoaded: false
+        };
+    }
+
     /**
      * Resets the transition to its initial state.
      *
@@ -96,42 +119,41 @@ class LevelTransitionController
      * GameController calls Level.goToNext() while the game state is GameStates.END_LEVEL.
      * Level.goToNext() delegates to this method.
      */
-    update(): void
+    update(): LevelTransitionResult
     {
         switch(this.phase)
         {
             case this.PHASE_PREPARE_NEXT_LEVEL:
                 this.prepareNextLevel();
-                break;
+                return this.createResult();
 
             case this.PHASE_HIDE_MONSTERS:
                 this.hideMonsters();
-                break;
+                return this.createResult();
 
             case this.PHASE_RESTORE_BACKGROUND:
                 this.restoreBackground();
-                break;
+                return this.createResult();
 
             case this.PHASE_FINE_ALIGN_PLAYER:
                 this.fineAlignPlayer();
-                break;
+                return this.createResult();
 
             case this.PHASE_CONVERT_AIR_TO_SCORE:
-                this.convertAirToScore();
-                break;
+                return this.convertAirToScore();
 
             case this.PHASE_MOVE_PLAYER_TO_NEXT_LEVEL:
                 this.movePlayerToNextLevel();
-                break;
+                return this.createResult();
 
             case this.PHASE_REFILL_AIR:
-                this.refillAir();
-                break;
+                return this.refillAir();
 
             case this.PHASE_LOAD_NEXT_LEVEL:
-                this.loadNextLevel();
-                break;
+                return this.loadNextLevel();
         }
+
+        return this.createResult();
     }
 
     /**
@@ -230,23 +252,25 @@ class LevelTransitionController
      * Once air reaches zero, the air display is cleared and the player starts
      * moving toward the next-level spawn.
      */
-    private convertAirToScore(): void
+    private convertAirToScore(): LevelTransitionResult
     {
+        const result = this.createResult();
+
         if (Level.airLevel > 0)
         {
             Level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
-            GameController.addScore(LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT);
-            HUD.displayScore(GameController.score);
-            HUD.displayAirLevel(Level.airLevel);
+            result.scoreDelta = LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
+            result.airChanged = true;
         }
         else
         {
-            HUD.clearAirLevel();
+            result.airCleared = true;
             this.phase = this.PHASE_MOVE_PLAYER_TO_NEXT_LEVEL;
         }
 
         // Prepare the frame delay used by the following movement phase.
         this.counter = this.MOVE_DELAY;
+        return result;
     }
 
     /**
@@ -312,17 +336,21 @@ class LevelTransitionController
      *
      * The air bar goes back to the default air level, using the same increment as before.
      */
-    private refillAir(): void
+    private refillAir(): LevelTransitionResult
     {
+        const result = this.createResult();
+
         if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
             Level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
-            HUD.displayAirLevel(Level.airLevel);
+            result.airChanged = true;
         }
         else
         {
             this.phase = this.PHASE_LOAD_NEXT_LEVEL;
         }
+
+        return result;
     }
 
     /**
@@ -334,16 +362,19 @@ class LevelTransitionController
      * After every completed level, Level.bonusMan is set to true so the HUD shows
      * the bonus man reward animation on the next level.
      */
-    private loadNextLevel(): void
+    private loadNextLevel(): LevelTransitionResult
     {
+        const result = this.createResult();
+
         Level.load();
-        HUD.update(GameController.lives, GameController.score, GameController.hiScore, Level.level);
 
         // On every new level, the user gets a bonus man.
         Level.enableBonusMan();
 
         this.reset();
-        GameController.startLevel();
+        result.nextLevelLoaded = true;
+
+        return result;
     }
 }
 
