@@ -182,12 +182,43 @@ class LevelController
     }
 
     /**
+     * Checks whether the given coordinate area collides with one of the current monsters.
+     *
+     * This keeps monster collision ownership inside Level instead of making the
+     * generic tile CollisionDetector depend on level runtime state.
+     */
+    collidesWithMonsterArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
+    {
+        return this.collidesWithMonster(this.createCollisionRectangle(xStart, yStart, xEnd, yEnd));
+    }
+
+    /**
      * Checks whether the given rectangle collides with the current level exit.
      */
     collidesWithExit(playerRectangle: any): boolean
     {
         var endLevelRectangle = new Phaser.Rectangle(this.levelExit.x, this.levelExit.y, this.levelExit.width, this.levelExit.height);
         return Phaser.Rectangle.intersects(playerRectangle, endLevelRectangle);
+    }
+
+    /**
+     * Checks whether the given coordinate area collides with the current level exit.
+     *
+     * This keeps exit collision ownership inside Level instead of making the
+     * generic tile CollisionDetector depend on level runtime state.
+     */
+    collidesWithExitArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
+    {
+        return this.collidesWithExit(this.createCollisionRectangle(xStart, yStart, xEnd, yEnd));
+    }
+
+    /**
+     * Creates a Phaser rectangle from the same coordinate convention previously
+     * used by CollisionDetector.collisionRectangleWithMonsters/EndLevel.
+     */
+    private createCollisionRectangle(xStart: number, yStart: number, xEnd: number, yEnd: number): any
+    {
+        return new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
     }
 
     /**

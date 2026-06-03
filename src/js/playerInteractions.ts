@@ -88,7 +88,7 @@ export const PlayerInteractions =
                 y + playerHeight + this.DEADLY_BOTTOM_OFFSET,
                 LevelConstants.TILED_PROPERTY_TYPE,
                 LevelConstants.TILE_TYPE_DEADLY) ||
-            CollisionDetector.collisionRectangleWithMonsters(
+            Level.collidesWithMonsterArea(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
@@ -107,7 +107,7 @@ export const PlayerInteractions =
         const playerHeight: number = player.getBodyHeight();
 
         if (Level.hasCollectedAllKeys() &&
-            CollisionDetector.collisionRectangleWithEndLevel(
+            Level.collidesWithExitArea(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,

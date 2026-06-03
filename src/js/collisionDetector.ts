@@ -1,5 +1,4 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { Level } from "./level.js";
 
 interface TileWithProperties {
 	properties: Record<string, any>;
@@ -92,22 +91,6 @@ export const CollisionDetector =
         return false;
     },
 
-    // Check if there is a collision between the player and the end-level object.
-    collisionRectangleWithEndLevel : function(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
-    {
-        var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
-
-        return Level.collidesWithExit(playerRectangle);
-    },
-
-    // Check if there is a collision with a monster for a given region.
-    collisionRectangleWithMonsters : function(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
-    {
-        // Set the collision area for the player.
-        var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
-
-        return Level.collidesWithMonster(playerRectangle);
-    },
 
     // Check if there are some vanishing platforms on a horizontal line.
     collisionLineWithVanishingPlatform : function(xStart: number, xEnd: number, yPosition: number): boolean
