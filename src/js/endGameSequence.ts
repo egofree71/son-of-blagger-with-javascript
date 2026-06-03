@@ -20,31 +20,31 @@ type EndGamePhase =
  *
  * The behaviour, scoring values and timings are intentionally preserved.
  */
-export const EndGameSequence =
+class EndGameSequenceController
 {
     // Current phase of the final sequence.
-    phase : LevelConstants.END_GAME_STEP_CONVERT_AIR as EndGamePhase,
+    phase: EndGamePhase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
 
     // Image containing the congratulations message.
-    congratulationsImage : null as any | null,
+    congratulationsImage: any | null = null;
 
     // Generic frame counter used by the final wait phase.
-    counter : 0,
+    counter = 0;
 
     /**
      * Resets the sequence to its initial state.
      */
-    reset : function(): void
+    reset(): void
     {
         this.phase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
         this.congratulationsImage = null;
         this.counter = 0;
-    },
+    }
 
     /**
      * Advances the final sequence by one frame.
      */
-    update : function(): void
+    update(): void
     {
         switch(this.phase)
         {
@@ -64,12 +64,12 @@ export const EndGameSequence =
                 this.waitThenReturnToIntroduction();
                 break;
         }
-    },
+    }
 
     /**
      * Converts the remaining air into score before displaying the final message.
      */
-    convertAirToScore : function(): void
+    private convertAirToScore(): void
     {
         if (Level.airLevel > 0)
         {
@@ -84,12 +84,12 @@ export const EndGameSequence =
             Level.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
             this.phase = LevelConstants.END_GAME_STEP_SHOW_MESSAGE;
         }
-    },
+    }
 
     /**
      * Displays the congratulations message on a black background.
      */
-    showCongratulationsMessage : function(): void
+    private showCongratulationsMessage(): void
     {
         this.phase = LevelConstants.END_GAME_STEP_SCALE_MESSAGE;
 
@@ -109,24 +109,24 @@ export const EndGameSequence =
         this.congratulationsImage.scale.y = LevelConstants.END_GAME_INITIAL_SCALE;
 
         this.counter = LevelConstants.END_GAME_MESSAGE_WAIT_COUNTER;
-    },
+    }
 
     /**
      * Scales the congratulations message up until it reaches its preserved size.
      */
-    scaleCongratulationsMessage : function(): void
+    private scaleCongratulationsMessage(): void
     {
         this.congratulationsImage.scale.x += LevelConstants.END_GAME_SCALE_INCREMENT;
         this.congratulationsImage.scale.y += LevelConstants.END_GAME_SCALE_INCREMENT;
 
         if (this.congratulationsImage.scale.x > LevelConstants.END_GAME_MAX_SCALE)
             this.phase = LevelConstants.END_GAME_STEP_WAIT_THEN_RESET;
-    },
+    }
 
     /**
      * Waits briefly, clears the message, resets the game and returns to the title screen.
      */
-    waitThenReturnToIntroduction : function(): void
+    private waitThenReturnToIntroduction(): void
     {
         this.counter--;
 
@@ -142,4 +142,6 @@ export const EndGameSequence =
             GameController.gameState = GameStates.LOAD_INTRODUCTION;
         }
     }
-};
+}
+
+export const EndGameSequence = new EndGameSequenceController();

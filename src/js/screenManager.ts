@@ -11,14 +11,14 @@ import { GameController } from "./gameController.js";
  * a level. Moving them here keeps Level focused on actual level management
  * while preserving the original title/help/game-over behaviour.
  */
-export const ScreenManager =
+class ScreenManagerController
 {
     // Title screen objects.
-    introductionLogo : null as any,
-    fontIntroduction : null as any,
+    private introductionLogo: any = null;
+    private fontIntroduction: any = null;
 
     // Game-over screen object.
-    gameOver : null as any,
+    private gameOver: any = null;
 
     /**
      * Display the introduction title screen.
@@ -26,7 +26,7 @@ export const ScreenManager =
      * The black background reuses LevelRevealSequence.upperBlackRectangle because the
      * same fixed graphic object is already used by other screen sequences.
      */
-    displayIntroduction : function()
+    public displayIntroduction(): void
     {
         // Draw a black rectangle behind the title.
         LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
@@ -37,7 +37,7 @@ export const ScreenManager =
         this.introductionLogo.fixedToCamera = true;
 
         this.fontIntroduction = Util.drawFontText(LevelConstants.INTRO_PROMPT_TEXT, LevelConstants.INTRO_PROMPT_X, LevelConstants.INTRO_PROMPT_Y);
-    },
+    }
 
     /**
      * Remove the introduction title screen.
@@ -45,7 +45,7 @@ export const ScreenManager =
      * This intentionally preserves the old behaviour: the retro font is
      * cleared instead of destroying the image created by Util.drawFontText().
      */
-    removeIntroduction : function()
+    public removeIntroduction(): void
     {
         if (this.introductionLogo)
         {
@@ -58,14 +58,14 @@ export const ScreenManager =
             this.fontIntroduction.clear();
             this.fontIntroduction = null;
         }
-    },
+    }
 
     /**
      * Display a screen with instructions.
      *
      * Pressing any key destroys the help text and returns to the introduction.
      */
-    displayInstructions : function()
+    public displayInstructions(): void
     {
         // Draw a black rectangle.
         LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
@@ -102,21 +102,21 @@ export const ScreenManager =
 
             GameController.gameState = GameStates.LOAD_INTRODUCTION;
         };
-    },
+    }
 
     /**
      * Display the game-over logo.
      */
-    displayGameOver : function()
+    public displayGameOver(): void
     {
         this.gameOver = game.add.sprite(LevelConstants.GAME_OVER_X, LevelConstants.GAME_OVER_Y, LevelConstants.SPRITE_GAME_OVER);
         this.gameOver.fixedToCamera = true;
-    },
+    }
 
     /**
      * Remove the game-over logo.
      */
-    removeGameOver : function()
+    public removeGameOver(): void
     {
         if (this.gameOver)
         {
@@ -124,4 +124,6 @@ export const ScreenManager =
             this.gameOver = null;
         }
     }
-};
+}
+
+export const ScreenManager = new ScreenManagerController();

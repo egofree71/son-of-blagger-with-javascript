@@ -1,4 +1,4 @@
-import { GameStates } from "./gameStates.ts";
+import { GameStates, type GameState } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { ScreenManager } from "./screenManager.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
@@ -6,15 +6,15 @@ import { HUD } from "./HUD.ts";
 import { Player } from "./player.ts";
 import { Level } from "./level.ts";
 
-export const GameController =
+class GameControllerController
 {
     // The current game state.
-    gameState : null,
+    public gameState: GameState | null = null;
 
     // Runtime score data.
-    score : 0,
-    hiScore : null,
-    lives : LevelConstants.INITIAL_LIVES,
+    public score = 0;
+    public hiScore: any = 0;
+    public lives = LevelConstants.INITIAL_LIVES;
 
     /**
      * Main game loop entry point.
@@ -24,7 +24,7 @@ export const GameController =
      * it only decides which subsystem should run according to the current game
      * state.
      */
-    update : function()
+    public update(): void
     {
         switch(this.gameState)
         {
@@ -64,7 +64,7 @@ export const GameController =
                 this.updatePlaying();
                 break;
         }
-    },
+    }
 
     /**
      * Show the title screen once, then wait for a key press.
@@ -73,24 +73,26 @@ export const GameController =
      * After the callback is installed, the game moves to INTRODUCTION. That
      * state intentionally does nothing while the title screen waits for input.
      */
-    updateLoadIntroduction : function()
+    private updateLoadIntroduction(): void
     {
         ScreenManager.displayIntroduction();
 
+        const controller = this;
+
         // If the user pressed a key, start a new game or display help.
-        game.input.keyboard.onPressCallback = function(key)
+        game.input.keyboard.onPressCallback = function(key: string)
         {
             ScreenManager.removeIntroduction();
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
-                GameController.gameState = GameStates.LOAD_HELP;
+                controller.gameState = GameStates.LOAD_HELP;
             else
-                GameController.gameState = GameStates.LOAD_LEVEL;
+                controller.gameState = GameStates.LOAD_LEVEL;
         };
 
         this.gameState = GameStates.INTRODUCTION;
-    },
+    }
 
     /**
      * Show the help screen once.
@@ -98,11 +100,11 @@ export const GameController =
      * The input callback that leaves the help screen is currently owned by
      * ScreenManager.displayInstructions(), so this state only delegates the display.
      */
-    updateLoadHelp : function()
+    private updateLoadHelp(): void
     {
         ScreenManager.displayInstructions();
         this.gameState = GameStates.HELP;
-    },
+    }
 
     /**
      * Run the end-of-level transition.
@@ -111,31 +113,31 @@ export const GameController =
      * Level.goToNext(). This state keeps running until the transition object
      * decides to move the game to the next state.
      */
-    updateEndLevel : function()
+    private updateEndLevel(): void
     {
         Level.goToNext();
-    },
+    }
 
     /**
      * Run the final end-game sequence.
      *
      * The actual frame-by-frame sequence is handled by EndGameSequence.
      */
-    updateEndGame : function()
+    private updateEndGame(): void
     {
         EndGameSequence.update();
-    },
+    }
 
     /**
      * Load all objects for the current level, refresh the HUD, then start the
      * progressive level reveal.
      */
-    updateLoadLevel : function()
+    private updateLoadLevel(): void
     {
         Level.load();
         HUD.update();
         this.gameState = GameStates.DISPLAY_LEVEL;
-    },
+    }
 
     /**
      * Continue the progressive reveal of the level.
@@ -143,10 +145,10 @@ export const GameController =
      * Level.display() is responsible for switching to the next state when the
      * reveal has finished.
      */
-    updateDisplayLevel : function()
+    private updateDisplayLevel(): void
     {
         Level.display();
-    },
+    }
 
     /**
      * Continue the monster reveal sequence before gameplay starts.
@@ -154,30 +156,32 @@ export const GameController =
      * Level.displayMonsters() is responsible for switching to PLAYING when the
      * sequence has finished.
      */
-    updateStartLevel : function()
+    private updateStartLevel(): void
     {
         Level.displayMonsters();
-    },
+    }
 
     /**
      * Reset the game and show the game-over screen once, then wait for a key
      * press before returning to the introduction.
      */
-    updateShowGameOver : function()
+    private updateShowGameOver(): void
     {
         Level.resetGame();
         ScreenManager.displayGameOver();
+
+        const controller = this;
 
         // If the user pressed a key, show the introduction again.
         game.input.keyboard.onPressCallback = function()
         {
             game.input.keyboard.onPressCallback = null;
             ScreenManager.removeGameOver();
-            GameController.gameState = GameStates.LOAD_INTRODUCTION;
+            controller.gameState = GameStates.LOAD_INTRODUCTION;
         };
 
         this.gameState = GameStates.GAME_OVER;
-    },
+    }
 
     /**
      * Main gameplay frame.
@@ -188,12 +192,13 @@ export const GameController =
      * 3. update monsters;
      * 4. update the player.
      */
-    updatePlaying : function()
+    private updatePlaying(): void
     {
         HUD.updateAirLevel();
         HUD.displayBonusMan();
         Level.updateMonsters();
         Player.update();
     }
-};
+}
 
+export const GameController = new GameControllerController();
