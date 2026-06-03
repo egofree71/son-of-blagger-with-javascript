@@ -4,14 +4,25 @@ import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 
+interface DeathSequencePlayer
+{
+    playerSprite: any;
+    playerDyingSprite: any;
+    deadlyFall: boolean;
+}
+
 /**
  * Handles the visual and gameplay consequences of the player's death.
  *
  * Player remains responsible for movement and for deciding when death should be
- * triggered. Once death starts, this object owns the animation callback and the
- * life / bonus-man / reload decision that happens after the animation finishes.
+ * triggered. Once death starts, this controller owns the animation callback and
+ * the life / bonus-man / reload decision that happens after the animation
+ * finishes.
+ *
+ * The public singleton name is intentionally unchanged: the rest of the game
+ * still calls `PlayerDeathSequence.start(Player)`.
  */
-export const PlayerDeathSequence =
+class PlayerDeathSequenceController
 {
     /**
      * Starts the death animation for the given player object.
@@ -21,7 +32,7 @@ export const PlayerDeathSequence =
      * death sprite is displayed, then the level is reloaded or the game-over
      * screen is shown when the animation completes.
      */
-    start : function(player: any): void
+    start(player: DeathSequencePlayer): void
     {
         GameController.gameState = GameStates.KILL_PLAYER;
         player.playerSprite.visible = false;
@@ -29,9 +40,9 @@ export const PlayerDeathSequence =
         player.playerDyingSprite = this.createDeathSprite(player);
         const animation = player.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
 
-        animation.onComplete.add(function()
+        animation.onComplete.add((): void =>
         {
-            PlayerDeathSequence.finish();
+            this.finish();
         });
 
         player.playerDyingSprite.animations.play(
@@ -39,7 +50,7 @@ export const PlayerDeathSequence =
             PlayerStates.DYING_ANIMATION_FRAME_RATE,
             false,
             true);
-    },
+    }
 
     /**
      * Creates the separate sprite used during the death animation.
@@ -47,7 +58,7 @@ export const PlayerDeathSequence =
      * A deadly fall uses the white dying sprite, preserving the original visual
      * feedback from the previous implementation.
      */
-    createDeathSprite : function(player: any): any
+    private createDeathSprite(player: DeathSequencePlayer): any
     {
         const deathSprite = game.add.sprite(
             player.playerSprite.body.x,
@@ -58,12 +69,12 @@ export const PlayerDeathSequence =
             deathSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_DYING_WHITE);
 
         return deathSprite;
-    },
+    }
 
     /**
      * Applies the consequences of the completed death animation.
      */
-    finish : function(): void
+    private finish(): void
     {
         this.consumeBonusManOrLife();
 
@@ -75,12 +86,12 @@ export const PlayerDeathSequence =
             GameController.gameState = GameStates.SHOW_GAME_OVER;
         else
             GameController.gameState = GameStates.LOAD_LEVEL;
-    },
+    }
 
     /**
      * The bonus man prevents losing one life once, then disappears.
      */
-    consumeBonusManOrLife : function(): void
+    private consumeBonusManOrLife(): void
     {
         if (Level.bonusMan == true)
         {
@@ -92,4 +103,6 @@ export const PlayerDeathSequence =
             GameController.lives -= 1;
         }
     }
-};
+}
+
+export const PlayerDeathSequence = new PlayerDeathSequenceController();
