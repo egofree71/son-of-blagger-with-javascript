@@ -1,10 +1,10 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
-import { ScreenManager } from "./screenManager.js";
-import { EndGameSequence } from "./endGameSequence.js";
-import { HUD } from "./HUD.js";
-import { Player } from "./player.js";
-import { Level } from "./level.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
+import { ScreenManager } from "./screenManager.ts";
+import { EndGameSequence } from "./endGameSequence.ts";
+import { HUD } from "./HUD.ts";
+import { Player } from "./player.ts";
+import { Level } from "./level.ts";
 
 export const GameController =
 {

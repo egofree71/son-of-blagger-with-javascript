@@ -1,10 +1,10 @@
-import { GameStates } from "./gameStates.js";
-import { PlayerStates } from "./playerStates.js";
-import { LevelConstants } from "./levelConstants.js";
-import { Util } from "./util.js";
-import { PlayerMovement } from "./playerMovement.js";
-import { PlayerInteractions } from "./playerInteractions.js";
-import { PlayerDeathSequence } from "./playerDeathSequence.js";
+import { GameStates } from "./gameStates.ts";
+import { PlayerStates } from "./playerStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
+import { Util } from "./util.ts";
+import { PlayerMovement } from "./playerMovement.ts";
+import { PlayerInteractions } from "./playerInteractions.ts";
+import { PlayerDeathSequence } from "./playerDeathSequence.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 

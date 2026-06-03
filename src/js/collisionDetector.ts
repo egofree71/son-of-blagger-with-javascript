@@ -1,5 +1,11 @@
-import { LevelConstants } from "./levelConstants.js";
+import { LevelConstants } from "./levelConstants.ts";
 import { Level } from "./level.js";
+
+interface TileWithProperties {
+	properties: Record<string, any>;
+	alpha: number;
+	worldY: number;
+}
 
 /**
  * Centralizes gameplay collision checks.
@@ -10,24 +16,23 @@ import { Level } from "./level.js";
  * clearer home than the generic Util object.
  *
  * CollisionDetector is now exported as an ES module so movement and interaction
- * modules can depend on it explicitly. It is still mirrored on window during
- * the migration to preserve console debugging and legacy-style access.
+ * modules can depend on it explicitly.
  */
 export const CollisionDetector =
 {
     // Store the last tile hit by a tile-based collision check.
     // Key collection uses this reference to hide the collected key tile.
-    lastTileHit : null,
+    lastTileHit : null as TileWithProperties | null,
 
     // Check if there are some tiles with a given property on a horizontal line.
-    horizontalCollisionLine : function(xStart, xEnd, yPosition, propertyName, propertyValue, onTop)
+    horizontalCollisionLine : function(xStart: number, xEnd: number, yPosition: number, propertyName: string, propertyValue: any, onTop?: boolean): boolean
     {
         var collision = false;
 
         // Check every horizontal position.
         for(var xPosition = xStart; xPosition <= xEnd; xPosition++)
         {
-            var tile = map.getTileWorldXY(xPosition, yPosition);
+            var tile = map.getTileWorldXY(xPosition, yPosition) as TileWithProperties | null;
 
             if (tile == null) continue;
 
@@ -45,14 +50,14 @@ export const CollisionDetector =
     },
 
     // Check if there are some tiles with a given property on a vertical line.
-    verticalCollisionLine : function(yStart, yEnd, xPosition, propertyName, propertyValue, onTop)
+    verticalCollisionLine : function(yStart: number, yEnd: number, xPosition: number, propertyName: string, propertyValue: any, onTop?: boolean): boolean
     {
         var collision = false;
 
         // Check every vertical position.
         for(var yPosition = yStart; yPosition <= yEnd; yPosition++)
         {
-            var tile = map.getTileWorldXY(xPosition, yPosition);
+            var tile = map.getTileWorldXY(xPosition, yPosition) as TileWithProperties | null;
 
             if (tile != null && tile.properties[propertyName] == propertyValue && tile.alpha == 1)
             {
@@ -66,7 +71,7 @@ export const CollisionDetector =
     },
 
     // Check if there are some tiles with a given property on the bounds of a rectangle.
-    collisionRectangle : function(xStart, yStart, xEnd, yEnd, propertyName, propertyValue)
+    collisionRectangle : function(xStart: number, yStart: number, xEnd: number, yEnd: number, propertyName: string, propertyValue: any): boolean
     {
         // Check the upper bound.
         if (this.horizontalCollisionLine(xStart, xEnd, yStart, propertyName, propertyValue, false))
@@ -88,7 +93,7 @@ export const CollisionDetector =
     },
 
     // Check if there is a collision between the player and the end-level object.
-    collisionRectangleWithEndLevel : function(xStart, yStart, xEnd, yEnd)
+    collisionRectangleWithEndLevel : function(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
     {
         var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
         var endLevelRectangle = new Phaser.Rectangle(Level.endLevel.x, Level.endLevel.y, Level.endLevel.width, Level.endLevel.height);
@@ -97,7 +102,7 @@ export const CollisionDetector =
     },
 
     // Check if there is a collision with a monster for a given region.
-    collisionRectangleWithMonsters : function(xStart, yStart, xEnd, yEnd)
+    collisionRectangleWithMonsters : function(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
     {
         // Set the collision area for the player.
         var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
@@ -122,14 +127,14 @@ export const CollisionDetector =
     },
 
     // Check if there are some vanishing platforms on a horizontal line.
-    collisionLineWithVanishingPlatform : function(xStart, xEnd, yPosition)
+    collisionLineWithVanishingPlatform : function(xStart: number, xEnd: number, yPosition: number): boolean
     {
         var collision = false;
 
         // Check every horizontal position.
         for(var xPosition = xStart; xPosition <= xEnd; xPosition++)
         {
-            var tile = map.getTileWorldXY(xPosition, yPosition);
+            var tile = map.getTileWorldXY(xPosition, yPosition) as TileWithProperties | null;
 
             if (tile != null && tile.properties[LevelConstants.TILED_PROPERTY_NAME] == LevelConstants.TILE_NAME_VANISHING_PLATFORM)
             {

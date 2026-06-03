@@ -1,9 +1,15 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
-import { LevelRevealSequence } from "./levelRevealSequence.js";
-import { HUD } from "./HUD.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
+import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
+
+type EndGamePhase =
+    | typeof LevelConstants.END_GAME_STEP_CONVERT_AIR
+    | typeof LevelConstants.END_GAME_STEP_SHOW_MESSAGE
+    | typeof LevelConstants.END_GAME_STEP_SCALE_MESSAGE
+    | typeof LevelConstants.END_GAME_STEP_WAIT_THEN_RESET;
 
 /**
  * Handles the final sequence played after the last level has been completed.
@@ -17,10 +23,10 @@ import { GameController } from "./gameController.js";
 export const EndGameSequence =
 {
     // Current phase of the final sequence.
-    phase : LevelConstants.END_GAME_STEP_CONVERT_AIR,
+    phase : LevelConstants.END_GAME_STEP_CONVERT_AIR as EndGamePhase,
 
     // Image containing the congratulations message.
-    congratulationsImage : null,
+    congratulationsImage : null as any | null,
 
     // Generic frame counter used by the final wait phase.
     counter : 0,
@@ -28,7 +34,7 @@ export const EndGameSequence =
     /**
      * Resets the sequence to its initial state.
      */
-    reset : function()
+    reset : function(): void
     {
         this.phase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
         this.congratulationsImage = null;
@@ -38,7 +44,7 @@ export const EndGameSequence =
     /**
      * Advances the final sequence by one frame.
      */
-    update : function()
+    update : function(): void
     {
         switch(this.phase)
         {
@@ -63,7 +69,7 @@ export const EndGameSequence =
     /**
      * Converts the remaining air into score before displaying the final message.
      */
-    convertAirToScore : function()
+    convertAirToScore : function(): void
     {
         if (Level.airLevel > 0)
         {
@@ -83,7 +89,7 @@ export const EndGameSequence =
     /**
      * Displays the congratulations message on a black background.
      */
-    showCongratulationsMessage : function()
+    showCongratulationsMessage : function(): void
     {
         this.phase = LevelConstants.END_GAME_STEP_SCALE_MESSAGE;
 
@@ -108,7 +114,7 @@ export const EndGameSequence =
     /**
      * Scales the congratulations message up until it reaches its preserved size.
      */
-    scaleCongratulationsMessage : function()
+    scaleCongratulationsMessage : function(): void
     {
         this.congratulationsImage.scale.x += LevelConstants.END_GAME_SCALE_INCREMENT;
         this.congratulationsImage.scale.y += LevelConstants.END_GAME_SCALE_INCREMENT;
@@ -120,7 +126,7 @@ export const EndGameSequence =
     /**
      * Waits briefly, clears the message, resets the game and returns to the title screen.
      */
-    waitThenReturnToIntroduction : function()
+    waitThenReturnToIntroduction : function(): void
     {
         this.counter--;
 

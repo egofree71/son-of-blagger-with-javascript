@@ -1,4 +1,15 @@
-export const Data =
+export type JumpVerticalDirection = "UP" | "DOWN" | null;
+export type JumpStep = [allowHorizontalMovement: boolean, verticalDirection: JumpVerticalDirection];
+export type LevelDefinition = [keyCount: number, monsterAnimationCounter: number];
+export type BonusManColor = number;
+
+interface GameData {
+    jumpPath: JumpStep[];
+    levels: LevelDefinition[];
+    bonusManColors: BonusManColor[];
+}
+
+export const Data: GameData =
 {
     // Each element of the array contains the horizontal and vertical movements for each jump's step
     jumpPath : [[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"],[false,"UP"], [false,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],[true,"UP"],

@@ -1,13 +1,13 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
-import { LevelRevealSequence } from "./levelRevealSequence.js";
-import { EndGameSequence } from "./endGameSequence.js";
-import { Data } from "./data.js";
-import { LevelObjectLoader } from "./levelObjectLoader.js";
-import { LevelTransition } from "./levelTransition.js";
-import { Player } from "./player.js";
-import { HUD } from "./HUD.js";
-import { GameController } from "./gameController.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
+import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { EndGameSequence } from "./endGameSequence.ts";
+import { Data } from "./data.ts";
+import { LevelObjectLoader } from "./levelObjectLoader.ts";
+import { LevelTransition } from "./levelTransition.ts";
+import { Player } from "./player.ts";
+import { HUD } from "./HUD.ts";
+import { GameController } from "./gameController.ts";
 
 export const Level =
 {
@@ -110,7 +110,7 @@ export const Level =
       // If there is a new hi-score, store it in the local storage
       if (GameController.score > GameController.hiScore)
       {
-            localStorage.setItem('hiScore', GameController.score);
+            localStorage.setItem('hiScore', String(GameController.score));
   	       GameController.hiScore = GameController.score;
       }
 

@@ -1,7 +1,7 @@
-import { GameStates } from "./gameStates.js";
-import { LevelConstants } from "./levelConstants.js";
-import { Util } from "./util.js";
-import { LevelRevealSequence } from "./levelRevealSequence.js";
+import { GameStates } from "./gameStates.ts";
+import { LevelConstants } from "./levelConstants.ts";
+import { Util } from "./util.ts";
+import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { GameController } from "./gameController.js";
 
 /**
@@ -14,11 +14,11 @@ import { GameController } from "./gameController.js";
 export const ScreenManager =
 {
     // Title screen objects.
-    introductionLogo : null,
-    fontIntroduction : null,
+    introductionLogo : null as any,
+    fontIntroduction : null as any,
 
     // Game-over screen object.
-    gameOver : null,
+    gameOver : null as any,
 
     /**
      * Display the introduction title screen.
@@ -94,7 +94,7 @@ export const ScreenManager =
         image.fixedToCamera = true;
 
         // If the user pressed a key, go back to the introduction screen.
-        game.input.keyboard.onPressCallback = function(key)
+        game.input.keyboard.onPressCallback = function(key: string)
         {
             image.destroy();
             LevelRevealSequence.upperBlackRectangle.clear();

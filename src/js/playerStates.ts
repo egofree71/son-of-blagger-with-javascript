@@ -3,8 +3,8 @@
  *
  * The current player implementation still relies mostly on booleans such as
  * Player.jumping and Player.deadlyFall. This file does not introduce a full
- * player state machine yet. It only removes repeated raw strings from
- * player.js so future refactorings are safer.
+ * player state machine yet. It only removes repeated raw strings from player.js
+ * so future refactorings are safer.
  */
 export const PlayerStates =
 {
@@ -15,7 +15,7 @@ export const PlayerStates =
     UP : "UP",
     DOWN : "DOWN",
 
-    // Phaser sprite keys loaded in main.js and used by player.js.
+    // Phaser sprite keys loaded during asset preloading and used by player.js.
     SPRITE_BLAGGER : "blagger",
     SPRITE_BLAGGER_WHITE : "blaggerWhite",
     SPRITE_BLAGGER_DYING : "blaggerDying",
@@ -31,5 +31,21 @@ export const PlayerStates =
     // Death animation values preserved from the original implementation.
     DYING_SPRITE_Y_OFFSET : 1,
     DYING_ANIMATION_FRAME_RATE : 6
-};
+} as const;
 
+export type PlayerDirection =
+    | typeof PlayerStates.LEFT
+    | typeof PlayerStates.RIGHT
+    | typeof PlayerStates.UP
+    | typeof PlayerStates.DOWN;
+
+export type PlayerSpriteKey =
+    | typeof PlayerStates.SPRITE_BLAGGER
+    | typeof PlayerStates.SPRITE_BLAGGER_WHITE
+    | typeof PlayerStates.SPRITE_BLAGGER_DYING
+    | typeof PlayerStates.SPRITE_BLAGGER_DYING_WHITE;
+
+export type PlayerAnimationName =
+    | typeof PlayerStates.ANIMATION_LEFT
+    | typeof PlayerStates.ANIMATION_RIGHT
+    | typeof PlayerStates.ANIMATION_BLAGGER_DYING;

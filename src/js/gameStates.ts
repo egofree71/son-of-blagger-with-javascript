@@ -1,13 +1,8 @@
 /**
  * Central list of all game states used by GameController.
  *
- * Before this refactoring step, the same state names were written directly as
- * strings in several files, for example "playing", "end level" or
- * "load introduction". That is fragile: a typo in one file can silently break
- * the game flow.
- *
  * The string values are intentionally unchanged to preserve the current
- * behaviour. Only their usage is now centralized through named constants.
+ * behaviour. Only their usage is centralized through named constants.
  */
 export const GameStates =
 {
@@ -29,5 +24,6 @@ export const GameStates =
     KILL_PLAYER : "killPlayer",
     SHOW_GAME_OVER : "show game over",
     GAME_OVER : "game over"
-};
+} as const;
 
+export type GameState = typeof GameStates[keyof typeof GameStates];

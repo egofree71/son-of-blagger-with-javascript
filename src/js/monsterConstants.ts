@@ -2,8 +2,8 @@
  * Centralized constants used by the Monster constructor.
  *
  * Monsters are mostly driven by data coming from the Tiled map: initial
- * direction, level number and maximum travel distance. This file keeps the
- * raw strings used by monster.js in one place, without changing the existing
+ * direction, level number and maximum travel distance. This file keeps the raw
+ * strings used by monster.js in one place, without changing the existing
  * movement rules.
  */
 export const MonsterConstants =
@@ -33,5 +33,15 @@ export const MonsterConstants =
     // compensated with a hard-coded -42 offset; the value is now named but
     // intentionally unchanged.
     TILED_TO_PHASER_Y_OFFSET : 42
-};
+} as const;
 
+export type MonsterDirection =
+    | typeof MonsterConstants.DIRECTION_RIGHT
+    | typeof MonsterConstants.DIRECTION_LEFT
+    | typeof MonsterConstants.DIRECTION_DOWN
+    | typeof MonsterConstants.DIRECTION_UP;
+
+export type MonsterPropertyName =
+    | typeof MonsterConstants.PROPERTY_DIRECTION
+    | typeof MonsterConstants.PROPERTY_LEVEL
+    | typeof MonsterConstants.PROPERTY_MAX_DISTANCE;

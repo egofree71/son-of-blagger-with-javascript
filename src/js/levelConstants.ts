@@ -49,7 +49,7 @@ export const LevelConstants =
     // Tile indexes used by level.js.
     TILE_KEY_INDEX : 40,
 
-    // Sprite and animation keys loaded in main.js.
+    // Sprite and animation keys loaded during asset preloading.
     SPRITE_EXPLOSION : "explosion",
     SPRITE_REVERSE_EXPLOSION : "reverseExplosion",
     SPRITE_END_LEVEL : "end level",
@@ -109,5 +109,24 @@ export const LevelConstants =
     END_GAME_MESSAGE_TEXT : "Congratulations !\n      you\nfinished the game",
     END_GAME_MESSAGE_X : 60,
     END_GAME_MESSAGE_Y : 100
-};
+} as const;
 
+export type TiledObjectLayerName =
+    | typeof LevelConstants.OBJECT_LAYER_MONSTERS
+    | typeof LevelConstants.OBJECT_LAYER_END_LEVEL
+    | typeof LevelConstants.OBJECT_LAYER_PLAYER;
+
+export type TiledTileType =
+    | typeof LevelConstants.TILE_TYPE_SOLID
+    | typeof LevelConstants.TILE_TYPE_SLIDE
+    | typeof LevelConstants.TILE_TYPE_DEADLY;
+
+export type TiledTileName =
+    | typeof LevelConstants.TILE_NAME_KEY
+    | typeof LevelConstants.TILE_NAME_WALL
+    | typeof LevelConstants.TILE_NAME_LADDER
+    | typeof LevelConstants.TILE_NAME_LEFT_SLIDE
+    | typeof LevelConstants.TILE_NAME_RIGHT_SLIDE
+    | typeof LevelConstants.TILE_NAME_CONVEYOR_RIGHT
+    | typeof LevelConstants.TILE_NAME_CONVEYOR_LEFT
+    | typeof LevelConstants.TILE_NAME_VANISHING_PLATFORM;
