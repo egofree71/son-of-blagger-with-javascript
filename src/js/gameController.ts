@@ -8,20 +8,14 @@ import { Level } from "./level.ts";
 
 class GameControllerController
 {
-    // The current game state is now stored privately. Other modules should use
-    // setState() for transitions, while read-only checks can keep using the
-    // gameState getter.
+    // The current game state is stored privately. Other modules should use
+    // named transition methods instead of setting raw GameStates directly.
     private currentGameState: GameState | null = null;
 
     // Runtime score data.
     private currentScore = 0;
     private currentHiScore = 0;
     private currentLives: number = LevelConstants.INITIAL_LIVES;
-
-    public get gameState(): GameState | null
-    {
-        return this.currentGameState;
-    }
 
     public get score(): number
     {
@@ -38,9 +32,69 @@ class GameControllerController
         return this.currentLives;
     }
 
-    public setState(gameState: GameState): void
+    private setState(gameState: GameState): void
     {
         this.currentGameState = gameState;
+    }
+
+    public isPlaying(): boolean
+    {
+        return this.currentGameState == GameStates.PLAYING;
+    }
+
+    public loadIntroduction(): void
+    {
+        this.setState(GameStates.LOAD_INTRODUCTION);
+    }
+
+    public loadHelp(): void
+    {
+        this.setState(GameStates.LOAD_HELP);
+    }
+
+    public loadLevel(): void
+    {
+        this.setState(GameStates.LOAD_LEVEL);
+    }
+
+    public displayLevel(): void
+    {
+        this.setState(GameStates.DISPLAY_LEVEL);
+    }
+
+    public startLevel(): void
+    {
+        this.setState(GameStates.START_LEVEL);
+    }
+
+    public displayMonsters(): void
+    {
+        this.setState(GameStates.DISPLAYING_MONSTERS);
+    }
+
+    public startPlaying(): void
+    {
+        this.setState(GameStates.PLAYING);
+    }
+
+    public endLevel(): void
+    {
+        this.setState(GameStates.END_LEVEL);
+    }
+
+    public endGame(): void
+    {
+        this.setState(GameStates.END_GAME);
+    }
+
+    public killPlayer(): void
+    {
+        this.setState(GameStates.KILL_PLAYER);
+    }
+
+    public showGameOver(): void
+    {
+        this.setState(GameStates.SHOW_GAME_OVER);
     }
 
     public addScore(points: number): void
@@ -148,9 +202,9 @@ class GameControllerController
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
-                controller.setState(GameStates.LOAD_HELP);
+                controller.loadHelp();
             else
-                controller.setState(GameStates.LOAD_LEVEL);
+                controller.loadLevel();
         };
 
         this.setState(GameStates.INTRODUCTION);
@@ -198,7 +252,7 @@ class GameControllerController
     {
         Level.load();
         HUD.update();
-        this.setState(GameStates.DISPLAY_LEVEL);
+        this.displayLevel();
     }
 
     /**
@@ -239,7 +293,7 @@ class GameControllerController
         {
             game.input.keyboard.onPressCallback = null;
             ScreenManager.removeGameOver();
-            controller.setState(GameStates.LOAD_INTRODUCTION);
+            controller.loadIntroduction();
         };
 
         this.setState(GameStates.GAME_OVER);

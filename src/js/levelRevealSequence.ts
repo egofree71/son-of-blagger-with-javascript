@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { GameController } from "./gameController.js";
 
@@ -151,7 +150,7 @@ class LevelRevealSequenceController
         this.lowerBlackRectangle.clear();
         this.reset();
 
-        GameController.setState(GameStates.START_LEVEL);
+        GameController.startLevel();
     }
 }
 

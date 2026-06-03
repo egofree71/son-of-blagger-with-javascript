@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
 import { HUD } from "./HUD.ts";
@@ -115,9 +114,9 @@ export const PlayerInteractions =
                 y + playerHeight + this.BODY_BOTTOM_OFFSET))
         {
             if (Level.isLastLevel())
-                GameController.setState(GameStates.END_GAME);
+                GameController.endGame();
             else
-                GameController.setState(GameStates.END_LEVEL);
+                GameController.endLevel();
         }
     }
 };

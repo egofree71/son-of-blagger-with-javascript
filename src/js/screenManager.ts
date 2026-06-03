@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
@@ -100,7 +99,7 @@ class ScreenManagerController
             LevelRevealSequence.upperBlackRectangle.clear();
             game.input.keyboard.onPressCallback = null;
 
-            GameController.setState(GameStates.LOAD_INTRODUCTION);
+            GameController.loadIntroduction();
         };
     }
 

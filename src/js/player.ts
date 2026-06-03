@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { PlayerStates } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
@@ -89,7 +88,7 @@ export class PlayerController
 
     public update(): void
     {
-        if (GameController.gameState != GameStates.PLAYING) return;
+        if (!GameController.isPlaying()) return;
 
         const movementResult = PlayerMovement.update(this);
 

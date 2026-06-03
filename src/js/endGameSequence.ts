@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { HUD } from "./HUD.ts";
@@ -139,7 +138,7 @@ class EndGameSequenceController
 
             Level.resetGame();
             HUD.displayAirLevel();
-            GameController.setState(GameStates.LOAD_INTRODUCTION);
+            GameController.loadIntroduction();
         }
     }
 }

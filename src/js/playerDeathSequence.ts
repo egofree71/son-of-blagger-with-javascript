@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { PlayerStates } from "./playerStates.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
@@ -28,7 +27,7 @@ class PlayerDeathSequenceController
      */
     start(player: PlayerController): void
     {
-        GameController.setState(GameStates.KILL_PLAYER);
+        GameController.killPlayer();
         player.hideSprite();
 
         player.setDyingSprite(this.createDeathSprite(player));
@@ -73,9 +72,9 @@ class PlayerDeathSequenceController
         HUD.displayAirLevel();
 
         if (GameController.hasNoLives())
-            GameController.setState(GameStates.SHOW_GAME_OVER);
+            GameController.showGameOver();
         else
-            GameController.setState(GameStates.LOAD_LEVEL);
+            GameController.loadLevel();
     }
 
     /**

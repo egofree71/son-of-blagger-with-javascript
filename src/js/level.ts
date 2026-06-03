@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
@@ -202,7 +201,7 @@ class LevelController
         // level has none, do not leave the game stuck in DISPLAYING_MONSTERS.
         if (this.currentMonsters.length == 0)
         {
-            GameController.setState(GameStates.PLAYING);
+            GameController.startPlaying();
             return;
         }
 
@@ -217,13 +216,13 @@ class LevelController
             anim.onComplete.add(function()
             {
                 level.showMonsters();
-                GameController.setState(GameStates.PLAYING);
+                GameController.startPlaying();
             });
 
             explosion.animations.play(LevelConstants.SPRITE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
         }
 
-        GameController.setState(GameStates.DISPLAYING_MONSTERS);
+        GameController.displayMonsters();
     }
 
     /**

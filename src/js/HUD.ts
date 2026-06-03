@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { HudConstants } from "./hudConstants.ts";
 import { Data } from "./data.ts";
 import { Level } from "./level.js";
@@ -135,7 +134,7 @@ class HUDController
      */
     updateAirLevel(): void
     {
-        if (GameController.gameState != GameStates.PLAYING) return;
+        if (!GameController.isPlaying()) return;
 
         this.counter -= 1;
 

@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { MonsterConstants, type MonsterDirection } from "./monsterConstants.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
@@ -58,7 +57,7 @@ export class Monster
 
     updatePosition(): void
     {
-        if (GameController.gameState != GameStates.PLAYING) return ;
+        if (!GameController.isPlaying()) return ;
 
         // If the shared monster animation counter is empty, update the monster's position.
         if (Level.shouldAdvanceMonsterAnimation())

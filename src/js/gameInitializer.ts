@@ -1,4 +1,3 @@
-import { GameStates } from "./gameStates.ts";
 import { GameController } from "./gameController.ts";
 import { Util } from "./util.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
@@ -181,7 +180,7 @@ export const GameInitializer =
      */
     startAtIntroduction : function()
     {
-        GameController.setState(GameStates.LOAD_INTRODUCTION);
+        GameController.loadIntroduction();
     }
 };
 
