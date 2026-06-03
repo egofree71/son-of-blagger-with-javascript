@@ -1,6 +1,4 @@
 import { MonsterConstants, type MonsterDirection } from "./monsterConstants.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
 import type { MonsterTileProperties, TiledObject } from "./util.ts";
 
 interface TiledMonsterObject extends TiledObject {
@@ -55,12 +53,10 @@ export class Monster
         this.sprite.animations.add(MonsterConstants.ANIMATION_DEFAULT, MonsterConstants.ANIMATION_FRAMES, MonsterConstants.ANIMATION_FRAME_RATE, true);
     }
 
-    updatePosition(): void
+    updatePosition(advanceAnimation: boolean): void
     {
-        if (!GameController.isPlaying()) return ;
-
         // If the shared monster animation counter is empty, update the monster's position.
-        if (Level.shouldAdvanceMonsterAnimation())
+        if (advanceAnimation)
             this.sprite.animations.next();
 
         var horizontalSpeed = 0;

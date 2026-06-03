@@ -135,19 +135,21 @@ class LevelController
     /**
      * Update monsters position.
      */
-    updateMonsters(): void
+    updateMonsters(isPlaying: boolean): void
     {
+        if (!isPlaying) return;
+
         for (var i = 0; i < this.currentMonsters.length; i++)
-            this.currentMonsters[i].updatePosition();
+            this.currentMonsters[i].updatePosition(this.shouldAdvanceMonsterAnimation());
     }
 
     /**
      * Advances the shared monster animation counter.
      *
-     * Monster instances ask Level whether the next animation frame should be
-     * displayed instead of mutating Level counters directly.
+     * Level owns the shared animation cadence and gives each monster a simple
+     * boolean telling it whether to advance its sprite animation this frame.
      */
-    shouldAdvanceMonsterAnimation(): boolean
+    private shouldAdvanceMonsterAnimation(): boolean
     {
         this.monsterAnimationCounter -= 1;
 
