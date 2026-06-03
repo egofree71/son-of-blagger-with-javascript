@@ -116,8 +116,7 @@ class LevelTransitionController
     /**
      * Advances the transition by one frame.
      *
-     * GameController calls Level.goToNext() while the game state is GameStates.END_LEVEL.
-     * Level.goToNext() delegates to this method.
+     * GameController calls this while the game state is GameStates.END_LEVEL.
      */
     update(): LevelTransitionResult
     {

@@ -2,6 +2,8 @@ import { GameStates, type GameState } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { ScreenManager } from "./screenManager.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
+import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { LevelTransition } from "./levelTransition.ts";
 import { HUD } from "./HUD.ts";
 import { Player } from "./player.ts";
 import { Level } from "./level.ts";
@@ -231,13 +233,13 @@ class GameControllerController
     /**
      * Run the end-of-level transition.
      *
-     * The actual transition sequence is handled by LevelTransition through
-     * Level.goToNext(). This state keeps running until the transition object
-     * decides to move the game to the next state.
+     * The actual transition sequence is handled by LevelTransition. This state
+     * keeps running until the transition object reports that the next level has
+     * been loaded.
      */
     private updateEndLevel(): void
     {
-        const transitionResult = Level.goToNext();
+        const transitionResult = LevelTransition.update();
 
         if (transitionResult.scoreDelta > 0)
         {
@@ -296,10 +298,24 @@ class GameControllerController
     {
         this.updateHiScoreIfNeeded();
         this.resetScoreAndLives();
+        this.resetVisualSequences();
         Level.resetGame();
         HUD.update(this.lives, this.score, this.hiScore, Level.level);
         HUD.displayAirLevel(Level.airLevel);
         this.loadIntroduction();
+    }
+
+    /**
+     * Resets visual sequences that are not owned by Level.
+     *
+     * This keeps Level.resetGame() focused on level data instead of making it
+     * know about end-level or end-game sequence objects.
+     */
+    private resetVisualSequences(): void
+    {
+        LevelTransition.reset();
+        EndGameSequence.reset();
+        LevelRevealSequence.reset();
     }
 
     /**
@@ -321,7 +337,7 @@ class GameControllerController
      */
     private updateDisplayLevel(): void
     {
-        if (Level.display())
+        if (LevelRevealSequence.update())
             this.startLevel();
     }
 
@@ -352,6 +368,7 @@ class GameControllerController
     {
         this.updateHiScoreIfNeeded();
         this.resetScoreAndLives();
+        this.resetVisualSequences();
         Level.resetGame();
         HUD.update(this.lives, this.score, this.hiScore, Level.level);
         ScreenManager.displayGameOver();

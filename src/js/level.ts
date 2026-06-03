@@ -1,9 +1,6 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { LevelRevealSequence } from "./levelRevealSequence.ts";
-import { EndGameSequence } from "./endGameSequence.ts";
 import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
-import { LevelTransition, type LevelTransitionResult } from "./levelTransition.ts";
 import { Player } from "./player.ts";
 import type { Monster } from "./monster.ts";
 
@@ -288,24 +285,14 @@ class LevelController
     }
 
     /**
-     * Reset runtime state owned by Level and level-related sequences.
+     * Reset runtime state owned directly by Level.
      *
-     * Score and lives are owned by GameController and are reset by the caller.
+     * Score, lives and visual sequence state are owned by GameController or the
+     * corresponding sequence objects and are reset by the caller.
      */
     resetGame(): void
     {
         this.currentLevel = LevelConstants.INITIAL_LEVEL;
-
-        LevelTransition.reset();
-        EndGameSequence.reset();
-    }
-
-    /**
-     * Move the player to the next level and increase score according to the air's level.
-     */
-    goToNext(): LevelTransitionResult
-    {
-        return LevelTransition.update();
     }
 
     /**
@@ -330,14 +317,6 @@ class LevelController
         this.levelExit = LevelObjectLoader.loadEndLevel(this.currentLevel, this.levelExit);
     }
 
-    /**
-     * Display progressively the map with two disappearing black rectangles.
-     * The actual frame-by-frame sequence is handled by LevelRevealSequence.
-     */
-    display(): boolean
-    {
-        return LevelRevealSequence.update();
-    }
 }
 
 export const Level = new LevelController();
