@@ -96,9 +96,8 @@ export const CollisionDetector =
     collisionRectangleWithEndLevel : function(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
     {
         var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
-        var endLevelRectangle = new Phaser.Rectangle(Level.endLevel.x, Level.endLevel.y, Level.endLevel.width, Level.endLevel.height);
 
-        return Phaser.Rectangle.intersects(playerRectangle, endLevelRectangle);
+        return Level.collidesWithExit(playerRectangle);
     },
 
     // Check if there is a collision with a monster for a given region.
@@ -107,23 +106,7 @@ export const CollisionDetector =
         // Set the collision area for the player.
         var playerRectangle = new Phaser.Rectangle(xStart, yStart, xEnd - xStart, yEnd - yStart);
 
-        // For each monster.
-        for (var i = 0; i < Level.monsters.length; i++)
-        {
-            var monster = Level.monsters[i];
-
-            // Set the collision area for the monster.
-            var monsterRectangle = new Phaser.Rectangle(
-                monster.sprite.x + monster.collisionOffsetX,
-                monster.sprite.y + monster.collisionOffsetY,
-                monster.realWidth,
-                monster.realHeight);
-
-            if (Phaser.Rectangle.intersects(playerRectangle, monsterRectangle))
-                return true;
-        }
-
-        return false;
+        return Level.collidesWithMonster(playerRectangle);
     },
 
     // Check if there are some vanishing platforms on a horizontal line.

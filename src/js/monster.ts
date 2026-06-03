@@ -60,14 +60,9 @@ export class Monster
     {
         if (GameController.gameState != GameStates.PLAYING) return ;
 
-        Level.animationCounter -= 1;
-
-        // If the counter is empty, update the monster's position
-        if (Level.animationCounter == 0)
-        {
+        // If the shared monster animation counter is empty, update the monster's position.
+        if (Level.shouldAdvanceMonsterAnimation())
             this.sprite.animations.next();
-            Level.animationCounter = Level.animationCounterMax;
-        }
 
         var horizontalSpeed = 0;
         var verticalSpeed = 0;

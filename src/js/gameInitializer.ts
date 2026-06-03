@@ -118,7 +118,7 @@ export const GameInitializer =
      */
     createRuntimeGroups : function()
     {
-        Level.monstersGroup = game.add.group();
+        Level.createMonstersGroup();
     },
 
     /**

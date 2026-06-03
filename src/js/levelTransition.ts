@@ -167,20 +167,7 @@ class LevelTransitionController
     {
         game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
 
-        // Hide monsters from the completed level.
-        for (var i = 0; i < Level.monsters.length; i++)
-            Level.monsters[i].sprite.visible = false;
-
-        // Remove any previous reverse explosion sprites before creating new ones.
-        Level.reverseExplosions.removeAll(true);
-
-        // Display one reverse explosion at the last position of each monster.
-        for (var j = 0; j < Level.monsters.length; j++)
-        {
-            var reverseExplosion = Level.reverseExplosions.create(Level.monsters[j].sprite.body.x, Level.monsters[j].sprite.body.y, LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.add(LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.play(LevelConstants.SPRITE_REVERSE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
-        }
+        Level.hideMonstersWithReverseExplosions();
 
         this.phase = this.PHASE_RESTORE_BACKGROUND;
     }
