@@ -3,7 +3,7 @@ import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { Data } from "./data.ts";
 import { PlayerMovement } from "./playerMovement.ts";
-import { PlayerInteractions, type PlayerInteractionResult } from "./playerInteractions.ts";
+import { PlayerInteractions, type PlayerInteractionContext, type PlayerInteractionResult } from "./playerInteractions.ts";
 import { PlayerDeathSequence } from "./playerDeathSequence.ts";
 import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 
@@ -11,7 +11,7 @@ import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
  * Owns the playable character sprite and player-specific runtime state.
  *
  * The exported Player value remains a singleton so existing callers can keep
- * using Player.create(), Player.reset(levelNumber), Player.update(), and
+ * using Player.create(), Player.reset(levelNumber), Player.update(...), and
  * Player.kill(onComplete). The class only replaces the previous object-literal container; movement rules,
  * interaction checks, animation timings, and death handling still live in their
  * dedicated modules.
@@ -84,7 +84,7 @@ export class PlayerController
         this.fallHeight = 0;
     }
 
-    public update(): PlayerInteractionResult
+    public update(interactionContext: PlayerInteractionContext): PlayerInteractionResult
     {
         const movementResult = PlayerMovement.update(this);
 
@@ -98,7 +98,7 @@ export class PlayerController
         }
 
         if (movementResult.checkInteractions)
-            return PlayerInteractions.update(this, movementResult.x, movementResult.y);
+            return PlayerInteractions.update(this, movementResult.x, movementResult.y, interactionContext);
 
         return {
             keyCollected: false,

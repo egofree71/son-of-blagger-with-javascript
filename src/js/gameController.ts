@@ -407,7 +407,7 @@ class GameControllerController
 
         if (!this.isPlaying()) return;
 
-        const playerResult = Player.update();
+        const playerResult = Player.update(Level);
 
         if (playerResult.keyCollected)
         {

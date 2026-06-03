@@ -1,6 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { Level } from "./level.ts";
 import type { PlayerController } from "./player.ts";
 
 export interface PlayerInteractionResult
@@ -8,6 +7,22 @@ export interface PlayerInteractionResult
     keyCollected: boolean;
     playerKilled: boolean;
     exitReached: boolean;
+}
+
+/**
+ * Level-owned operations needed by player interactions.
+ *
+ * PlayerInteractions only needs to know that these operations exist; it should
+ * not import the global Level singleton directly. GameController passes the
+ * current Level object through Player.update(), which keeps the dependency
+ * direction explicit and avoids a Player -> PlayerInteractions -> Level cycle.
+ */
+export interface PlayerInteractionContext
+{
+    collectKey(): void;
+    hasCollectedAllKeys(): boolean;
+    collidesWithMonsterArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean;
+    collidesWithExitArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean;
 }
 
 /**
@@ -19,8 +34,9 @@ export interface PlayerInteractionResult
  *
  * PlayerInteractions detects what happened and performs the level-local mutation
  * that belongs to the collision itself, such as collecting a key tile. It does
- * not update the HUD and does not decide the global game state anymore.
- * GameController consumes the returned result and owns score/HUD/state flow.
+ * not import Level, update the HUD, or decide the global game state anymore.
+ * GameController provides the needed level operations and consumes the returned
+ * result to own score/HUD/state flow.
  *
  * The x/y values passed by Player.update() are intentionally the coordinates
  * captured at the beginning of the frame. This preserves the timing of the old
@@ -50,19 +66,19 @@ class PlayerInteractionsController
     /**
      * Runs all non-movement interactions for the player.
      */
-    public update(player: PlayerController, x: number, y: number): PlayerInteractionResult
+    public update(player: PlayerController, x: number, y: number, context: PlayerInteractionContext): PlayerInteractionResult
     {
         return {
-            keyCollected: this.collectKeyIfNeeded(player, x, y),
-            playerKilled: this.killPlayerIfNeeded(player, x, y),
-            exitReached: this.exitLevelIfNeeded(player, x, y)
+            keyCollected: this.collectKeyIfNeeded(player, x, y, context),
+            playerKilled: this.killPlayerIfNeeded(player, x, y, context),
+            exitReached: this.exitLevelIfNeeded(player, x, y, context)
         };
     }
 
     /**
      * Collects a key tile if the player's key collision box touches one.
      */
-    private collectKeyIfNeeded(player: PlayerController, x: number, y: number): boolean
+    private collectKeyIfNeeded(player: PlayerController, x: number, y: number, context: PlayerInteractionContext): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
@@ -77,7 +93,7 @@ class PlayerInteractionsController
             return false;
         }
 
-        Level.collectKey();
+        context.collectKey();
 
         // Hide the key tile and force the tilemap layer to redraw.
         CollisionDetector.lastTileHit.alpha = 0;
@@ -89,7 +105,7 @@ class PlayerInteractionsController
     /**
      * Reports whether the current collision box touches a deadly tile or a monster.
      */
-    private killPlayerIfNeeded(player: PlayerController, x: number, y: number): boolean
+    private killPlayerIfNeeded(player: PlayerController, x: number, y: number, context: PlayerInteractionContext): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
@@ -100,7 +116,7 @@ class PlayerInteractionsController
                 y + playerHeight + this.DEADLY_BOTTOM_OFFSET,
                 LevelConstants.TILED_PROPERTY_TYPE,
                 LevelConstants.TILE_TYPE_DEADLY) ||
-            Level.collidesWithMonsterArea(
+            context.collidesWithMonsterArea(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
@@ -110,12 +126,12 @@ class PlayerInteractionsController
     /**
      * Reports that the player touched the level exit after collecting all keys.
      */
-    private exitLevelIfNeeded(player: PlayerController, x: number, y: number): boolean
+    private exitLevelIfNeeded(player: PlayerController, x: number, y: number, context: PlayerInteractionContext): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
-        return Level.hasCollectedAllKeys() &&
-            Level.collidesWithExitArea(
+        return context.hasCollectedAllKeys() &&
+            context.collidesWithExitArea(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
