@@ -6,6 +6,25 @@ import { HUD } from "./HUD.js";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 
+const PHASE_PREPARE_NEXT_LEVEL = 1;
+const PHASE_HIDE_MONSTERS = 2;
+const PHASE_RESTORE_BACKGROUND = 3;
+const PHASE_FINE_ALIGN_PLAYER = 4;
+const PHASE_CONVERT_AIR_TO_SCORE = 5;
+const PHASE_MOVE_PLAYER_TO_NEXT_LEVEL = 6;
+const PHASE_REFILL_AIR = 7;
+const PHASE_LOAD_NEXT_LEVEL = 8;
+
+type LevelTransitionPhase =
+    | typeof PHASE_PREPARE_NEXT_LEVEL
+    | typeof PHASE_HIDE_MONSTERS
+    | typeof PHASE_RESTORE_BACKGROUND
+    | typeof PHASE_FINE_ALIGN_PLAYER
+    | typeof PHASE_CONVERT_AIR_TO_SCORE
+    | typeof PHASE_MOVE_PLAYER_TO_NEXT_LEVEL
+    | typeof PHASE_REFILL_AIR
+    | typeof PHASE_LOAD_NEXT_LEVEL;
+
 /**
  * Handles the transition played when the player completes a level.
  *
@@ -25,35 +44,35 @@ import { GameController } from "./gameController.js";
 export const LevelTransition =
 {
     // 1) Increase Level.level and read the player spawn position of the next level from the Tiled map.
-    PHASE_PREPARE_NEXT_LEVEL : 1,
+    PHASE_PREPARE_NEXT_LEVEL : PHASE_PREPARE_NEXT_LEVEL,
 
     // 2) Flash the background red, hide old monsters and play reverse explosions at their positions.
-    PHASE_HIDE_MONSTERS : 2,
+    PHASE_HIDE_MONSTERS : PHASE_HIDE_MONSTERS,
 
     // 3) Restore the normal grey background before moving the player.
-    PHASE_RESTORE_BACKGROUND : 3,
+    PHASE_RESTORE_BACKGROUND : PHASE_RESTORE_BACKGROUND,
 
     // 4) Move the player one pixel at a time until one axis is aligned with the next-level spawn.
-    PHASE_FINE_ALIGN_PLAYER : 4,
+    PHASE_FINE_ALIGN_PLAYER : PHASE_FINE_ALIGN_PLAYER,
 
     // 5) Convert remaining air into score, exactly like the original implementation.
-    PHASE_CONVERT_AIR_TO_SCORE : 5,
+    PHASE_CONVERT_AIR_TO_SCORE : PHASE_CONVERT_AIR_TO_SCORE,
 
     // 6) Move the player toward the next-level spawn using 16-pixel tile-sized steps.
-    PHASE_MOVE_PLAYER_TO_NEXT_LEVEL : 6,
+    PHASE_MOVE_PLAYER_TO_NEXT_LEVEL : PHASE_MOVE_PLAYER_TO_NEXT_LEVEL,
 
     // 7) Refill the air bar before the next level starts.
-    PHASE_REFILL_AIR : 7,
+    PHASE_REFILL_AIR : PHASE_REFILL_AIR,
 
     // 8) Load the next level objects, update the HUD and give the player a bonus man.
-    PHASE_LOAD_NEXT_LEVEL : 8,
+    PHASE_LOAD_NEXT_LEVEL : PHASE_LOAD_NEXT_LEVEL,
 
     // Delay, in frames, between each 16-pixel movement during the long player movement phase.
     // This keeps the transition speed identical to the previous counterEndLevel = 4 behaviour.
     MOVE_DELAY : 4,
 
     // Current phase of the transition state machine.
-    phase : 1,
+    phase : PHASE_PREPARE_NEXT_LEVEL as LevelTransitionPhase,
 
     // Generic frame counter used by the tile-sized movement phase.
     counter : 4,
@@ -69,7 +88,7 @@ export const LevelTransition =
      * This is called after the next level has been loaded, so the object is ready
      * for the next time the player reaches a safe.
      */
-    reset : function()
+    reset : function(): void
     {
         this.phase = this.PHASE_PREPARE_NEXT_LEVEL;
         this.counter = this.MOVE_DELAY;
@@ -83,7 +102,7 @@ export const LevelTransition =
      * GameController calls Level.goToNext() while the game state is GameStates.END_LEVEL.
      * Level.goToNext() delegates to this method.
      */
-    update : function()
+    update : function(): void
     {
         switch(this.phase)
         {
@@ -129,7 +148,7 @@ export const LevelTransition =
      * the difference between the Tiled object position and the Phaser body/sprite
      * position used by the player.
      */
-    prepareNextLevel : function()
+    prepareNextLevel : function(): void
     {
         Level.level++;
 
@@ -149,7 +168,7 @@ export const LevelTransition =
      * This keeps the little visual flourish from the original transition, but
      * isolates it from Level.js.
      */
-    hideMonsters : function()
+    hideMonsters : function(): void
     {
         game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
 
@@ -178,7 +197,7 @@ export const LevelTransition =
      * the same update. In practice there was no real wait, so this method keeps
      * the effective behaviour: restore the color and continue immediately.
      */
-    restoreBackground : function()
+    restoreBackground : function(): void
     {
         game.stage.backgroundColor = LevelConstants.STAGE_COLOR_NORMAL;
         this.phase = this.PHASE_FINE_ALIGN_PLAYER;
@@ -194,7 +213,7 @@ export const LevelTransition =
      * This slightly unusual "stop when one axis is aligned" rule is intentional:
      * it preserves the original behaviour of the game.
      */
-    fineAlignPlayer : function()
+    fineAlignPlayer : function(): void
     {
         var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
         var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
@@ -230,7 +249,7 @@ export const LevelTransition =
      * Once air reaches zero, the air display is cleared and the player starts
      * moving toward the next-level spawn.
      */
-    convertAirToScore : function()
+    convertAirToScore : function(): void
     {
         if (Level.airLevel > 0)
         {
@@ -259,7 +278,7 @@ export const LevelTransition =
      * If the remaining distance is smaller than one tile-sized step, the player is snapped
      * exactly to the target position to avoid overshooting.
      */
-    movePlayerToNextLevel : function()
+    movePlayerToNextLevel : function(): void
     {
         this.counter -= 1;
 
@@ -312,7 +331,7 @@ export const LevelTransition =
      *
      * The air bar goes back to the default air level, using the same increment as before.
      */
-    refillAir : function()
+    refillAir : function(): void
     {
         if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
@@ -334,7 +353,7 @@ export const LevelTransition =
      * After every completed level, Level.bonusMan is set to true so the HUD shows
      * the bonus man reward animation on the next level.
      */
-    loadNextLevel : function()
+    loadNextLevel : function(): void
     {
         Level.load();
         HUD.update();

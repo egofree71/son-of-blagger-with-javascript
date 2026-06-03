@@ -1,10 +1,10 @@
 import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
-import { LevelRevealSequence } from "./levelRevealSequence.js";
-import { EndGameSequence } from "./endGameSequence.js";
+import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { EndGameSequence } from "./endGameSequence.ts";
 import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
-import { LevelTransition } from "./levelTransition.js";
+import { LevelTransition } from "./levelTransition.ts";
 import { Player } from "./player.js";
 import { HUD } from "./HUD.js";
 import { GameController } from "./gameController.js";
