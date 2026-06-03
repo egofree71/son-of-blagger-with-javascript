@@ -118,7 +118,7 @@ export const GameInitializer =
      */
     createRuntimeGroups : function()
     {
-        Level.monstersGroup = game.add.group();
+        Level.createMonstersGroup();
     },
 
     /**
@@ -135,7 +135,7 @@ export const GameInitializer =
 
         // The player must stay visually above the tile layer and most animated
         // tile overlays, especially during the level reveal sequence.
-        Player.playerSprite.bringToTop();
+        Player.bringToTop();
     },
 
     /**
@@ -151,17 +151,10 @@ export const GameInitializer =
 
     /**
      * Loads the hi-score from browser localStorage.
-     *
-     * localStorage values are strings, but the existing code relies on JavaScript
-     * numeric coercion when comparing/updating scores. This keeps the historical
-     * behavior unchanged.
      */
     loadHiScore : function()
     {
-        GameController.hiScore = localStorage.getItem('hiScore');
-
-        if (!GameController.hiScore)
-            GameController.hiScore = 0;
+        GameController.loadHiScore(localStorage.getItem('hiScore'));
     },
 
     /**
@@ -188,7 +181,7 @@ export const GameInitializer =
      */
     startAtIntroduction : function()
     {
-        GameController.gameState = GameStates.LOAD_INTRODUCTION;
+        GameController.setState(GameStates.LOAD_INTRODUCTION);
     }
 };
 

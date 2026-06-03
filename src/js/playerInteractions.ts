@@ -1,10 +1,10 @@
 import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { Data } from "./data.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
+import type { PlayerController } from "./player.ts";
 
 /**
  * Handles gameplay interactions that are triggered by the player's position.
@@ -41,7 +41,7 @@ export const PlayerInteractions =
     /**
      * Runs all non-movement interactions for the player.
      */
-    update : function(player: any, x: number, y: number): void
+    update : function(player: PlayerController, x: number, y: number): void
     {
         this.collectKeyIfNeeded(player, x, y);
         this.killPlayerIfNeeded(player, x, y);
@@ -51,9 +51,9 @@ export const PlayerInteractions =
     /**
      * Collects a key tile if the player's key collision box touches one.
      */
-    collectKeyIfNeeded : function(player: any, x: number, y: number): void
+    collectKeyIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
         if (CollisionDetector.collisionRectangle(
             x + this.KEY_LEFT_OFFSET,
@@ -63,10 +63,10 @@ export const PlayerInteractions =
             LevelConstants.TILED_PROPERTY_NAME,
             LevelConstants.TILE_NAME_KEY))
         {
-            Level.keysTaken++;
+            Level.collectKey();
 
             // Increase the score.
-            GameController.score += LevelConstants.KEY_SCORE_INCREMENT;
+            GameController.addScore(LevelConstants.KEY_SCORE_INCREMENT);
             HUD.displayScore();
 
             // Hide the key tile and force the tilemap layer to redraw.
@@ -78,9 +78,9 @@ export const PlayerInteractions =
     /**
      * Kills the player if the current collision box touches a deadly tile or a monster.
      */
-    killPlayerIfNeeded : function(player: any, x: number, y: number): void
+    killPlayerIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
         if (CollisionDetector.collisionRectangle(
                 x + this.DEADLY_LEFT_OFFSET,
@@ -103,21 +103,21 @@ export const PlayerInteractions =
      * Starts the end-level or end-game sequence when all keys have been collected
      * and the player touches the level exit.
      */
-    exitLevelIfNeeded : function(player: any, x: number, y: number): void
+    exitLevelIfNeeded : function(player: PlayerController, x: number, y: number): void
     {
-        const playerHeight: number = player.playerSprite.body.height;
+        const playerHeight: number = player.getBodyHeight();
 
-        if (Level.keysTaken == Data.levels[Level.level - 1][0] &&
+        if (Level.hasCollectedAllKeys() &&
             CollisionDetector.collisionRectangleWithEndLevel(
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
                 y + playerHeight + this.BODY_BOTTOM_OFFSET))
         {
-            if (Level.level == Data.levels.length)
-                GameController.gameState = GameStates.END_GAME;
+            if (Level.isLastLevel())
+                GameController.setState(GameStates.END_GAME);
             else
-                GameController.gameState = GameStates.END_LEVEL;
+                GameController.setState(GameStates.END_LEVEL);
         }
     }
 };

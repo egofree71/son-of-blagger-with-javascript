@@ -151,7 +151,7 @@ class LevelRevealSequenceController
         this.lowerBlackRectangle.clear();
         this.reset();
 
-        GameController.gameState = GameStates.START_LEVEL;
+        GameController.setState(GameStates.START_LEVEL);
     }
 }
 

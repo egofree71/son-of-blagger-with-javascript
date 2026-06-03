@@ -8,13 +8,75 @@ import { Level } from "./level.ts";
 
 class GameControllerController
 {
-    // The current game state.
-    public gameState: GameState | null = null;
+    // The current game state is now stored privately. Other modules should use
+    // setState() for transitions, while read-only checks can keep using the
+    // gameState getter.
+    private currentGameState: GameState | null = null;
 
     // Runtime score data.
-    public score = 0;
-    public hiScore: any = 0;
-    public lives = LevelConstants.INITIAL_LIVES;
+    private currentScore = 0;
+    private currentHiScore = 0;
+    private currentLives: number = LevelConstants.INITIAL_LIVES;
+
+    public get gameState(): GameState | null
+    {
+        return this.currentGameState;
+    }
+
+    public get score(): number
+    {
+        return this.currentScore;
+    }
+
+    public get hiScore(): number
+    {
+        return this.currentHiScore;
+    }
+
+    public get lives(): number
+    {
+        return this.currentLives;
+    }
+
+    public setState(gameState: GameState): void
+    {
+        this.currentGameState = gameState;
+    }
+
+    public addScore(points: number): void
+    {
+        this.currentScore += points;
+    }
+
+    public loseLife(): void
+    {
+        this.currentLives -= 1;
+    }
+
+    public hasNoLives(): boolean
+    {
+        return this.currentLives == 0;
+    }
+
+    public resetScoreAndLives(): void
+    {
+        this.currentScore = 0;
+        this.currentLives = LevelConstants.INITIAL_LIVES;
+    }
+
+    public loadHiScore(storedHiScore: string | null): void
+    {
+        this.currentHiScore = storedHiScore ? Number(storedHiScore) : 0;
+    }
+
+    public updateHiScoreIfNeeded(): void
+    {
+        if (this.currentScore > this.currentHiScore)
+        {
+            localStorage.setItem('hiScore', String(this.currentScore));
+            this.currentHiScore = this.currentScore;
+        }
+    }
 
     /**
      * Main game loop entry point.
@@ -26,7 +88,7 @@ class GameControllerController
      */
     public update(): void
     {
-        switch(this.gameState)
+        switch(this.currentGameState)
         {
             case GameStates.LOAD_INTRODUCTION:
                 this.updateLoadIntroduction();
@@ -86,12 +148,12 @@ class GameControllerController
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
-                controller.gameState = GameStates.LOAD_HELP;
+                controller.setState(GameStates.LOAD_HELP);
             else
-                controller.gameState = GameStates.LOAD_LEVEL;
+                controller.setState(GameStates.LOAD_LEVEL);
         };
 
-        this.gameState = GameStates.INTRODUCTION;
+        this.setState(GameStates.INTRODUCTION);
     }
 
     /**
@@ -103,7 +165,7 @@ class GameControllerController
     private updateLoadHelp(): void
     {
         ScreenManager.displayInstructions();
-        this.gameState = GameStates.HELP;
+        this.setState(GameStates.HELP);
     }
 
     /**
@@ -136,7 +198,7 @@ class GameControllerController
     {
         Level.load();
         HUD.update();
-        this.gameState = GameStates.DISPLAY_LEVEL;
+        this.setState(GameStates.DISPLAY_LEVEL);
     }
 
     /**
@@ -177,10 +239,10 @@ class GameControllerController
         {
             game.input.keyboard.onPressCallback = null;
             ScreenManager.removeGameOver();
-            controller.gameState = GameStates.LOAD_INTRODUCTION;
+            controller.setState(GameStates.LOAD_INTRODUCTION);
         };
 
-        this.gameState = GameStates.GAME_OVER;
+        this.setState(GameStates.GAME_OVER);
     }
 
     /**

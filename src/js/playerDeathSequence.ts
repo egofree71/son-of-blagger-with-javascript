@@ -3,13 +3,7 @@ import { PlayerStates } from "./playerStates.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
-
-interface DeathSequencePlayer
-{
-    playerSprite: any;
-    playerDyingSprite: any;
-    deadlyFall: boolean;
-}
+import type { PlayerController } from "./player.ts";
 
 /**
  * Handles the visual and gameplay consequences of the player's death.
@@ -32,24 +26,20 @@ class PlayerDeathSequenceController
      * death sprite is displayed, then the level is reloaded or the game-over
      * screen is shown when the animation completes.
      */
-    start(player: DeathSequencePlayer): void
+    start(player: PlayerController): void
     {
-        GameController.gameState = GameStates.KILL_PLAYER;
-        player.playerSprite.visible = false;
+        GameController.setState(GameStates.KILL_PLAYER);
+        player.hideSprite();
 
-        player.playerDyingSprite = this.createDeathSprite(player);
-        const animation = player.playerDyingSprite.animations.add(PlayerStates.ANIMATION_BLAGGER_DYING);
+        player.setDyingSprite(this.createDeathSprite(player));
+        const animation = player.addDyingAnimation();
 
         animation.onComplete.add((): void =>
         {
             this.finish();
         });
 
-        player.playerDyingSprite.animations.play(
-            PlayerStates.ANIMATION_BLAGGER_DYING,
-            PlayerStates.DYING_ANIMATION_FRAME_RATE,
-            false,
-            true);
+        player.playDyingAnimation();
     }
 
     /**
@@ -58,14 +48,14 @@ class PlayerDeathSequenceController
      * A deadly fall uses the white dying sprite, preserving the original visual
      * feedback from the previous implementation.
      */
-    private createDeathSprite(player: DeathSequencePlayer): any
+    private createDeathSprite(player: PlayerController): any
     {
         const deathSprite = game.add.sprite(
-            player.playerSprite.body.x,
-            player.playerSprite.body.y - PlayerStates.DYING_SPRITE_Y_OFFSET,
+            player.getBodyX(),
+            player.getBodyY() - PlayerStates.DYING_SPRITE_Y_OFFSET,
             PlayerStates.SPRITE_BLAGGER_DYING);
 
-        if (player.deadlyFall)
+        if (player.isDeadlyFall())
             deathSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_DYING_WHITE);
 
         return deathSprite;
@@ -82,10 +72,10 @@ class PlayerDeathSequenceController
         Level.resetAirLevel();
         HUD.displayAirLevel();
 
-        if (Number(GameController.lives) == 0)
-            GameController.gameState = GameStates.SHOW_GAME_OVER;
+        if (GameController.hasNoLives())
+            GameController.setState(GameStates.SHOW_GAME_OVER);
         else
-            GameController.gameState = GameStates.LOAD_LEVEL;
+            GameController.setState(GameStates.LOAD_LEVEL);
     }
 
     /**
@@ -93,14 +83,13 @@ class PlayerDeathSequenceController
      */
     private consumeBonusManOrLife(): void
     {
-        if (Level.bonusMan == true)
+        if (Level.consumeBonusMan())
         {
             HUD.hideBonusMan();
-            Level.bonusMan = false;
         }
         else
         {
-            GameController.lives -= 1;
+            GameController.loseLife();
         }
     }
 }

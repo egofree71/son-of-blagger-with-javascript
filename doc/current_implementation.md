@@ -33,7 +33,7 @@ The internal game files live under `src/js` and are imported through `src/js/mai
 
 Most runtime objects are exported as named ES module values. Some of them are now class-based singletons, for example `GameController`, `ScreenManager`, `Level`, `Player`, `HUD`, `LevelRevealSequence`, `LevelTransition`, `EndGameSequence`, and `PlayerDeathSequence`.
 
-This class-based structure is intentionally conservative: it keeps the public API mostly compatible with the previous object-literal architecture. Many fields are still public because other modules still read or mutate them directly. This means the project is not yet fully encapsulated in the object-oriented sense. A future refactoring step can progressively replace direct field access with getters and behavior-focused methods.
+This class-based structure started as a conservative migration from object literals, but the most important runtime state is now partially encapsulated. `GameController`, `Level`, and `Player` keep their core mutable state private and expose read-only properties or behavior-focused methods such as `GameController.setState()`, `GameController.addScore()`, `Level.collectKey()`, `Level.decreaseAir()`, and `Player.startJump()`. The code still uses singleton instances, so it is not a pure dependency-injected object model, but it is no longer just public global state with class syntax.
 
 The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts` and declared for TypeScript in `src/types/globals.d.ts`:
 
@@ -174,6 +174,7 @@ The following runtime objects are implemented as internal classes with one expor
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
 - `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
+- `PlayerMovement`: keyboard input and movement rules for the player.
 - `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
 - `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
 
@@ -193,7 +194,7 @@ Player.update();
 HUD.updateAirLevel();
 ```
 
-The class conversion is mainly structural for now. It improves internal organization and allows private helper methods or private fields where safe, but it does not yet fully hide all runtime state.
+The class conversion is now more than cosmetic for the main runtime objects. `GameController`, `Level`, and `Player` own important mutable state privately and expose a smaller public API. Some technical façade methods remain, especially around Phaser sprite/body access, because the project still uses Phaser 2.3 globals and manual collision logic.
 
 ### Other runtime modules
 
@@ -202,7 +203,6 @@ The following modules still use object-literal or service-style exports:
 - `AssetLoader`: Phaser asset preloading.
 - `GameInitializer`: runtime startup after asset loading.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
-- `PlayerMovement`: keyboard input and movement rules for the player.
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
 - `CollisionDetector`: manual tile, rectangle, monster, and exit collision checks.
 - `Util`: shared non-collision helper functions.
@@ -419,7 +419,7 @@ The state-specific update methods are internal implementation details of the con
 - final congratulations sequence: `EndGameSequence`;
 - normal gameplay: `HUD`, `Level`, and `Player`.
 
-Important architectural note: other modules still write to `GameController.gameState` directly. This is a remaining global-style dependency and a good candidate for future encapsulation.
+Important architectural note: other modules should change state through `GameController.setState()` rather than assigning the state directly. `score`, `hiScore`, and `lives` are exposed as read-only properties for display code, while mutations go through methods such as `addScore()`, `loseLife()`, `resetScoreAndLives()`, and `updateHiScoreIfNeeded()`.
 
 ## `src/js/screenManager.ts`
 
@@ -467,19 +467,23 @@ Main responsibilities:
 - create explosion and reverse-explosion groups;
 - reset the whole game when needed.
 
-Important public data:
+Important public read-only data:
 
 - `level`
 - `airLevel`
 - `keysTaken`
 - `bonusMan`
-- `monsters`
-- `monstersGroup`
-- `endLevel`
-- `animationCounterMax`
-- `animationCounter`
-- `explosions`
-- `reverseExplosions`
+
+Important behavior-focused methods include:
+
+- `collectKey()`
+- `hasCollectedAllKeys()`
+- `decreaseAir()` / `increaseAir()` / `resetAirLevel()`
+- `advanceToNextLevel()`
+- `enableBonusMan()` / `consumeBonusMan()`
+- `collidesWithMonster()`
+- `collidesWithExit()`
+- `hideMonstersWithReverseExplosions()`
 
 `Level` still exposes compatibility-style methods that delegate to more specialized objects:
 
@@ -497,7 +501,7 @@ Level.goToNext();  // delegates to LevelTransition.update()
 
 `Level.resetGame()` updates the hi-score when necessary and resets score, lives, level number, air, keys, and bonus-man state.
 
-Important architectural note: many other modules still read and write `Level` fields directly, especially `level`, `airLevel`, `keysTaken`, and `bonusMan`. These fields are good candidates for future encapsulation.
+Important architectural note: `Level` now owns its monster list, monster groups, exit object, explosion groups, key count, air level, and bonus-man state internally. Other modules should use methods such as `collectKey()`, `hasCollectedAllKeys()`, `decreaseAir()`, `consumeBonusMan()`, `collidesWithMonster()`, and `collidesWithExit()` instead of mutating level internals directly.
 
 ## `src/js/levelObjectLoader.ts`
 
@@ -507,12 +511,12 @@ Responsibilities:
 
 - find monster objects for the current level in the Tiled `monsters` object layer;
 - destroy old monster sprites when a level is reloaded;
-- create `Monster` instances and add their sprites to `Level.monstersGroup`;
+- create `Monster` instances and add their sprites to the monster group provided by `Level` during loading;
 - hide monster sprites until the monster reveal animation finishes;
 - find the current level exit object in the Tiled `end level` object layer;
 - create or reposition the invisible exit sprite used by player/exit collision checks.
 
-This object does not own gameplay state. It returns created objects to `Level`, which remains the runtime owner of `monsters` and `endLevel`.
+This object does not own gameplay state. It returns created objects to `Level`, which remains the runtime owner of the monster list and the current level exit.
 
 ## `src/js/levelRevealSequence.ts`
 
@@ -616,16 +620,17 @@ Responsibilities:
 - advance left/right animation frames;
 - trigger the death sequence through `PlayerDeathSequence`.
 
-Important public data:
+Important internal data:
 
-- `jumping`
-- `jumpIndex`
-- `jumpingDirection`
-- `fallHeight`
-- `fallLimit`
-- `deadlyFall`
-- `playerSprite`
-- `playerDyingSprite`
+- jumping flag;
+- jump path index;
+- remembered jump direction;
+- fall height and deadly-fall state;
+- normal Phaser player sprite;
+- temporary Phaser death sprite;
+- animation counters.
+
+These fields are private. `PlayerMovement`, `PlayerInteractions`, `PlayerDeathSequence`, and `LevelTransition` interact with the player through methods such as `startJump()`, `applyCurrentJumpPathFrame()`, `increaseFallHeight()`, `startDeadlyFall()`, `moveBodyX()`, `moveBodyY()`, `hideSprite()`, and `isDeadlyFall()`.
 
 The player is not yet implemented as a formal state machine. Jumping, falling, deadly falls, and death are still controlled by booleans and counters.
 
@@ -655,7 +660,7 @@ Responsibilities:
 
 Most movement checks use manual pixel probes through `CollisionDetector`. The hard-coded offsets in this file are gameplay-sensitive and define much of the platforming feel.
 
-`PlayerMovement` is still service-style rather than class-based. This is intentional for now: the movement code is gameplay-sensitive, and it should be refactored only in very small steps.
+`PlayerMovement` is implemented as a class-based singleton. Its public API remains small: `PlayerMovement.update(player)` returns the captured frame coordinates and whether interaction checks should run. The movement helper methods and hard-coded probe offsets are private implementation details. The movement math itself remains intentionally close to the previous implementation.
 
 ## `src/js/playerInteractions.ts`
 
@@ -664,7 +669,7 @@ Most movement checks use manual pixel probes through `CollisionDetector`. The ha
 Responsibilities:
 
 - detect key collection;
-- update `Level.keysTaken`;
+- call `Level.collectKey()`;
 - increase and redraw the score after a key is collected;
 - hide collected key tiles;
 - detect deadly tiles and monster collisions;
@@ -1084,20 +1089,22 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 ## Technical points to watch
 
-### Class singletons are not full encapsulation yet
+### Encapsulation is improved, but singletons remain
 
-Several important runtime objects are now implemented as classes, but most of them are still exported as singleton instances with public fields.
-
-This was intentional to avoid mixing too many architectural changes at once. The code is structurally cleaner than the previous object-literal version, but the architecture is still close to the old global-state model.
-
-Future work should progressively replace direct field manipulation with behavior-focused methods. Examples:
+The main runtime objects are now class-based singleton instances, and the most important mutable state in `GameController`, `Level`, and `Player` is private. External code now uses behavior-focused methods for the most common mutations:
 
 ```text
-Level.keysTaken++              -> Level.collectKey()
-Level.airLevel--               -> Level.decreaseAir()
-Level.bonusMan = false         -> Level.consumeBonusMan()
-GameController.gameState = ... -> GameController.setState(...)
+GameController.setState(...)
+GameController.addScore(...)
+GameController.loseLife()
+Level.collectKey()
+Level.decreaseAir(...)
+Level.consumeBonusMan()
+Player.startJump()
+Player.startDeadlyFall()
 ```
+
+This is a meaningful improvement over the previous global-style object literals. However, the architecture still uses singleton instances and Phaser globals, so it is not yet a fully decoupled object model. Some technical façade methods, such as `Player.moveBodyX()` and `Player.setBodyY()`, remain because Phaser sprite/body access is still shared by gameplay systems.
 
 ### Global Phaser runtime context
 
@@ -1153,23 +1160,17 @@ The player is the most sensitive part of the game. The jump trajectory, fall det
 
 The following improvements are architectural ideas, not current implementation details.
 
-### Encapsulate runtime state progressively
+### Continue encapsulation without adding bureaucratic getters
 
-The class-singleton migration should be followed by a true encapsulation pass.
+The most useful next step is not to add mechanical getters and setters everywhere. The project should continue favoring behavior-focused methods that express gameplay intent.
 
 Good candidates:
 
-- `Level.level`
-- `Level.airLevel`
-- `Level.keysTaken`
-- `Level.bonusMan`
-- `GameController.gameState`
-- `GameController.score`
-- `GameController.lives`
-- `Player.jumping`
-- `Player.deadlyFall`
+- replace remaining direct `GameController.gameState` comparisons with clearer methods such as `GameController.isPlaying()` where it improves readability;
+- add explicit debug helpers instead of mutating level state from the browser console;
+- further reduce Phaser sprite/body access outside `Player` if it can be done without making movement code harder to read.
 
-The goal should be to replace direct state changes with methods that express gameplay intent.
+Avoid replacing every field with trivial `getX()` / `setX()` methods. That would make the code longer without making the game logic clearer.
 
 ### Add explicit debug helpers
 
@@ -1241,8 +1242,10 @@ const { Data } = await import('/src/js/data.ts');
 const { GameStates } = await import('/src/js/gameStates.ts');
 const { GameController } = await import('/src/js/gameController.ts');
 
-Level.keysTaken = Data.levels[Level.level - 1][0];
-GameController.gameState = GameStates.END_LEVEL;
+// For now, there is no official debug helper in production code.
+// If a debug mode is added later, prefer an explicit method such as:
+// Level.collectAllKeysForDebug();
+// GameController.startEndLevelForDebug();
 ```
 
 This command must not be turned into a keyboard shortcut that is active in production. If a debug system is added later, it should be explicitly enabled.

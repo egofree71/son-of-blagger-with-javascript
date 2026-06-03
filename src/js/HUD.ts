@@ -142,7 +142,7 @@ class HUDController
         if (this.counter == 0)
         {
             this.counter = HudConstants.AIR_DECREASE_DELAY;
-            Level.airLevel -= HudConstants.AIR_DECREASE_AMOUNT;
+            Level.decreaseAir(HudConstants.AIR_DECREASE_AMOUNT);
         }
 
         if (Level.airLevel <= 0)

@@ -100,7 +100,7 @@ class ScreenManagerController
             LevelRevealSequence.upperBlackRectangle.clear();
             game.input.keyboard.onPressCallback = null;
 
-            GameController.gameState = GameStates.LOAD_INTRODUCTION;
+            GameController.setState(GameStates.LOAD_INTRODUCTION);
         };
     }
 

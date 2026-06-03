@@ -73,15 +73,15 @@ class EndGameSequenceController
     {
         if (Level.airLevel > 0)
         {
-            Level.airLevel -= LevelConstants.END_GAME_AIR_DECREMENT;
-            GameController.score += LevelConstants.END_GAME_SCORE_INCREMENT;
+            Level.decreaseAir(LevelConstants.END_GAME_AIR_DECREMENT);
+            GameController.addScore(LevelConstants.END_GAME_SCORE_INCREMENT);
             HUD.displayScore();
             HUD.displayAirLevel();
         }
         else
         {
             HUD.clearAirLevel();
-            Level.airLevel = LevelConstants.DEFAULT_AIR_LEVEL;
+            Level.resetAirLevel();
             this.phase = LevelConstants.END_GAME_STEP_SHOW_MESSAGE;
         }
     }
@@ -139,7 +139,7 @@ class EndGameSequenceController
 
             Level.resetGame();
             HUD.displayAirLevel();
-            GameController.gameState = GameStates.LOAD_INTRODUCTION;
+            GameController.setState(GameStates.LOAD_INTRODUCTION);
         }
     }
 }

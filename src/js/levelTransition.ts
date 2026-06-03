@@ -145,7 +145,7 @@ class LevelTransitionController
      */
     private prepareNextLevel(): void
     {
-        Level.level++;
+        Level.advanceToNextLevel();
 
         var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
         this.nextPlayerPositionX = results[0].x;
@@ -167,20 +167,7 @@ class LevelTransitionController
     {
         game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
 
-        // Hide monsters from the completed level.
-        for (var i = 0; i < Level.monsters.length; i++)
-            Level.monsters[i].sprite.visible = false;
-
-        // Remove any previous reverse explosion sprites before creating new ones.
-        Level.reverseExplosions.removeAll(true);
-
-        // Display one reverse explosion at the last position of each monster.
-        for (var j = 0; j < Level.monsters.length; j++)
-        {
-            var reverseExplosion = Level.reverseExplosions.create(Level.monsters[j].sprite.body.x, Level.monsters[j].sprite.body.y, LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.add(LevelConstants.SPRITE_REVERSE_EXPLOSION);
-            reverseExplosion.animations.play(LevelConstants.SPRITE_REVERSE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
-        }
+        Level.hideMonstersWithReverseExplosions();
 
         this.phase = this.PHASE_RESTORE_BACKGROUND;
     }
@@ -210,8 +197,8 @@ class LevelTransitionController
      */
     private fineAlignPlayer(): void
     {
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
+        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         // Preserve the original behaviour: leave this phase as soon as one axis is aligned.
         if (verticalDistance == 0 || horizontalDistance == 0)
@@ -224,16 +211,16 @@ class LevelTransitionController
         if (Math.abs(verticalDistance) < Math.abs(horizontalDistance))
         {
             if (verticalDistance > 0)
-                Player.playerSprite.body.y -= 1;
+                Player.moveBodyY(-1);
             else
-                Player.playerSprite.body.y += 1;
+                Player.moveBodyY(1);
         }
         else
         {
             if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= 1;
+                Player.moveBodyX(-1);
             else
-                Player.playerSprite.body.x += 1;
+                Player.moveBodyX(1);
         }
     }
 
@@ -248,8 +235,8 @@ class LevelTransitionController
     {
         if (Level.airLevel > 0)
         {
-            Level.airLevel -= LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
-            GameController.score += LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
+            Level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
+            GameController.addScore(LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT);
             HUD.displayScore();
             HUD.displayAirLevel();
         }
@@ -282,8 +269,8 @@ class LevelTransitionController
 
         this.counter = this.MOVE_DELAY;
 
-        var horizontalDistance = Player.playerSprite.body.x - this.nextPlayerPositionX;
-        var verticalDistance = Player.playerSprite.body.y - this.nextPlayerPositionY;
+        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         if (verticalDistance == 0 && horizontalDistance == 0)
         {
@@ -295,29 +282,29 @@ class LevelTransitionController
         {
             if (Math.abs(horizontalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.playerSprite.body.x = this.nextPlayerPositionX;
+                Player.setBodyX(this.nextPlayerPositionX);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (horizontalDistance > 0)
-                Player.playerSprite.body.x -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyX(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.playerSprite.body.x += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyX(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
         else
         {
             if (Math.abs(verticalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.playerSprite.body.y = this.nextPlayerPositionY;
+                Player.setBodyY(this.nextPlayerPositionY);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (verticalDistance > 0)
-                Player.playerSprite.body.y -= LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyY(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.playerSprite.body.y += LevelConstants.END_LEVEL_TRANSITION_TILE_STEP;
+                Player.moveBodyY(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
     }
 
@@ -330,7 +317,7 @@ class LevelTransitionController
     {
         if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
-            Level.airLevel += LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT;
+            Level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
             HUD.displayAirLevel();
         }
         else
@@ -354,10 +341,10 @@ class LevelTransitionController
         HUD.update();
 
         // On every new level, the user gets a bonus man.
-        Level.bonusMan = true;
+        Level.enableBonusMan();
 
         this.reset();
-        GameController.gameState = GameStates.START_LEVEL;
+        GameController.setState(GameStates.START_LEVEL);
     }
 }
 
