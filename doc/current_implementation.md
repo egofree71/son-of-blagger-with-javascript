@@ -2,9 +2,11 @@
 
 This document describes the current architecture of the TypeScript / Phaser remake of **Son of Blagger**.
 
-Its purpose is to help someone understand the project as it exists today: the runtime structure, the ES module graph, the remaining Phaser runtime globals, the gameplay flow, the responsibilities of each file, and the technical points to watch before making further changes.
+Its purpose is to help someone understand the project as it exists today: the Vite runtime structure, the TypeScript ES module graph, the remaining Phaser runtime globals, the game flow, the responsibilities of each file, and the technical points to watch before making further changes.
 
 It is not a changelog. Historical refactoring steps are intentionally not listed here.
+
+---
 
 ## Project goal
 
@@ -12,7 +14,9 @@ This project is a web remake of the Commodore 64 game **Son of Blagger**.
 
 The player controls Slippery Sid through maze-like levels. The goal is to collect all keys in the current level, avoid enemies and traps, then reach the exit to move on to the next level.
 
-The current engineering goal is still to keep the original gameplay behavior intact while gradually making the code easier to maintain, understand, and eventually modernize.
+The engineering goal is to preserve the original gameplay behaviour while making the code easier to maintain, reason about, and eventually modernize further.
+
+---
 
 ## Technical overview
 
@@ -20,22 +24,20 @@ The current engineering goal is still to keep the original gameplay behavior int
 - Language: **TypeScript**.
 - Development/build tool: **Vite**.
 - Type checking: `tsc --noEmit` through `npm run typecheck`.
-- Module system: Vite ES module entry point. Runtime files use explicit ES module exports/imports.
-- Main architecture style: TypeScript ES modules with several class-based runtime singletons and a small legacy Phaser runtime context kept on `window`.
+- Module system: TypeScript ES modules handled by Vite.
+- Main architecture style: TypeScript ES modules, class-based runtime singletons, and a small legacy Phaser runtime context kept on `window`.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
 - Persistence: the hi-score is stored in `localStorage`.
 
-The codebase is now TypeScript-based, but it still deliberately keeps Phaser 2.3 loaded as a classic browser script from `public/js/phaser.min.js`. Phaser itself is therefore still accessed through the global `Phaser` object rather than imported from npm.
+Phaser 2.3 is still loaded as a classic browser script from `public/js/phaser.min.js`. The current game code expects the global `Phaser` object. Phaser is not imported from npm.
 
-The internal game files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
+The game source files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
 
-Most runtime objects are exported as named ES module values. Some of them are now class-based singletons, for example `GameController`, `ScreenManager`, `Level`, `Player`, `HUD`, `LevelRevealSequence`, `LevelTransition`, `EndGameSequence`, and `PlayerDeathSequence`.
+The code still uses singleton instances, but it is no longer the original global-object style. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
-This class-based structure started as a conservative migration from object literals, but the most important runtime state is now partially encapsulated. `GameController`, `Level`, and `Player` keep their core mutable state private and expose read-only properties or behavior-focused methods such as `GameController.setState()`, `GameController.addScore()`, `Level.collectKey()`, `Level.decreaseAir()`, and `Player.startJump()`. The code still uses singleton instances, so it is not a pure dependency-injected object model, but it is no longer just public global state with class syntax.
-
-The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts` and declared for TypeScript in `src/types/globals.d.ts`:
+The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
 
 - `game`
 - `map`
@@ -43,7 +45,9 @@ The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js
 - `keyPressed`
 - `vanishingPlatformGroup`
 
-These globals are still used directly by multiple files.
+These are still direct global dependencies and remain the main architectural limitation before a fuller migration to an explicit runtime context or a modern Phaser scene architecture.
+
+---
 
 ## Running the game locally
 
@@ -53,7 +57,7 @@ Install dependencies once from the project root:
 npm install
 ```
 
-Then start the Vite development server:
+Start the Vite development server:
 
 ```powershell
 npm run dev
@@ -65,21 +69,25 @@ Open the local URL printed by Vite, usually:
 http://localhost:5173/
 ```
 
-The old `py -m http.server 8000` workflow is no longer the preferred way to run the project. Vite provides the local development server and can also build a production version of the game with `npm run build`.
+The old `py -m http.server 8000` workflow is no longer the preferred way to run the project.
+
+---
 
 ## Type checking
 
-To run TypeScript type checking:
+Run TypeScript type checking with:
 
 ```powershell
 npm run typecheck
 ```
 
-The current TypeScript setup is still intentionally permissive. Phaser 2.3 and several legacy runtime objects are declared with loose `any` types so that the migration can remain incremental.
+The current TypeScript setup is still deliberately permissive. Phaser 2.3 and several legacy runtime objects are declared with loose `any` types so that the migration can remain incremental.
+
+---
 
 ## Building the game
 
-To create a production build:
+Create a production build:
 
 ```powershell
 npm run build
@@ -87,11 +95,13 @@ npm run build
 
 This creates a generated `dist/` folder. It should not be edited by hand.
 
-To preview that production build locally:
+Preview that production build locally:
 
 ```powershell
 npm run preview
 ```
+
+---
 
 ## Deployment to GitHub Pages
 
@@ -105,13 +115,9 @@ The workflow lives in:
 
 On each push to `master`, GitHub Actions installs dependencies with `npm ci`, runs `npm run build`, uploads the generated `dist/` folder as a GitHub Pages artifact, and deploys that artifact to GitHub Pages.
 
-The repository Pages setting should use:
-
-```text
-Settings -> Pages -> Build and deployment -> Source -> GitHub Actions
-```
-
 The generated `dist/` folder is build output and should not be edited by hand or committed.
+
+---
 
 ## Project structure
 
@@ -142,9 +148,9 @@ doc/
 
 `public/` is still used for files that must be copied unchanged to the production `dist/` folder. This currently includes Phaser 2.3 and all Phaser-loaded game assets.
 
-The game source files themselves now live in `src/js` and are imported by Vite through `src/main.ts`.
+The active Vite entry point is `src/main.ts`. Any old `src/main.js` file is obsolete and should not be kept.
 
-If an old `src/main.js` file is still present from a previous refactoring step, it is obsolete. The active Vite entry point is `src/main.ts`.
+---
 
 ## File loading order
 
@@ -155,11 +161,11 @@ If an old `src/main.js` file is still present from a previous refactoring step, 
 <script type="module" src="/src/main.ts"></script>
 ```
 
-Phaser 2.3 is still loaded as a classic browser script because the current game code expects the global `Phaser` object. All other game files are imported through TypeScript ES modules starting from `src/main.ts`.
+All game files after Phaser are imported through TypeScript ES modules starting from `src/main.ts`.
 
-Runtime file order is now handled by ES module imports. New dependencies should be imported explicitly by the files that use them.
+---
 
-## Main runtime objects
+## Runtime architecture overview
 
 The project is organized around ES module exports defined under `src/js`.
 
@@ -169,16 +175,18 @@ The following runtime objects are implemented as internal classes with one expor
 
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
-- `Level`: current level data, level loading orchestration, monsters, exit object, and level reset logic.
+- `ScreenOverlay`: shared fixed-camera black overlay graphics.
+- `Level`: current level data, level-owned runtime objects, monsters, exit object, and level reset logic.
 - `LevelRevealSequence`: frame-by-frame reveal of the level at the beginning of each stage.
 - `LevelTransition`: transition between two levels after all keys have been collected.
 - `EndGameSequence`: final congratulations sequence.
-- `Player`: player sprite creation/reset, update delegation, animation stepping, and death triggering.
+- `Player`: playable character sprite, movement state, animation state, and update delegation.
 - `PlayerMovement`: keyboard input and movement rules for the player.
-- `PlayerDeathSequence`: death animation, bonus-man/life handling, level reload or game-over decision.
-- `HUD`: air bar, lives, score, level number, hi-score, and bonus man display.
+- `PlayerInteractions`: key collection, deadly collision checks, and exit detection.
+- `PlayerDeathSequence`: visual death animation only.
+- `HUD`: status-area display and HUD-specific counters.
 
-The exported names are still singleton values:
+The exported names are singleton values:
 
 ```ts
 export const Level = new LevelController();
@@ -186,25 +194,16 @@ export const Player = new PlayerController();
 export const HUD = new HUDController();
 ```
 
-This keeps usage stable:
+This keeps runtime usage stable while still allowing private fields and smaller public APIs inside the classes.
 
-```ts
-Level.load();
-Player.update();
-HUD.updateAirLevel();
-```
-
-The class conversion is now more than cosmetic for the main runtime objects. `GameController`, `Level`, and `Player` own important mutable state privately and expose a smaller public API. Some technical façade methods remain, especially around Phaser sprite/body access, because the project still uses Phaser 2.3 globals and manual collision logic.
-
-### Other runtime modules
+### Service-style modules
 
 The following modules still use object-literal or service-style exports:
 
 - `AssetLoader`: Phaser asset preloading.
 - `GameInitializer`: runtime startup after asset loading.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
-- `PlayerInteractions`: key collection, deadly collision checks, and exit detection for the player.
-- `CollisionDetector`: manual tile, rectangle, monster, and exit collision checks.
+- `CollisionDetector`: generic manual tile/rectangle collision checks.
 - `Util`: shared non-collision helper functions.
 - `Data`: static gameplay data such as jump trajectory, level data, and bonus-man colors.
 
@@ -224,9 +223,39 @@ The constants modules are TypeScript files and use `as const` where useful:
 
 Some files also export derived TypeScript types, for example state or direction unions. These types exist only at compile time and do not change the generated runtime JavaScript.
 
+---
+
+## Dependency direction after the runtime dependency refactoring
+
+`GameController` is now the main orchestration hub. It still imports several runtime objects, but this is intentional: it owns the overall game flow.
+
+Several subsystems were decoupled from each other:
+
+- `HUD` no longer imports `Level`, `Player`, or `GameController`. Runtime values are passed in by callers.
+- `PlayerInteractions` no longer imports `HUD`, `GameController`, or the global `Level` singleton. It returns a result object and receives a small `PlayerInteractionContext`.
+- `PlayerDeathSequence` no longer imports `HUD`, `Level`, or `GameController`. It only runs the visual death animation and invokes a callback when finished.
+- `EndGameSequence` no longer imports `HUD`, `Level`, or `GameController`. It returns an `EndGameSequenceResult`.
+- `LevelRevealSequence` no longer changes the global game state. It returns `true` when finished.
+- `ScreenManager` no longer changes the global game state. It receives callbacks for screen-exit actions.
+- `Monster` no longer imports `Level` or `GameController`. `Level` owns the monster animation cadence and passes each monster the information it needs.
+- `CollisionDetector` no longer knows about monsters or the level exit. Level-owned collision checks are now handled by `Level`.
+- `Level` no longer imports the global `Player` singleton. `Level.load()` receives a small `LevelPlayer` interface.
+- `Level` no longer delegates to visual sequence objects such as `LevelRevealSequence`, `LevelTransition`, or `EndGameSequence`.
+
+Some couplings remain intentionally:
+
+- `GameController` coordinates the main runtime singletons.
+- `LevelTransition` still uses `Level` and `Player`, because the end-of-level transition moves the player, advances level state, converts air, refills air, hides monsters, and loads the next level. This may be a future candidate for a context-based refactor, but it is not urgent.
+- `Player` still owns and calls `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence`. This is acceptable because those modules are specialized parts of player behaviour.
+- Phaser globals are still directly accessed by several modules.
+
+The goal is not to create a pure dependency-injection framework. The goal is to reduce the most fragile cross-module dependencies while keeping the retro-game code readable.
+
+---
+
 ## Game states
 
-`GameStates` is defined in `src/js/gameStates.ts` and exported as an ES module. Files that use game states import it explicitly.
+`GameStates` is defined in `src/js/gameStates.ts` and exported as an ES module.
 
 The string values are intentionally kept stable because they are part of the current runtime flow.
 
@@ -249,6 +278,20 @@ GameStates.SHOW_GAME_OVER
 GameStates.GAME_OVER
 ```
 
+External modules should not assign raw states directly. State changes should go through named `GameController` transition methods such as:
+
+```ts
+GameController.loadIntroduction();
+GameController.loadHelp();
+GameController.loadLevel();
+GameController.startLevel();
+GameController.startPlaying();
+GameController.endLevel();
+GameController.endGame();
+GameController.killPlayer();
+GameController.showGameOver();
+```
+
 The current lifecycle is approximately:
 
 ```text
@@ -260,18 +303,20 @@ LOAD_INTRODUCTION
        -> START_LEVEL
          -> DISPLAYING_MONSTERS
            -> PLAYING
-             -> KILL_PLAYER -> LOAD_LEVEL or SHOW_GAME_OVER
              -> END_LEVEL -> START_LEVEL of next level
              -> END_GAME -> LOAD_INTRODUCTION
+             -> KILL_PLAYER -> LOAD_LEVEL or SHOW_GAME_OVER
              -> SHOW_GAME_OVER -> GAME_OVER -> LOAD_INTRODUCTION
 ```
+
+---
 
 ## Main game loop
 
 `src/js/main.ts` creates the Phaser game instance:
 
 ```ts
-game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
   preload: preload,
   create: create,
   update: updateGame
@@ -287,16 +332,20 @@ updateGame()
 
 `GameController.update()` dispatches to one method per game state.
 
-During normal gameplay, the update order is:
+During normal gameplay, the preserved update order is:
 
 ```text
-HUD.updateAirLevel()
-HUD.displayBonusMan()
-Level.updateMonsters()
-Player.update()
+GameController.updatePlaying()
+ -> update air gameplay rule and air HUD
+ -> HUD.displayBonusMan(Level.bonusMan)
+ -> Level.updateMonsters(GameController.isPlaying())
+ -> Player.update(Level)
+ -> apply PlayerInteractionResult consequences
 ```
 
-This order is part of the current gameplay behavior and should be changed only with care.
+The update order is gameplay-sensitive and should be changed only with care.
+
+---
 
 ## `src/main.ts`
 
@@ -304,29 +353,32 @@ This is the Vite module entry point referenced by `index.html`.
 
 It imports `src/js/main.ts`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
 
-This file does not contain gameplay logic. Its role is to connect Vite's module graph to the current Phaser 2.3 runtime.
+This file does not contain gameplay logic.
 
-## `src/types/globals.d.ts`
+---
 
-This file declares the legacy global runtime objects for TypeScript.
+## `src/js/main.ts`
 
-It currently declares Phaser itself loosely:
+`main.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
 
-```ts
-declare const Phaser: any;
+Main responsibilities:
+
+- create the Phaser instance;
+- delegate asset preloading to `AssetLoader`;
+- delegate runtime startup to `GameInitializer`;
+- delegate each frame to `GameController.update()`.
+
+Important globals created here:
+
+```text
+game
+map
+layer
+keyPressed
+vanishingPlatformGroup
 ```
 
-It also declares global variables such as:
-
-```ts
-declare var game: any;
-declare var map: any;
-declare var layer: any;
-declare var keyPressed: any;
-declare var vanishingPlatformGroup: any;
-```
-
-This is intentionally pragmatic. The project still uses Phaser 2.3 as a browser global, and a complete Phaser 2 type model would add noise before the larger architecture is ready for it.
+---
 
 ## `src/js/assetLoader.ts`
 
@@ -343,30 +395,9 @@ Responsibilities:
 - load animated tile sprites;
 - load the bitmap font image.
 
-The asset keys and sprite dimensions are part of the current runtime contract. Other files still refer to those keys directly, so they should be renamed only with care.
+The asset keys and sprite dimensions are part of the current runtime contract and should be renamed only with care.
 
-## `src/js/main.ts`
-
-`main.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
-
-Main responsibilities:
-
-- create the Phaser instance;
-- delegate asset preloading to `AssetLoader`;
-- delegate runtime startup to `GameInitializer`;
-- delegate each frame to `GameController.update()`.
-
-Important globals created here or during initialization:
-
-```text
-game
-map
-layer
-keyPressed
-vanishingPlatformGroup
-```
-
-These are still part of the current architecture and should be treated as shared runtime context.
+---
 
 ## `src/js/gameInitializer.ts`
 
@@ -379,57 +410,58 @@ Main responsibilities:
 - create the Tiled map and main layer;
 - create animated tile sprites where needed;
 - initialize runtime groups;
+- create the shared `ScreenOverlay` rectangles;
 - create and initialize the player and monster support groups;
 - create cursor-key input;
 - load the hi-score from `localStorage`;
-- initialize the HUD;
-- create the black rectangles used by screen and reveal sequences;
+- initialize the HUD with runtime values;
 - set the initial game state.
 
-`GameInitializer` is still a service-style module rather than a class-based singleton. It mainly performs startup wiring and does not currently need its own runtime identity.
+---
 
 ## `src/js/gameController.ts`
 
 `GameController` is the high-level state orchestrator.
 
-It is implemented as a class-based singleton:
+Main private data:
 
-```ts
-export const GameController = new GameControllerController();
-```
+- current game state;
+- current score;
+- current hi-score;
+- current lives.
 
-Main public data:
+Read-only public properties:
 
-- `gameState`
 - `score`
 - `hiScore`
 - `lives`
 
-Main update methods:
+Important public methods:
 
-- `update()`
+- state transition methods such as `loadLevel()`, `startPlaying()`, `endLevel()`, `endGame()`, `killPlayer()`;
+- `isPlaying()`;
+- `addScore()`;
+- `loseLife()`;
+- `hasNoLives()`;
+- `resetScoreAndLives()`;
+- `loadHiScore()`;
+- `updateHiScoreIfNeeded()`.
 
-The state-specific update methods are internal implementation details of the controller. They dispatch the current frame to the correct subsystem according to `gameState`.
+`setState()` is private. Other modules should not set raw `GameStates` values.
 
-`GameController` does not directly implement most visual sequences. It delegates them to specialized objects:
+`GameController` consumes result objects from lower-level systems:
 
-- title/help/game-over screens: `ScreenManager`;
-- level reveal: `LevelRevealSequence`;
-- end-of-level transition: `LevelTransition`;
-- final congratulations sequence: `EndGameSequence`;
-- normal gameplay: `HUD`, `Level`, and `Player`.
+- `PlayerInteractionResult` from `Player.update()`;
+- `LevelTransitionResult` from `LevelTransition.update()`;
+- `EndGameSequenceResult` from `EndGameSequence.update()`.
 
-Important architectural note: other modules should change state through `GameController.setState()` rather than assigning the state directly. `score`, `hiScore`, and `lives` are exposed as read-only properties for display code, while mutations go through methods such as `addScore()`, `loseLife()`, `resetScoreAndLives()`, and `updateHiScoreIfNeeded()`.
+This keeps the global consequences in one place: score changes, HUD refreshes, death flow, level transitions, game-over flow, and return to the title screen.
+
+---
 
 ## `src/js/screenManager.ts`
 
 `ScreenManager` handles screens that are not normal gameplay screens.
-
-It is implemented as a class-based singleton:
-
-```ts
-export const ScreenManager = new ScreenManagerController();
-```
 
 Responsibilities:
 
@@ -439,69 +471,84 @@ Responsibilities:
 - display the game-over logo;
 - remove the game-over logo.
 
-The help screen owns a temporary keyboard callback: pressing any key removes the help text, clears the black background, and returns to the introduction flow.
+`ScreenManager` does not change game state directly. For example, the help screen receives a callback that is invoked when the player leaves the screen. `GameController` decides which state comes next.
 
-`ScreenManager` uses the shared black rectangle created by `LevelRevealSequence` as a full-screen background when needed.
+`ScreenManager` uses `ScreenOverlay` for the shared black background.
 
-The screen sprites themselves are internal to `ScreenManager` and should not be manipulated by other modules.
+---
+
+## `src/js/screenOverlay.ts`
+
+`ScreenOverlay` owns the fixed-camera black overlay graphics shared by screen and sequence code.
+
+It replaces the previous implicit reuse of `LevelRevealSequence`'s black rectangles by unrelated screens.
+
+Responsibilities:
+
+- create the two black overlay rectangles;
+- draw the upper rectangle;
+- draw the lower rectangle;
+- draw a full-screen or full-camera overlay;
+- clear one or both overlay rectangles.
+
+It is used by:
+
+- `LevelRevealSequence`;
+- `ScreenManager`;
+- `EndGameSequence`.
+
+---
 
 ## `src/js/level.ts`
 
-`Level` is responsible for the current level and level-related runtime data.
+`Level` owns the current level state and level-owned runtime objects.
 
-It is implemented as a class-based singleton:
+Private state includes:
 
-```ts
-export const Level = new LevelController();
-```
+- current level number;
+- current air level;
+- collected key count;
+- bonus-man availability;
+- current monster list;
+- monster display group;
+- monster animation counters;
+- explosion groups;
+- current level exit object.
 
-Main responsibilities:
-
-- keep track of the current level number;
-- reset level-specific data;
-- orchestrate current-level loading;
-- position the player at the current level start through `Player.reset()`;
-- keep the current monster list and update monster movement;
-- manage the monster reveal sequence;
-- keep the invisible level-exit sprite reference;
-- create explosion and reverse-explosion groups;
-- reset the whole game when needed.
-
-Important public read-only data:
+Read-only public properties:
 
 - `level`
 - `airLevel`
 - `keysTaken`
 - `bonusMan`
 
-Important behavior-focused methods include:
+Important methods:
 
-- `collectKey()`
-- `hasCollectedAllKeys()`
-- `decreaseAir()` / `increaseAir()` / `resetAirLevel()`
-- `advanceToNextLevel()`
-- `enableBonusMan()` / `consumeBonusMan()`
-- `collidesWithMonster()`
-- `collidesWithExit()`
-- `hideMonstersWithReverseExplosions()`
+- `load(player)`;
+- `resetGame()`;
+- `resetAirLevel()`;
+- `decreaseAir()`;
+- `increaseAir()`;
+- `advanceToNextLevel()`;
+- `collectKey()`;
+- `hasCollectedAllKeys()`;
+- `isLastLevel()`;
+- `enableBonusMan()`;
+- `consumeBonusMan()`;
+- `createMonstersGroup()`;
+- `initMonsters()`;
+- `addMonsters()`;
+- `displayMonsters(onComplete)`;
+- `updateMonsters(isPlaying)`;
+- `collidesWithMonsterArea(...)`;
+- `collidesWithExitArea(...)`;
+- `hideMonstersWithReverseExplosions()`.
 
-`Level` still exposes compatibility-style methods that delegate to more specialized objects:
+`Level.load(player)` receives a `LevelPlayer` interface rather than importing the global `Player` singleton directly.
 
-```ts
-Level.display();   // delegates to LevelRevealSequence.update()
-Level.goToNext();  // delegates to LevelTransition.update()
-```
+`Level` owns monster and exit collisions because those objects belong to the level. `CollisionDetector` remains focused on generic tile/rectangle checks.
 
-`Level.load()` is the central method for loading a level. It:
-
-1. resets air, collected keys, and bonus man state;
-2. resets the player;
-3. asks `LevelObjectLoader` to create the current level monsters;
-4. asks `LevelObjectLoader` to create or reposition the invisible exit sprite.
-
-`Level.resetGame()` updates the hi-score when necessary and resets score, lives, level number, air, keys, and bonus-man state.
-
-Important architectural note: `Level` now owns its monster list, monster groups, exit object, explosion groups, key count, air level, and bonus-man state internally. Other modules should use methods such as `collectKey()`, `hasCollectedAllKeys()`, `decreaseAir()`, `consumeBonusMan()`, `collidesWithMonster()`, and `collidesWithExit()` instead of mutating level internals directly.
+---
 
 ## `src/js/levelObjectLoader.ts`
 
@@ -511,53 +558,33 @@ Responsibilities:
 
 - find monster objects for the current level in the Tiled `monsters` object layer;
 - destroy old monster sprites when a level is reloaded;
-- create `Monster` instances and add their sprites to the monster group provided by `Level` during loading;
+- create `Monster` instances and add their sprites to the level-owned monster group;
 - hide monster sprites until the monster reveal animation finishes;
 - find the current level exit object in the Tiled `end level` object layer;
 - create or reposition the invisible exit sprite used by player/exit collision checks.
 
-This object does not own gameplay state. It returns created objects to `Level`, which remains the runtime owner of the monster list and the current level exit.
+This module does not own gameplay state. It returns created objects to `Level`.
+
+---
 
 ## `src/js/levelRevealSequence.ts`
 
 `LevelRevealSequence` handles the progressive reveal shown when a level starts.
 
-It is implemented as a class-based singleton:
-
-```ts
-export const LevelRevealSequence = new LevelRevealSequenceController();
-```
-
 Responsibilities:
 
-- create the two black rectangles used to hide the playfield;
-- progressively move those rectangles away;
-- switch the game state to `GameStates.START_LEVEL` when the level has been revealed.
+- progressively move the two `ScreenOverlay` rectangles away;
+- return `true` when the reveal is finished.
 
-Main public data:
+It does not change `GameController` state directly. `GameController` decides when to enter the next state.
 
-- `upperBlackRectangle`
-- `lowerBlackRectangle`
-
-Main internal data:
-
-- phase;
-- counter;
-- rectangle dimensions.
-
-The same upper rectangle is also reused as a black background by some non-gameplay screens. This is a legacy-style shared object, but it keeps the current rendering simple.
+---
 
 ## `src/js/levelTransition.ts`
 
 `LevelTransition` handles the transition after a level has been completed.
 
-It is implemented as a class-based singleton:
-
-```ts
-export const LevelTransition = new LevelTransitionController();
-```
-
-It is a small frame-by-frame state machine.
+It is a frame-by-frame state machine.
 
 Current phases:
 
@@ -570,69 +597,86 @@ Current phases:
 7. refill the air bar;
 8. load the next level and continue with the next level start sequence.
 
-Important behavior:
+`LevelTransition.update()` returns a `LevelTransitionResult`:
 
-- remaining air is converted into score;
-- the player is moved visibly between the old and new level positions;
-- the air bar is refilled before gameplay resumes;
-- `Level.bonusMan` is enabled for the next level.
+```ts
+export interface LevelTransitionResult {
+    scoreDelta: number;
+    airChanged: boolean;
+    airCleared: boolean;
+    nextLevelLoaded: boolean;
+}
+```
 
-The transition uses existing coordinate conventions between Tiled and Phaser, especially the player vertical offset.
+`GameController` applies the score and HUD consequences. `LevelTransition` still uses `Level` and `Player` directly because the transition is currently a gameplay/visual hybrid that moves the player and changes level data.
+
+This is one of the remaining reasonable candidates for future dependency reduction, but it should not be abstracted unless the result is genuinely clearer.
+
+---
 
 ## `src/js/endGameSequence.ts`
 
 `EndGameSequence` handles the final congratulations sequence after the last level.
 
-It is implemented as a class-based singleton:
+It is a frame-by-frame state machine. It owns the visual sequence and returns an `EndGameSequenceResult` describing what happened during the frame:
 
 ```ts
-export const EndGameSequence = new EndGameSequenceController();
+export interface EndGameSequenceResult {
+    scoreDelta: number;
+    airDecreaseAmount: number;
+    airChanged: boolean;
+    airCleared: boolean;
+    airResetRequired: boolean;
+    finished: boolean;
+}
 ```
 
-It is a frame-by-frame state machine updated while the game state is `GameStates.END_GAME`.
+`EndGameSequence` does not import `HUD`, `Level`, or `GameController`. `GameController` applies the score, air, HUD and reset consequences.
 
-Current phases:
-
-1. convert the remaining air into score;
-2. display the congratulations message;
-3. scale the message up;
-4. wait briefly;
-5. reset the game and return to the introduction screen.
-
-The final message text is stored in `LevelConstants.END_GAME_MESSAGE_TEXT`.
+---
 
 ## `src/js/player.ts`
 
-`Player` owns the playable character sprite and the small amount of runtime state that still belongs directly to the character.
+`Player` owns the playable character sprite and the character-specific runtime state.
 
-It is implemented as a class-based singleton:
+Private state includes:
 
-```ts
-export const Player = new PlayerController();
-```
+- jumping state;
+- jump path index;
+- remembered horizontal jump direction;
+- fall height;
+- deadly-fall flag;
+- normal player sprite;
+- dying player sprite;
+- animation counters.
 
 Responsibilities:
 
 - create the normal player sprite;
 - reset the player at the beginning of a level;
 - delegate movement rules to `PlayerMovement`;
-- delegate key collection, deadly collision checks, and exit detection to `PlayerInteractions`;
-- advance left/right animation frames;
-- trigger the death sequence through `PlayerDeathSequence`.
+- delegate gameplay interactions to `PlayerInteractions`;
+- delegate the visual death animation to `PlayerDeathSequence`;
+- expose behaviour-focused methods used by movement and transition code.
 
-Important internal data:
+Important methods include:
 
-- jumping flag;
-- jump path index;
-- remembered jump direction;
-- fall height and deadly-fall state;
-- normal Phaser player sprite;
-- temporary Phaser death sprite;
-- animation counters.
+- `create()`;
+- `reset(levelNumber)`;
+- `update(interactionContext)`;
+- `kill(onComplete)`;
+- `startJump()`;
+- `rememberJumpDirection()`;
+- `applyCurrentJumpPathFrame()`;
+- `landFromJump()`;
+- `startDeadlyFall()`;
+- `moveBodyX()` / `moveBodyY()`;
+- `setBodyX()` / `setBodyY()`;
+- `getBodyX()` / `getBodyY()`;
+- `hideSprite()`;
+- `isDeadlyFall()`.
 
-These fields are private. `PlayerMovement`, `PlayerInteractions`, `PlayerDeathSequence`, and `LevelTransition` interact with the player through methods such as `startJump()`, `applyCurrentJumpPathFrame()`, `increaseFallHeight()`, `startDeadlyFall()`, `moveBodyX()`, `moveBodyY()`, `hideSprite()`, and `isDeadlyFall()`.
-
-The player is not yet implemented as a formal state machine. Jumping, falling, deadly falls, and death are still controlled by booleans and counters.
+Some methods are technical facades around Phaser sprite/body access. They exist to avoid exposing `playerSprite` directly while preserving the existing Phaser 2 movement code.
 
 The jump trajectory comes from:
 
@@ -640,9 +684,9 @@ The jump trajectory comes from:
 Data.jumpPath
 ```
 
-This data-driven jump path is very sensitive to gameplay feel and should not be rewritten casually.
+This data-driven jump path is gameplay-sensitive and should not be rewritten casually.
 
-Movement rules are implemented in `PlayerMovement`, key collection and exit behavior are implemented in `PlayerInteractions`, and the death animation plus post-death consequences are handled by `PlayerDeathSequence`. `Player` remains the central object that owns the character sprite and delegates to these helpers.
+---
 
 ## `src/js/playerMovement.ts`
 
@@ -658,88 +702,72 @@ Responsibilities:
 - handle ladders;
 - block movement against walls and ceilings.
 
+`PlayerMovement.update(player)` returns a `PlayerMovementResult`:
+
+```ts
+export interface PlayerMovementResult {
+    x: number;
+    y: number;
+    checkInteractions: boolean;
+    playerKilled: boolean;
+}
+```
+
+The returned coordinates are the coordinates captured at the beginning of the frame. `PlayerInteractions` intentionally uses those original coordinates to preserve collision timing from the previous implementation.
+
 Most movement checks use manual pixel probes through `CollisionDetector`. The hard-coded offsets in this file are gameplay-sensitive and define much of the platforming feel.
 
-`PlayerMovement` is implemented as a class-based singleton. Its public API remains small: `PlayerMovement.update(player)` returns the captured frame coordinates and whether interaction checks should run. The movement helper methods and hard-coded probe offsets are private implementation details. The movement math itself remains intentionally close to the previous implementation.
+---
 
 ## `src/js/playerInteractions.ts`
 
-`PlayerInteractions` handles gameplay interactions that are triggered by the player position but are not movement rules.
+`PlayerInteractions` handles gameplay interactions triggered by the player position, but not movement rules.
 
 Responsibilities:
 
 - detect key collection;
-- call `Level.collectKey()`;
-- increase and redraw the score after a key is collected;
 - hide collected key tiles;
-- detect deadly tiles and monster collisions;
-- trigger `Player.kill()` when needed;
-- detect the level exit once all keys have been collected;
-- switch to `GameStates.END_LEVEL` or `GameStates.END_GAME`.
+- detect deadly tiles;
+- detect monster collisions through the supplied context;
+- detect exit collision through the supplied context;
+- return a `PlayerInteractionResult`.
 
-`PlayerInteractions` delegates manual collision checks to `CollisionDetector`.
+`PlayerInteractions` does not import `Level`, `HUD`, or `GameController` directly.
 
-`Player.update()` passes the player coordinates captured at the beginning of the frame to `PlayerInteractions`. This is intentional: the original implementation performed these checks using those same coordinates after applying movement for the frame. Keeping this convention avoids subtle changes in collision timing.
+It receives a `PlayerInteractionContext`:
+
+```ts
+export interface PlayerInteractionContext {
+    collectKey(): void;
+    hasCollectedAllKeys(): boolean;
+    collidesWithMonsterArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean;
+    collidesWithExitArea(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean;
+}
+```
+
+`Level` currently satisfies this context, and `GameController` passes it into `Player.update(Level)`.
+
+---
 
 ## `src/js/playerDeathSequence.ts`
 
-`PlayerDeathSequence` handles the death animation and the consequences that happen after the animation completes.
-
-It is implemented as a class-based singleton:
-
-```ts
-export const PlayerDeathSequence = new PlayerDeathSequenceController();
-```
+`PlayerDeathSequence` handles only the visual death animation.
 
 Responsibilities:
 
-- stop normal gameplay by switching to `GameStates.KILL_PLAYER`;
 - hide the normal player sprite;
 - create the separate death-animation sprite;
 - use the white death sprite after a deadly fall;
-- consume the bonus man when available;
-- otherwise remove one life;
-- reset the air bar after death;
-- reload the current level or show the game-over screen.
+- play the death animation;
+- invoke a callback when the animation completes.
 
-`Player.kill()` is a small delegation method:
+It does not handle lives, bonus-man state, HUD refreshes, level reloads, or game-over decisions. Those global consequences are owned by `GameController`.
 
-```ts
-PlayerDeathSequence.start(Player);
-```
-
-This keeps movement code in `Player` and death sequencing in one dedicated object.
-
-## `src/js/playerStates.ts`
-
-`PlayerStates` centralizes player-related runtime constants.
-
-It includes:
-
-- movement directions;
-- animation names;
-- player sprite keys;
-- death animation timing values.
-
-Despite the name, it is not a complete player state machine. It is currently a constants holder.
-
-Examples:
-
-```ts
-PlayerStates.LEFT
-PlayerStates.RIGHT
-PlayerStates.UP
-PlayerStates.DOWN
-PlayerStates.ANIMATION_LEFT
-PlayerStates.ANIMATION_RIGHT
-PlayerStates.SPRITE_BLAGGER
-PlayerStates.SPRITE_BLAGGER_DYING
-PlayerStates.ANIMATION_BLAGGER_DYING
-```
+---
 
 ## `src/js/monster.ts`
 
-`Monster` is a TypeScript class for enemy instances.
+`Monster` is a class for enemy instances.
 
 Each monster is created from a Tiled object and from collision properties stored in the monster tileset.
 
@@ -750,52 +778,18 @@ Responsibilities:
 - read its maximum movement distance;
 - store its real hitbox;
 - move horizontally or vertically;
-- reverse direction when the maximum distance is reached.
+- reverse direction when the maximum distance is reached;
+- optionally advance the sprite animation when Level tells it to.
 
 Monsters do not chase the player. They follow predefined paths.
 
-Collision with the player is tested in:
+`Monster` does not import `Level` or `GameController`.
 
-```ts
-CollisionDetector.collisionRectangleWithMonsters()
-```
-
-## `src/js/monsterConstants.ts`
-
-`MonsterConstants` centralizes monster-related constants.
-
-It includes:
-
-- direction values used by Tiled and monster movement;
-- Tiled property names used by monster objects;
-- default monster speed;
-- monster animation name;
-- animation frames and frame rate;
-- vertical Tiled-to-Phaser offset.
-
-Examples:
-
-```ts
-MonsterConstants.DIRECTION_RIGHT
-MonsterConstants.DIRECTION_LEFT
-MonsterConstants.DIRECTION_DOWN
-MonsterConstants.DIRECTION_UP
-MonsterConstants.PROPERTY_MAX_DISTANCE
-MonsterConstants.DEFAULT_SPEED
-MonsterConstants.ANIMATION_DEFAULT
-```
-
-The direction strings must remain compatible with the values stored in the Tiled map.
+---
 
 ## `src/js/HUD.ts`
 
 `HUD` handles the display and update of the lower status area.
-
-It is implemented as a class-based singleton:
-
-```ts
-export const HUD = new HUDController();
-```
 
 Responsibilities:
 
@@ -806,101 +800,44 @@ Responsibilities:
 - display the current level number;
 - display the hi-score;
 - display and animate the bonus man;
-- decrease the air level during gameplay.
+- own the HUD-specific air-decrease counter.
 
-Important methods:
+`HUD` no longer imports `Level`, `Player`, or `GameController`. Values are passed in explicitly by callers.
 
-```ts
-HUD.update();
-HUD.updateAirLevel();
-HUD.displayBonusMan();
-```
-
-If the air reaches zero during gameplay, `HUD.updateAirLevel()` kills the player through:
+Important methods include:
 
 ```ts
-Player.kill();
+HUD.init(lives, score, level, hiScore, airLevel);
+HUD.update(lives, score, hiScore, level);
+HUD.displayScore(score);
+HUD.displayLives(lives);
+HUD.displayAirLevel(airLevel);
+HUD.displayBonusMan(bonusMan);
+HUD.hideBonusMan();
+HUD.clearAirLevel();
+HUD.consumeAirDecreaseAmount();
 ```
 
-The active level number display is refreshed by `HUD.update()` using `Level.level`.
+The gameplay rule “air reaching zero kills the player” is owned by `GameController`, not by `HUD`.
 
-## `src/js/hudConstants.ts`
-
-`HudConstants` centralizes HUD-related constants.
-
-It includes:
-
-- text labels;
-- text positions;
-- colors;
-- digit formatting values;
-- air bar layout;
-- air depletion timing;
-- bonus man display timing;
-- retro font configuration.
-
-Examples:
-
-```ts
-HudConstants.CHAR_WIDTH
-HudConstants.AIR_DECREASE_DELAY
-HudConstants.BONUS_MAN_COLOR_DELAY
-HudConstants.BONUS_MAN_SPRITE_KEY
-HudConstants.LABEL_AIR
-HudConstants.LABEL_HI_SCORE
-HudConstants.COLOR_AIR_BLUE
-HudConstants.COLOR_GREY
-```
-
-## `src/js/levelConstants.ts`
-
-`LevelConstants` centralizes level, Tiled, score, screen, transition, and sequence constants.
-
-It includes:
-
-- initial level/lives/air values;
-- Tiled layer and property names;
-- common tile names and tile types;
-- score increments;
-- key tile index;
-- player and level-exit coordinate offsets;
-- level reveal values;
-- end-of-level transition values;
-- end-game sequence values;
-- screen positions and text values shared by screen-related objects.
-
-Examples:
-
-```ts
-LevelConstants.DEFAULT_AIR_LEVEL
-LevelConstants.TILED_PROPERTY_LEVEL
-LevelConstants.OBJECT_LAYER_PLAYER
-LevelConstants.OBJECT_LAYER_MONSTERS
-LevelConstants.OBJECT_LAYER_END_LEVEL
-LevelConstants.TILE_NAME_KEY
-LevelConstants.TILE_TYPE_SOLID
-LevelConstants.TILE_KEY_INDEX
-LevelConstants.END_LEVEL_Y_OFFSET
-LevelConstants.END_GAME_SCORE_INCREMENT
-LevelConstants.END_GAME_MESSAGE_TEXT
-```
-
-The values that mirror the Tiled map must remain synchronized with the map data.
+---
 
 ## `src/js/collisionDetector.ts`
 
-`CollisionDetector` contains manual collision checks used by the player and gameplay interactions.
+`CollisionDetector` contains generic manual collision checks used by movement and player interactions.
 
 Main responsibilities:
 
 - test collisions along horizontal and vertical tile lines;
 - test collisions around rectangle edges;
 - test disappearing platforms;
-- test collision with the level exit;
-- test collision with monsters;
 - store `lastTileHit` so collected key tiles can be hidden.
 
-Most player movement and interaction checks depend on this file, so it is gameplay-critical. The algorithms intentionally still scan pixel-by-pixel, matching the previous behavior.
+`CollisionDetector` no longer checks monsters or the level exit. Those are level-owned collision checks handled by `Level`.
+
+Most player movement and interaction checks depend on this file, so it remains gameplay-critical. The algorithms intentionally still scan pixel-by-pixel, matching the previous behavior.
+
+---
 
 ## `src/js/util.ts`
 
@@ -913,7 +850,7 @@ Main responsibilities:
 - retrieve monster tile properties;
 - draw text using the game font.
 
-Collision checks are handled by `CollisionDetector`.
+---
 
 ## `src/js/data.ts`
 
@@ -925,98 +862,117 @@ Main contents:
 - `levels`: key count and monster animation speed per level;
 - `bonusManColors`: colors used to animate the bonus man.
 
-The required number of keys for the current level is read through:
+The required number of keys for the current level is now normally checked through:
 
 ```ts
-Data.levels[Level.level - 1][0]
+Level.hasCollectedAllKeys()
 ```
+
+rather than by reading `Data.levels` directly from gameplay code.
+
+---
 
 ## Level loading flow
 
-Level loading is mainly handled by:
-
-```ts
-Level.load()
-```
+Level loading is mainly orchestrated by `GameController` and `Level`.
 
 Simplified flow:
 
 ```text
-Level.load()
- -> reset level data
- -> Player.reset()
- -> Level.addMonsters()
-   -> LevelObjectLoader.loadMonsters()
- -> LevelObjectLoader.loadEndLevel()
- -> HUD.update()
+GameController.updateLoadLevel()
+ -> Level.load(Player)
+    -> reset level attempt data
+    -> Player.reset(current level)
+    -> Level.addMonsters()
+       -> LevelObjectLoader.loadMonsters(...)
+    -> LevelObjectLoader.loadEndLevel(...)
+ -> HUD.update(lives, score, hiScore, level)
+ -> GameController.displayLevel()
 ```
 
-After loading, the level is revealed by `LevelRevealSequence`, then monsters are revealed by `Level.displayMonsters()`, and gameplay begins.
+After loading, the level is revealed by `LevelRevealSequence`, then monsters are revealed by `Level.displayMonsters(onComplete)`, and gameplay begins.
+
+---
 
 ## Level start flow
 
 ```text
 GameStates.LOAD_LEVEL
- -> Level.load()
- -> HUD.update()
+ -> GameController.updateLoadLevel()
  -> GameStates.DISPLAY_LEVEL
    -> LevelRevealSequence.update()
    -> GameStates.START_LEVEL
-     -> Level.displayMonsters()
-     -> GameStates.PLAYING
+     -> Level.displayMonsters(onComplete)
+     -> GameStates.DISPLAYING_MONSTERS
+       -> callback: GameController.startPlaying()
 ```
+
+---
 
 ## Normal gameplay flow
 
 During `GameStates.PLAYING`:
 
 ```text
-HUD.updateAirLevel()
-HUD.displayBonusMan()
-Level.updateMonsters()
-Player.update()
+GameController.updatePlaying()
+ -> updateAirLevelDuringGameplay()
+ -> HUD.displayBonusMan(Level.bonusMan)
+ -> Level.updateMonsters(GameController.isPlaying())
+ -> Player.update(Level)
+ -> if key collected: add score and refresh HUD score
+ -> if player killed: start player death flow
+ -> if exit reached: end level or end game
 ```
 
 `Player.update()` delegates movement to `PlayerMovement` and gameplay interaction checks to `PlayerInteractions`.
+
+---
 
 ## End-of-level flow
 
 When all keys have been collected and the player touches the exit:
 
 ```text
-Player.update()
- -> PlayerInteractions.exitLevelIfNeeded()
- -> GameController.gameState = GameStates.END_LEVEL
+Player.update(Level)
+ -> PlayerInteractions.update(...)
+ -> returns { exitReached: true }
+ -> GameController.endLevel()
 ```
 
 Then:
 
 ```text
-GameController.update()
- -> Level.goToNext()
-   -> LevelTransition.update()
+GameController.updateEndLevel()
+ -> LevelTransition.update()
+ -> applies returned score / air / HUD consequences
+ -> if nextLevelLoaded: HUD.update(...), GameController.startLevel()
 ```
 
-The transition moves the player toward the next level start, converts remaining air into score, refills the air, and starts the next level.
+The transition moves the player toward the next level start, converts remaining air into score, refills the air, loads the next level, and then returns control to the normal level-start sequence.
+
+---
 
 ## End-game flow
 
 When the last level has been completed:
 
 ```text
-Player.update()
- -> PlayerInteractions.exitLevelIfNeeded()
- -> GameController.gameState = GameStates.END_GAME
+Player.update(Level)
+ -> PlayerInteractions.update(...)
+ -> returns { exitReached: true }
+ -> GameController.endGame()
 ```
 
 Then:
 
 ```text
-GameController.update()
- -> EndGameSequence.update()
+GameController.updateEndGame()
+ -> EndGameSequence.update(Level.airLevel)
+ -> applies returned score / air / HUD consequences
+ -> when finished: reset score/lives/level and return to introduction
 ```
 
-The sequence converts remaining air into score, displays the congratulations message, scales it up, waits briefly, resets the game, and returns to the title screen.
+---
 
 ## Player death flow
 
@@ -1027,27 +983,27 @@ Player death can be caused by:
 - deadly fall;
 - depleted air.
 
-Death is triggered through:
-
-```ts
-Player.kill()
-```
-
-`Player.kill()` delegates to `PlayerDeathSequence.start()`.
+Movement and interaction code no longer directly decide the global consequences of death. They report `playerKilled: true`, or `GameController` detects depleted air.
 
 Simplified flow:
 
 ```text
-Player.kill()
- -> PlayerDeathSequence.start()
-   -> stop normal gameplay
-   -> hide normal player sprite
-   -> show death sprite
-   -> play death animation
-   -> remove one life or consume bonus man
-   -> reset the air bar
-   -> reload level or show game over
+GameController.startPlayerDeath()
+ -> GameController.killPlayer()
+ -> Player.kill(onComplete)
+    -> PlayerDeathSequence.start(Player, onComplete)
+       -> hide normal sprite
+       -> create death sprite
+       -> play death animation
+       -> callback
+ -> GameController.finishPlayerDeath()
+    -> consume bonus man or lose one life
+    -> refresh HUD
+    -> reset air
+    -> load level or show game over
 ```
+
+---
 
 ## Hi-score flow
 
@@ -1057,7 +1013,9 @@ The hi-score is read from `localStorage` during startup:
 localStorage.getItem('hiScore')
 ```
 
-It is updated in `Level.resetGame()` if the current score is greater than the stored hi-score.
+It is updated by `GameController.updateHiScoreIfNeeded()` if the current score is greater than the stored hi-score.
+
+---
 
 ## Tiled map conventions
 
@@ -1087,59 +1045,55 @@ Important tile concepts include:
 
 These conventions are partly represented by `LevelConstants` and `MonsterConstants`, but the Tiled data remains the source of truth.
 
+---
+
 ## Technical points to watch
 
-### Encapsulation is improved, but singletons remain
+### Runtime dependencies are reduced, but not eliminated
 
-The main runtime objects are now class-based singleton instances, and the most important mutable state in `GameController`, `Level`, and `Player` is private. External code now uses behavior-focused methods for the most common mutations:
+The code is now much less coupled than the original global-object version. Several visual and gameplay subsystems return result objects or receive small context interfaces instead of importing the whole runtime.
 
-```text
-GameController.setState(...)
-GameController.addScore(...)
-GameController.loseLife()
-Level.collectKey()
-Level.decreaseAir(...)
-Level.consumeBonusMan()
-Player.startJump()
-Player.startDeadlyFall()
+However, the architecture still uses singleton instances, and `GameController` remains the orchestration hub. This is acceptable for the current Phaser 2.3 remake. Avoid forcing dependency injection everywhere unless it makes the code clearly simpler.
+
+### Avoid bureaucratic getters and setters
+
+The project should continue favoring behaviour-focused methods that express gameplay intent:
+
+```ts
+Level.collectKey();
+Level.decreaseAir(...);
+GameController.addScore(...);
+Player.startJump();
+Player.startDeadlyFall();
 ```
 
-This is a meaningful improvement over the previous global-style object literals. However, the architecture still uses singleton instances and Phaser globals, so it is not yet a fully decoupled object model. Some technical façade methods, such as `Player.moveBodyX()` and `Player.setBodyY()`, remain because Phaser sprite/body access is still shared by gameplay systems.
+Readonly getters are useful for display values such as `GameController.score` or `Level.airLevel`. Technical facades such as `Player.getBodyX()` or `Player.moveBodyX()` are acceptable because they hide Phaser sprite internals.
+
+Avoid adding trivial `getX()` / `setX()` methods everywhere just to make fields private. That makes the code longer without making the game logic clearer.
 
 ### Global Phaser runtime context
 
-The project no longer exposes core gameplay objects through `window.*` compatibility mirrors. It still relies on a small shared Phaser runtime context created in `src/js/main.ts` and `src/js/gameInitializer.ts`: `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup`.
+The project still relies on `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` globals.
 
-This shared context is workable for the current codebase, but it remains the main architectural limitation before a fuller migration to an explicit runtime context or a modern Phaser scene structure.
+This shared context is workable, but it remains the main architectural limitation before a fuller migration to an explicit runtime context or modern Phaser scenes.
 
 ### TypeScript strictness is still gentle
 
-The project uses TypeScript, but the type system is not yet strict.
+The project uses TypeScript, but the type system is not yet strict. A future step can gradually tighten `tsconfig.json`, starting with:
 
-Current priorities are:
+1. `noImplicitAny: true`
+2. `strictNullChecks: true`
+3. `strict: true`
 
-- preserve gameplay;
-- avoid a noisy Phaser 2 typing effort;
-- let TypeScript catch module/import/value mistakes;
-- prepare the project for later cleanup.
-
-A future step can gradually tighten `tsconfig.json`, starting with `noImplicitAny`, then `strictNullChecks`, then `strict`.
-
-### Script order
-
-Runtime file order is now handled by ES module imports. New dependencies should be imported explicitly by the files that use them.
-
-`src/main.ts` only connects Vite to the Phaser bootstrap in `src/js/main.ts`.
+Do not enable everything at once unless the codebase is already clean.
 
 ### Manual collisions
 
-Collision code is very specific to this game and is centralized in `CollisionDetector`. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, key collection, exit detection, and enemy collision.
+Collision code is very specific to this game. Many checks are based on pixel probes and tile properties. Small changes can affect the feel of movement, jumping, ladders, falling, key collection, exit detection, and enemy collision.
 
 ### Counter-based sequences
 
-Several sequences are still frame/counter based. They are more structured now, but they still depend on preserved timings and numeric thresholds.
-
-Important examples:
+Several sequences are still frame/counter based and depend on preserved timings and numeric thresholds:
 
 - level reveal;
 - monster reveal;
@@ -1148,29 +1102,13 @@ Important examples:
 - HUD air depletion;
 - bonus man color animation.
 
-### Tiled coupling
-
-A lot of behavior depends on exact Tiled layer names, object names, tile names, and property names. Changing the map without updating constants and code can break gameplay.
-
 ### Player logic sensitivity
 
 The player is the most sensitive part of the game. The jump trajectory, fall detection, ladder handling, and tile collision probes should be refactored only in small, well-tested steps.
 
+---
+
 ## Possible future improvements
-
-The following improvements are architectural ideas, not current implementation details.
-
-### Continue encapsulation without adding bureaucratic getters
-
-The most useful next step is not to add mechanical getters and setters everywhere. The project should continue favoring behavior-focused methods that express gameplay intent.
-
-Good candidates:
-
-- replace remaining direct `GameController.gameState` comparisons with clearer methods such as `GameController.isPlaying()` where it improves readability;
-- add explicit debug helpers instead of mutating level state from the browser console;
-- further reduce Phaser sprite/body access outside `Player` if it can be done without making movement code harder to read.
-
-Avoid replacing every field with trivial `getX()` / `setX()` methods. That would make the code longer without making the game logic clearer.
 
 ### Add explicit debug helpers
 
@@ -1180,36 +1118,32 @@ A debug mode would be useful for testing transitions and levels. It should not b
 ?debug=1
 ```
 
-This could eventually expose explicit debug helpers such as:
+Possible helper methods:
 
 ```ts
-Level.collectAllKeysForDebug()
-GameController.startEndLevelForDebug()
+Level.collectAllKeysForDebug();
+GameController.startEndLevelForDebug();
 ```
 
-This would be cleaner than mutating `Level.keysTaken` and `GameController.gameState` from the browser console.
+This would be cleaner than running manual console loops.
 
 ### Document Tiled conventions separately
 
 A dedicated document such as `doc/tiled_map_conventions.md` would be useful. It could describe every expected layer, object type, tile property, monster property, and coordinate offset.
 
-### Reduce remaining global variables
+### Reduce remaining Phaser globals
 
-A future architecture could group shared runtime objects into a context object, then later replace the remaining global Phaser runtime variables with explicit dependencies or Phaser scenes.
+A future architecture could group shared Phaser runtime objects into a context object, then later replace the remaining global variables with explicit dependencies or Phaser scenes.
 
-### Tighten TypeScript gradually
+### Consider a LevelTransition context only if it stays readable
 
-Once the class-singleton architecture is stable, `tsconfig.json` can be tightened step by step:
+`LevelTransition` is one of the remaining modules that still coordinates `Level` and `Player` directly. It could eventually receive a small transition context, but this should be done only if the resulting code is clearer than the current direct calls.
 
-1. `noImplicitAny: true`
-2. `strictNullChecks: true`
-3. `strict: true`
+### Prototype a newer Phaser version separately
 
-Do not enable everything at once unless the codebase is already clean.
+A Phaser 2.3 to Phaser 4 migration should be treated as a prototype/port, not as a simple dependency bump. Keep it on a separate branch.
 
-### Separate gameplay rules from Phaser calls
-
-Some gameplay rules could eventually be made less dependent on Phaser objects. This would make the code easier to test and easier to migrate to a newer Phaser version.
+---
 
 ## Manual test checklist
 
@@ -1234,18 +1168,38 @@ After any small architecture change, test at least:
 - game-over screen;
 - no red JavaScript error in the browser console.
 
-To quickly test the transition to the next level from the browser console while running `npm run dev`, import the ES modules explicitly:
+---
+
+## Manual console helper for testing level transition
+
+While running `npm run dev`, the following browser-console snippet gives the player all keys for the current level:
 
 ```js
 const { Level } = await import('/src/js/level.ts');
-const { Data } = await import('/src/js/data.ts');
-const { GameStates } = await import('/src/js/gameStates.ts');
-const { GameController } = await import('/src/js/gameController.ts');
 
-// For now, there is no official debug helper in production code.
-// If a debug mode is added later, prefer an explicit method such as:
-// Level.collectAllKeysForDebug();
-// GameController.startEndLevelForDebug();
+while (!Level.hasCollectedAllKeys()) {
+    Level.collectKey();
+}
 ```
 
-This command must not be turned into a keyboard shortcut that is active in production. If a debug system is added later, it should be explicitly enabled.
+Then touch the exit normally.
+
+To trigger the transition directly:
+
+```js
+const { Level } = await import('/src/js/level.ts');
+const { GameController } = await import('/src/js/gameController.ts');
+
+while (!Level.hasCollectedAllKeys()) {
+    Level.collectKey();
+}
+
+if (Level.isLastLevel()) {
+    GameController.endGame();
+}
+else {
+    GameController.endLevel();
+}
+```
+
+This should remain a manual development helper unless a real debug mode is added later.
