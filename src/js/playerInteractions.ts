@@ -2,7 +2,7 @@ import { GameStates } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
 import { Data } from "./data.ts";
-import { HUD } from "./HUD.js";
+import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 import { GameController } from "./gameController.js";
 

@@ -3,7 +3,7 @@ import { GameController } from "./gameController.js";
 import { Util } from "./util.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { Player } from "./player.ts";
-import { HUD } from "./HUD.js";
+import { HUD } from "./HUD.ts";
 import { Level } from "./level.js";
 
 /**

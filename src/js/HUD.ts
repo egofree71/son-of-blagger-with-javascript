@@ -11,17 +11,18 @@ export const HUD =
     charWidth : HudConstants.CHAR_WIDTH,
 
     // Score displayed in the hud
-    HUDScore : null,
-    HUDHiscore : null,
+    HUDScore : null as any,
+    HUDHiscore : null as any,
+    HUDHiScore : null as any,
 
     // Lives displayed in the hud
-    HUDLives : null,
-    HUDLevel : null,
-    airLevelRectangle : null,
+    HUDLives : null as any,
+    HUDLevel : null as any,
+    airLevelRectangle : null as any,
 
     // Counter used to decrease the air level
     counter : HudConstants.AIR_DECREASE_DELAY,
-    bonusManSprite : null,
+    bonusManSprite : null as any,
 
     colorCounter : HudConstants.BONUS_MAN_COLOR_DELAY,
     colorIndex : HudConstants.BONUS_MAN_MIN_COLOR_INDEX,
@@ -169,7 +170,7 @@ export const HUD =
     },
 
     // Draw a text within the hud
-    drawText : function(text, x, y, color)
+    drawText : function(text: string, x: number, y: number, color?: number)
     {
         var font = game.add.retroFont(HudConstants.FONT_KEY, HudConstants.FONT_CHAR_WIDTH, HudConstants.FONT_CHAR_HEIGHT, Phaser.RetroFont.TEXT_SET2);
         font.text = text;

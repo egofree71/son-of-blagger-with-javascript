@@ -6,7 +6,7 @@ import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
 import { LevelTransition } from "./levelTransition.ts";
 import { Player } from "./player.ts";
-import { HUD } from "./HUD.js";
+import { HUD } from "./HUD.ts";
 import { GameController } from "./gameController.js";
 
 export const Level =
