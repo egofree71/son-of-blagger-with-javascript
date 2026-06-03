@@ -2,15 +2,7 @@ import { PlayerStates } from "./playerStates.ts";
 import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { CollisionDetector } from "./collisionDetector.ts";
-import { Data } from "./data.ts";
-import type { PlayerController } from "./player.ts";
-
-type NullablePlayerDirection = PlayerDirection | null;
-
-interface MovementDirection {
-    horizontal: NullablePlayerDirection;
-    vertical: NullablePlayerDirection;
-}
+import type { MovementDirection, PlayerController } from "./player.ts";
 
 export interface PlayerMovementResult {
     x: number;
@@ -88,14 +80,14 @@ class PlayerMovementController
         };
 
         const startPosition = {
-            x : player.playerSprite.body.x,
-            y : player.playerSprite.body.y
+            x : player.getBodyX(),
+            y : player.getBodyY()
         };
 
         // During a deadly fall, normal controls and interactions are suspended.
         // The player simply keeps falling until a solid tile is reached, then the
         // death sequence starts.
-        if (player.deadlyFall)
+        if (player.isDeadlyFall())
         {
             this.updateDeadlyFall(player, startPosition.x, startPosition.y);
             return {
@@ -107,13 +99,13 @@ class PlayerMovementController
 
         // Ground input is accepted only when the player is not already falling or
         // jumping. This preserves the old rigid platformer feel.
-        if (player.fallHeight == 0 && player.jumping == false)
+        if (player.canAcceptGroundInput())
             this.handleGroundInput(player, direction);
 
-        if (player.jumping)
+        if (player.isJumping())
             this.updateJump(player, direction, startPosition.x, startPosition.y);
 
-        if (player.jumping == false)
+        if (player.isJumping() == false)
             this.updateGroundAndEnvironment(player, direction, startPosition.x, startPosition.y);
 
         this.blockInvalidMovement(player, direction, startPosition.x, startPosition.y);
@@ -135,11 +127,11 @@ class PlayerMovementController
      */
     private updateDeadlyFall(player: PlayerController, x: number, y: number): void
     {
-        player.playerSprite.body.y += this.MOVE_STEP;
+        player.moveBodyY(this.MOVE_STEP);
 
         if (this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, true))
         {
-            player.fallHeight = 0;
+            player.resetFallHeight();
             player.kill();
         }
     }
@@ -153,15 +145,12 @@ class PlayerMovementController
     {
         if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR))
         {
-            player.jumping = true;
-            player.jumpIndex = 0;
-            player.jumpingDirection = null;
+            player.startJump();
         }
 
         if (keyPressed.right.isDown)
         {
-            if (player.jumping)
-                player.jumpingDirection = PlayerStates.RIGHT;
+            player.rememberJumpDirection(PlayerStates.RIGHT);
 
             direction.horizontal = PlayerStates.RIGHT;
             this.resetAnimationIfChangingDirection(player, PlayerStates.ANIMATION_LEFT, PlayerStates.ANIMATION_RIGHT);
@@ -170,8 +159,7 @@ class PlayerMovementController
 
         if (keyPressed.left.isDown)
         {
-            if (player.jumping)
-                player.jumpingDirection = PlayerStates.LEFT;
+            player.rememberJumpDirection(PlayerStates.LEFT);
 
             direction.horizontal = PlayerStates.LEFT;
             this.resetAnimationIfChangingDirection(player, PlayerStates.ANIMATION_RIGHT, PlayerStates.ANIMATION_LEFT);
@@ -187,16 +175,7 @@ class PlayerMovementController
      */
     private resetAnimationIfChangingDirection(player: PlayerController, previousAnimation: PlayerAnimationName, newAnimation: PlayerAnimationName): void
     {
-        if (player.playerSprite.animations.currentAnim.name == previousAnimation)
-        {
-            player.playerSprite.animations.play(newAnimation);
-            player.playerSprite.animations.stop();
-
-            if (newAnimation == PlayerStates.ANIMATION_RIGHT)
-                player.animationRightCounter = player.animationMaxCounter;
-            else
-                player.animationLeftCounter = player.animationMaxCounter;
-        }
+        player.resetAnimationIfChangingDirection(previousAnimation, newAnimation);
     }
 
     /**
@@ -209,42 +188,25 @@ class PlayerMovementController
      */
     private updateJump(player: PlayerController, direction: MovementDirection, x: number, y: number): void
     {
-        if (player.jumpingDirection == PlayerStates.LEFT)
-            player.playLeft();
+        player.playJumpDirectionAnimation();
+        player.advanceJumpFrame();
 
-        if (player.jumpingDirection == PlayerStates.RIGHT)
-            player.playRight();
-
-        player.jumpIndex += 1;
-
-        if (player.jumpIndex >= this.JUMP_FALL_START_INDEX)
+        if (player.hasJumpReachedFallingSection(this.JUMP_FALL_START_INDEX))
         {
-            player.fallHeight += 1;
+            player.increaseFallHeight();
 
             if (this.isLandingAfterJump(player, x, y))
             {
-                player.jumping = false;
-                player.fallHeight = 0;
-                player.playerSprite.animations.stop();
+                player.landFromJump();
             }
-            else if (player.fallHeight == player.fallLimit)
+            else if (player.hasReachedFallLimit())
             {
                 this.startDeadlyFall(player);
             }
         }
 
-        if (player.jumping == true)
-        {
-            direction.vertical = Data.jumpPath[player.jumpIndex][1];
-
-            if (Data.jumpPath[player.jumpIndex][0] == false)
-                direction.horizontal = null;
-            else
-                direction.horizontal = player.jumpingDirection;
-
-            if (player.jumpIndex >= Data.jumpPath.length - 1)
-                player.jumping = false;
-        }
+        if (player.isJumping())
+            player.applyCurrentJumpPathFrame(direction);
     }
 
     /**
@@ -259,14 +221,14 @@ class PlayerMovementController
         {
             direction.horizontal = PlayerStates.LEFT;
             direction.vertical = PlayerStates.DOWN;
-            player.fallHeight = 0;
+            player.resetFallHeight();
         }
 
         if (this.isOnTileByName(player, x, y, LevelConstants.TILE_NAME_RIGHT_SLIDE, this.SLIDE_PROBE_Y_OFFSET))
         {
             direction.horizontal = PlayerStates.RIGHT;
             direction.vertical = PlayerStates.DOWN;
-            player.fallHeight = 0;
+            player.resetFallHeight();
         }
 
         if (direction.vertical == null)
@@ -278,7 +240,7 @@ class PlayerMovementController
             direction.vertical = PlayerStates.UP;
 
         if (keyPressed.left.isUp && keyPressed.right.isUp)
-            player.playerSprite.animations.stop();
+            player.stopAnimation();
     }
 
     /**
@@ -293,20 +255,20 @@ class PlayerMovementController
             CollisionDetector.collisionLineWithVanishingPlatform(
                 x + this.FOOT_LEFT_OFFSET,
                 x + this.FOOT_RIGHT_OFFSET,
-                y + player.playerSprite.body.height) == false)
+                y + player.getBodyHeight()) == false)
         {
             direction.vertical = PlayerStates.DOWN;
             direction.horizontal = null;
-            player.playerSprite.animations.stop();
+            player.stopAnimation();
 
-            player.fallHeight += 1;
+            player.increaseFallHeight();
 
-            if (player.fallHeight == player.fallLimit)
+            if (player.hasReachedFallLimit())
                 this.startDeadlyFall(player);
         }
         else
         {
-            player.fallHeight = 0;
+            player.resetFallHeight();
         }
     }
 
@@ -358,7 +320,7 @@ class PlayerMovementController
         if (direction.horizontal == PlayerStates.RIGHT &&
             CollisionDetector.verticalCollisionLine(
                 y + this.SIDE_WALL_TOP_OFFSET,
-                y + player.playerSprite.body.height - this.SIDE_WALL_BOTTOM_OFFSET,
+                y + player.getBodyHeight() - this.SIDE_WALL_BOTTOM_OFFSET,
                 x + this.RIGHT_WALL_X_OFFSET,
                 LevelConstants.TILED_PROPERTY_NAME,
                 LevelConstants.TILE_NAME_WALL,
@@ -370,7 +332,7 @@ class PlayerMovementController
         if (direction.horizontal == PlayerStates.LEFT &&
             CollisionDetector.verticalCollisionLine(
                 y + this.SIDE_WALL_TOP_OFFSET,
-                y + player.playerSprite.body.height - this.SIDE_WALL_BOTTOM_OFFSET,
+                y + player.getBodyHeight() - this.SIDE_WALL_BOTTOM_OFFSET,
                 x + this.LEFT_WALL_X_OFFSET,
                 LevelConstants.TILED_PROPERTY_NAME,
                 LevelConstants.TILE_NAME_WALL,
@@ -386,16 +348,16 @@ class PlayerMovementController
     private applyMovement(player: PlayerController, direction: MovementDirection): void
     {
         if (direction.horizontal == PlayerStates.RIGHT)
-            player.playerSprite.body.x += this.MOVE_STEP;
+            player.moveBodyX(this.MOVE_STEP);
 
         if (direction.horizontal == PlayerStates.LEFT)
-            player.playerSprite.body.x -= this.MOVE_STEP;
+            player.moveBodyX(-this.MOVE_STEP);
 
         if (direction.vertical == PlayerStates.DOWN)
-            player.playerSprite.body.y += this.MOVE_STEP;
+            player.moveBodyY(this.MOVE_STEP);
 
         if (direction.vertical == PlayerStates.UP)
-            player.playerSprite.body.y -= this.MOVE_STEP;
+            player.moveBodyY(-this.MOVE_STEP);
     }
 
     /**
@@ -410,7 +372,7 @@ class PlayerMovementController
             CollisionDetector.collisionLineWithVanishingPlatform(
                 x + this.FOOT_LEFT_OFFSET,
                 x + this.FOOT_RIGHT_OFFSET,
-                y + player.playerSprite.body.height);
+                y + player.getBodyHeight());
     }
 
     /**
@@ -421,7 +383,7 @@ class PlayerMovementController
         return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
             x + this.FOOT_RIGHT_OFFSET,
-            y + player.playerSprite.body.height,
+            y + player.getBodyHeight(),
             LevelConstants.TILED_PROPERTY_TYPE,
             tileType,
             onTop);
@@ -435,7 +397,7 @@ class PlayerMovementController
         return CollisionDetector.horizontalCollisionLine(
             x + this.FOOT_LEFT_OFFSET,
             x + this.FOOT_RIGHT_OFFSET,
-            y + player.playerSprite.body.height + yOffset,
+            y + player.getBodyHeight() + yOffset,
             LevelConstants.TILED_PROPERTY_NAME,
             tileName,
             false);
@@ -451,9 +413,9 @@ class PlayerMovementController
     {
         return CollisionDetector.collisionRectangle(
             x + this.LADDER_LEFT_OFFSET,
-            y + player.playerSprite.body.height - this.LADDER_TOP_FROM_BOTTOM_OFFSET,
+            y + player.getBodyHeight() - this.LADDER_TOP_FROM_BOTTOM_OFFSET,
             x + this.LADDER_RIGHT_OFFSET,
-            y + player.playerSprite.body.height - this.LADDER_BOTTOM_FROM_BOTTOM_OFFSET,
+            y + player.getBodyHeight() - this.LADDER_BOTTOM_FROM_BOTTOM_OFFSET,
             LevelConstants.TILED_PROPERTY_NAME,
             LevelConstants.TILE_NAME_LADDER);
     }
@@ -466,8 +428,7 @@ class PlayerMovementController
      */
     private startDeadlyFall(player: PlayerController): void
     {
-        player.deadlyFall = true;
-        player.playerSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_WHITE, player.playerSprite.animations.currentAnim.frame);
+        player.startDeadlyFall();
     }
 }
 
