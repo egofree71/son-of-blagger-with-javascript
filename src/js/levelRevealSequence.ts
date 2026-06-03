@@ -1,5 +1,4 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { GameController } from "./gameController.js";
 
 type LevelRevealPhase =
     | typeof LevelConstants.DISPLAY_STEP_INITIALIZE
@@ -15,7 +14,7 @@ type LevelRevealPhase =
  * 1. reset all key tiles so they are visible again;
  * 2. cover the camera with two black rectangles;
  * 3. shrink both rectangles until the level is fully visible;
- * 4. hand control back to GameController so monsters can be revealed.
+ * 4. report completion so the caller can start the monster reveal.
  *
  * The black rectangle graphics are also reused by ScreenManager and
  * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
@@ -66,18 +65,19 @@ class LevelRevealSequenceController
     /**
      * Advances the reveal sequence by one frame.
      */
-    update(): void
+    update(): boolean
     {
         switch(this.phase)
         {
             case LevelConstants.DISPLAY_STEP_INITIALIZE:
                 this.initializeReveal();
-                break;
+                return false;
 
             case LevelConstants.DISPLAY_STEP_REVEAL:
-                this.revealNextFrame();
-                break;
+                return this.revealNextFrame();
         }
+
+        return false;
     }
 
     /**
@@ -102,7 +102,7 @@ class LevelRevealSequenceController
     /**
      * Draws one frame of the shrinking black rectangles.
      */
-    private revealNextFrame(): void
+    private revealNextFrame(): boolean
     {
         this.counter -= 1;
 
@@ -116,7 +116,9 @@ class LevelRevealSequenceController
         }
 
         if (this.rectangleHeight <= 0)
-            this.finishReveal();
+            return this.finishReveal();
+
+        return false;
     }
 
     /**
@@ -142,15 +144,14 @@ class LevelRevealSequenceController
     }
 
     /**
-     * Clears the reveal rectangles and starts the monster reveal sequence.
+     * Clears the reveal rectangles and reports that the sequence has finished.
      */
-    private finishReveal(): void
+    private finishReveal(): boolean
     {
         this.upperBlackRectangle.clear();
         this.lowerBlackRectangle.clear();
         this.reset();
-
-        GameController.startLevel();
+        return true;
     }
 }
 

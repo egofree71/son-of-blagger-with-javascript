@@ -333,9 +333,9 @@ class LevelController
      * Display progressively the map with two disappearing black rectangles.
      * The actual frame-by-frame sequence is handled by LevelRevealSequence.
      */
-    display(): void
+    display(): boolean
     {
-        LevelRevealSequence.update();
+        return LevelRevealSequence.update();
     }
 }
 

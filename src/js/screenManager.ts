@@ -1,7 +1,6 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
-import { GameController } from "./gameController.js";
 
 /**
  * ScreenManager owns the non-gameplay screens.
@@ -62,9 +61,9 @@ class ScreenManagerController
     /**
      * Display a screen with instructions.
      *
-     * Pressing any key destroys the help text and returns to the introduction.
+     * Pressing any key destroys the help text, then lets the caller decide the next state.
      */
-    public displayInstructions(): void
+    public displayInstructions(onExit: () => void): void
     {
         // Draw a black rectangle.
         LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
@@ -99,7 +98,7 @@ class ScreenManagerController
             LevelRevealSequence.upperBlackRectangle.clear();
             game.input.keyboard.onPressCallback = null;
 
-            GameController.loadIntroduction();
+            onExit();
         };
     }
 

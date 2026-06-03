@@ -213,12 +213,18 @@ class GameControllerController
     /**
      * Show the help screen once.
      *
-     * The input callback that leaves the help screen is currently owned by
-     * ScreenManager.displayInstructions(), so this state only delegates the display.
+     * GameController owns the state transition that leaves the help screen.
+     * ScreenManager only owns the visual screen and the temporary input callback.
      */
     private updateLoadHelp(): void
     {
-        ScreenManager.displayInstructions();
+        const controller = this;
+
+        ScreenManager.displayInstructions(function(): void
+        {
+            controller.loadIntroduction();
+        });
+
         this.setState(GameStates.HELP);
     }
 
@@ -258,12 +264,13 @@ class GameControllerController
     /**
      * Continue the progressive reveal of the level.
      *
-     * Level.display() is responsible for switching to the next state when the
-     * reveal has finished.
+     * GameController remains responsible for moving to the next state once the
+     * reveal reports that it has finished.
      */
     private updateDisplayLevel(): void
     {
-        Level.display();
+        if (Level.display())
+            this.startLevel();
     }
 
     /**
