@@ -324,7 +324,7 @@ class GameControllerController
      */
     private updateLoadLevel(): void
     {
-        Level.load();
+        Level.load(Player);
         HUD.update(this.lives, this.score, this.hiScore, Level.level);
         this.displayLevel();
     }

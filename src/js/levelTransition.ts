@@ -365,7 +365,7 @@ class LevelTransitionController
     {
         const result = this.createResult();
 
-        Level.load();
+        Level.load(Player);
 
         // On every new level, the user gets a bonus man.
         Level.enableBonusMan();

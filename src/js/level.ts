@@ -1,8 +1,12 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Data } from "./data.ts";
 import { LevelObjectLoader } from "./levelObjectLoader.ts";
-import { Player } from "./player.ts";
 import type { Monster } from "./monster.ts";
+
+export interface LevelPlayer
+{
+    reset(levelNumber: number): void;
+}
 
 class LevelController
 {
@@ -307,12 +311,16 @@ class LevelController
 
     /**
      * Load the objects needed for a given level.
+     *
+     * The player instance is passed in explicitly so Level no longer imports the
+     * Player singleton. Level still controls the level-loading order, which is
+     * important for preserving the previous runtime behaviour.
      */
-    load(): void
+    load(player: LevelPlayer): void
     {
         this.resetLevelState();
 
-        Player.reset(this.currentLevel);
+        player.reset(this.currentLevel);
         this.addMonsters();
         this.levelExit = LevelObjectLoader.loadEndLevel(this.currentLevel, this.levelExit);
     }
