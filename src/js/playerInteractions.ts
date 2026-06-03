@@ -87,13 +87,13 @@ class PlayerInteractionsController
     }
 
     /**
-     * Kills the player if the current collision box touches a deadly tile or a monster.
+     * Reports whether the current collision box touches a deadly tile or a monster.
      */
     private killPlayerIfNeeded(player: PlayerController, x: number, y: number): boolean
     {
         const playerHeight: number = player.getBodyHeight();
 
-        if (CollisionDetector.collisionRectangle(
+        return CollisionDetector.collisionRectangle(
                 x + this.DEADLY_LEFT_OFFSET,
                 y + this.DEADLY_TOP_OFFSET,
                 x + this.DEADLY_RIGHT_OFFSET,
@@ -104,13 +104,7 @@ class PlayerInteractionsController
                 x + this.BODY_LEFT_OFFSET,
                 y + this.BODY_TOP_OFFSET,
                 x + this.BODY_RIGHT_OFFSET,
-                y + playerHeight + this.BODY_BOTTOM_OFFSET))
-        {
-            player.kill();
-            return true;
-        }
-
-        return false;
+                y + playerHeight + this.BODY_BOTTOM_OFFSET);
     }
 
     /**

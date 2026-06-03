@@ -12,7 +12,7 @@ import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
  *
  * The exported Player value remains a singleton so existing callers can keep
  * using Player.create(), Player.reset(levelNumber), Player.update(), and
- * Player.kill(). The class only replaces the previous object-literal container; movement rules,
+ * Player.kill(onComplete). The class only replaces the previous object-literal container; movement rules,
  * interaction checks, animation timings, and death handling still live in their
  * dedicated modules.
  */
@@ -87,6 +87,15 @@ export class PlayerController
     public update(): PlayerInteractionResult
     {
         const movementResult = PlayerMovement.update(this);
+
+        if (movementResult.playerKilled)
+        {
+            return {
+                keyCollected: false,
+                playerKilled: true,
+                exitReached: false
+            };
+        }
 
         if (movementResult.checkInteractions)
             return PlayerInteractions.update(this, movementResult.x, movementResult.y);
@@ -406,11 +415,15 @@ export class PlayerController
     }
 
     /**
-     * When the player is killed, delegate the death animation and life handling.
+     * Starts the visual death animation.
+     *
+     * The caller owns the global gameplay consequences that happen when the
+     * animation completes. This keeps Player and PlayerDeathSequence independent
+     * from score, lives, HUD and level flow.
      */
-    public kill(): void
+    public kill(onComplete: () => void): void
     {
-        PlayerDeathSequence.start(this);
+        PlayerDeathSequence.start(this, onComplete);
     }
 }
 

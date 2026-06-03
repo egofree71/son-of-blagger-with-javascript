@@ -8,6 +8,7 @@ export interface PlayerMovementResult {
     x: number;
     y: number;
     checkInteractions: boolean;
+    playerKilled: boolean;
 }
 
 /**
@@ -70,7 +71,7 @@ class PlayerMovementController
      * to preserve the collision timing of the pre-refactoring implementation.
      *
      * @param {object} player The global Player object.
-     * @returns {{x: number, y: number, checkInteractions: boolean}}
+     * @returns {{x: number, y: number, checkInteractions: boolean, playerKilled: boolean}}
      */
     public update(player: PlayerController): PlayerMovementResult
     {
@@ -86,14 +87,15 @@ class PlayerMovementController
 
         // During a deadly fall, normal controls and interactions are suspended.
         // The player simply keeps falling until a solid tile is reached, then the
-        // death sequence starts.
+        // caller reports the death to the game flow owner.
         if (player.isDeadlyFall())
         {
-            this.updateDeadlyFall(player, startPosition.x, startPosition.y);
+            const playerKilled = this.updateDeadlyFall(player, startPosition.x, startPosition.y);
             return {
                 x : startPosition.x,
                 y : startPosition.y,
-                checkInteractions : false
+                checkInteractions : false,
+                playerKilled : playerKilled
             };
         }
 
@@ -114,7 +116,8 @@ class PlayerMovementController
         return {
             x : startPosition.x,
             y : startPosition.y,
-            checkInteractions : true
+            checkInteractions : true,
+            playerKilled : false
         };
     }
 
@@ -122,18 +125,20 @@ class PlayerMovementController
      * Handles the special falling state used after the player has fallen too far.
      *
      * A deadly fall cannot be cancelled by input. When the player eventually hits
-     * solid ground, Player.kill() is called and the death animation uses the
-     * white falling sprite.
+     * solid ground, the caller is told that the player should die. PlayerMovement
+     * does not start the death sequence itself; GameController owns that flow.
      */
-    private updateDeadlyFall(player: PlayerController, x: number, y: number): void
+    private updateDeadlyFall(player: PlayerController, x: number, y: number): boolean
     {
         player.moveBodyY(this.MOVE_STEP);
 
         if (this.hasGroundBelow(player, x, y, LevelConstants.TILE_TYPE_SOLID, true))
         {
             player.resetFallHeight();
-            player.kill();
+            return true;
         }
+
+        return false;
     }
 
     /**

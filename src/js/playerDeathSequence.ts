@@ -1,33 +1,26 @@
 import { PlayerStates } from "./playerStates.ts";
-import { HUD } from "./HUD.ts";
-import { Level } from "./level.js";
-import { GameController } from "./gameController.js";
 import type { PlayerController } from "./player.ts";
 
 /**
- * Handles the visual and gameplay consequences of the player's death.
+ * Handles only the visual death animation for the player.
  *
- * Player remains responsible for movement and for deciding when death should be
- * triggered. Once death starts, this controller owns the animation callback and
- * the life / bonus-man / reload decision that happens after the animation
- * finishes.
- *
- * The public singleton name is intentionally unchanged: the rest of the game
- * still calls `PlayerDeathSequence.start(Player)`.
+ * The global consequences of death are owned by GameController: stopping
+ * gameplay, consuming the bonus man, losing a life, refreshing the HUD and
+ * deciding whether to reload the level or show game over. This keeps the death
+ * animation sequence focused on visuals instead of making it depend on the
+ * whole runtime.
  */
 class PlayerDeathSequenceController
 {
     /**
      * Starts the death animation for the given player object.
      *
-     * The behavior intentionally matches the previous Player.kill() logic:
-     * normal gameplay stops immediately, the normal sprite is hidden, a separate
-     * death sprite is displayed, then the level is reloaded or the game-over
-     * screen is shown when the animation completes.
+     * The callback is invoked when the animation completes. The callback keeps
+     * the flow owner explicit and avoids direct dependencies on GameController,
+     * Level or HUD from this visual sequence.
      */
-    start(player: PlayerController): void
+    start(player: PlayerController, onComplete: () => void): void
     {
-        GameController.killPlayer();
         player.hideSprite();
 
         player.setDyingSprite(this.createDeathSprite(player));
@@ -35,7 +28,7 @@ class PlayerDeathSequenceController
 
         animation.onComplete.add((): void =>
         {
-            this.finish();
+            onComplete();
         });
 
         player.playDyingAnimation();
@@ -58,38 +51,6 @@ class PlayerDeathSequenceController
             deathSprite.loadTexture(PlayerStates.SPRITE_BLAGGER_DYING_WHITE);
 
         return deathSprite;
-    }
-
-    /**
-     * Applies the consequences of the completed death animation.
-     */
-    private finish(): void
-    {
-        this.consumeBonusManOrLife();
-
-        HUD.displayLives(GameController.lives);
-        Level.resetAirLevel();
-        HUD.displayAirLevel(Level.airLevel);
-
-        if (GameController.hasNoLives())
-            GameController.showGameOver();
-        else
-            GameController.loadLevel();
-    }
-
-    /**
-     * The bonus man prevents losing one life once, then disappears.
-     */
-    private consumeBonusManOrLife(): void
-    {
-        if (Level.consumeBonusMan())
-        {
-            HUD.hideBonusMan();
-        }
-        else
-        {
-            GameController.loseLife();
-        }
     }
 }
 

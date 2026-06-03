@@ -346,6 +346,12 @@ class GameControllerController
             HUD.displayScore(this.score);
         }
 
+        if (playerResult.playerKilled)
+        {
+            this.startPlayerDeath();
+            return;
+        }
+
         if (playerResult.exitReached)
         {
             if (Level.isLastLevel())
@@ -368,12 +374,60 @@ class GameControllerController
 
         if (Level.airLevel <= 0)
         {
-            Player.kill();
+            this.startPlayerDeath();
             return;
         }
 
         HUD.displayAirLevel(Level.airLevel);
     }
+
+    /**
+     * Starts the player death animation and stops normal gameplay immediately.
+     *
+     * GameController owns the global death flow. Player and PlayerDeathSequence
+     * only own the visual player animation.
+     */
+    private startPlayerDeath(): void
+    {
+        this.killPlayer();
+        Player.kill((): void =>
+        {
+            this.finishPlayerDeath();
+        });
+    }
+
+    /**
+     * Applies the gameplay consequences after the death animation finishes.
+     */
+    private finishPlayerDeath(): void
+    {
+        this.consumeBonusManOrLife();
+
+        HUD.displayLives(this.lives);
+        Level.resetAirLevel();
+        HUD.displayAirLevel(Level.airLevel);
+
+        if (this.hasNoLives())
+            this.showGameOver();
+        else
+            this.loadLevel();
+    }
+
+    /**
+     * The bonus man prevents losing one life once, then disappears.
+     */
+    private consumeBonusManOrLife(): void
+    {
+        if (Level.consumeBonusMan())
+        {
+            HUD.hideBonusMan();
+        }
+        else
+        {
+            this.loseLife();
+        }
+    }
+
 }
 
 export const GameController = new GameControllerController();
