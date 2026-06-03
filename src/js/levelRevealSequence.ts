@@ -1,4 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
+import { ScreenOverlay } from "./screenOverlay.ts";
 
 type LevelRevealPhase =
     | typeof LevelConstants.DISPLAY_STEP_INITIALIZE
@@ -16,40 +17,21 @@ type LevelRevealPhase =
  * 3. shrink both rectangles until the level is fully visible;
  * 4. report completion so the caller can start the monster reveal.
  *
- * The black rectangle graphics are also reused by ScreenManager and
- * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
- * objects avoids changing rendering order or Phaser 2 behaviour.
+ * The black rectangle graphics are owned by ScreenOverlay and reused by other
+ * screens as simple fixed-camera overlays. This sequence only controls the
+ * reveal animation itself.
  */
 class LevelRevealSequenceController
 {
-    // Fixed-camera graphics used for the progressive reveal and black overlays.
-    upperBlackRectangle: any | null = null;
-    lowerBlackRectangle: any | null = null;
-
     // Current rectangle dimensions during the reveal.
-    rectangleHeight: number = 0;
-    rectangleWidth: number = 0;
+    private rectangleHeight: number = 0;
+    private rectangleWidth: number = 0;
 
     // Counter used to preserve the original reveal animation speed.
-    counter: number = LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER;
+    private counter: number = LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER;
 
     // Current phase of the reveal sequence.
-    phase: LevelRevealPhase = LevelConstants.DISPLAY_STEP_INITIALIZE;
-
-    /**
-     * Creates the graphics used to cover/uncover the screen.
-     *
-     * This must be called once during Phaser create(), before the title screen
-     * or level reveal attempts to draw anything.
-     */
-    createBlackRectangles(): void
-    {
-        this.upperBlackRectangle = game.add.graphics();
-        this.upperBlackRectangle.fixedToCamera = true;
-
-        this.lowerBlackRectangle = game.add.graphics();
-        this.lowerBlackRectangle.fixedToCamera = true;
-    }
+    private phase: LevelRevealPhase = LevelConstants.DISPLAY_STEP_INITIALIZE;
 
     /**
      * Resets the reveal sequence to the first phase.
@@ -126,10 +108,7 @@ class LevelRevealSequenceController
      */
     private drawUpperRectangle(): void
     {
-        this.upperBlackRectangle.clear();
-        this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        this.upperBlackRectangle.drawRect(0, 0, this.rectangleWidth, this.rectangleHeight);
-        this.upperBlackRectangle.endFill();
+        ScreenOverlay.drawUpperRectangle(0, 0, this.rectangleWidth, this.rectangleHeight);
     }
 
     /**
@@ -137,10 +116,7 @@ class LevelRevealSequenceController
      */
     private drawLowerRectangle(): void
     {
-        this.lowerBlackRectangle.clear();
-        this.lowerBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        this.lowerBlackRectangle.drawRect(0, game.camera.height - this.rectangleHeight, this.rectangleWidth, this.rectangleHeight);
-        this.lowerBlackRectangle.endFill();
+        ScreenOverlay.drawLowerRectangle(0, game.camera.height - this.rectangleHeight, this.rectangleWidth, this.rectangleHeight);
     }
 
     /**
@@ -148,8 +124,7 @@ class LevelRevealSequenceController
      */
     private finishReveal(): boolean
     {
-        this.upperBlackRectangle.clear();
-        this.lowerBlackRectangle.clear();
+        ScreenOverlay.clearAll();
         this.reset();
         return true;
     }

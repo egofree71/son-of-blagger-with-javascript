@@ -1,6 +1,6 @@
 import { GameController } from "./gameController.ts";
 import { Util } from "./util.ts";
-import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { ScreenOverlay } from "./screenOverlay.ts";
 import { Player } from "./player.ts";
 import { HUD } from "./HUD.ts";
 import { Level } from "./level.ts";
@@ -165,14 +165,11 @@ export const GameInitializer =
     },
 
     /**
-     * Creates the black overlay rectangles used by multiple sequences.
-     *
-     * They are owned by LevelRevealSequence but reused by ScreenManager and
-     * EndGameSequence as convenient full-screen black backgrounds.
+     * Creates the black overlay rectangles used by multiple screens and sequences.
      */
     createScreenOverlays : function()
     {
-        LevelRevealSequence.createBlackRectangles();
+        ScreenOverlay.createBlackRectangles();
     },
 
     /**

@@ -1,6 +1,6 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { LevelRevealSequence } from "./levelRevealSequence.ts";
+import { ScreenOverlay } from "./screenOverlay.ts";
 
 /**
  * ScreenManager owns the non-gameplay screens.
@@ -21,14 +21,12 @@ class ScreenManagerController
     /**
      * Display the introduction title screen.
      *
-     * The black background reuses LevelRevealSequence.upperBlackRectangle because the
-     * same fixed graphic object is already used by other screen sequences.
+     * The black background reuses the shared fixed-camera overlay rectangle.
      */
     public displayIntroduction(): void
     {
         // Draw a black rectangle behind the title.
-        LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        LevelRevealSequence.upperBlackRectangle.drawRect(0, 0, game.camera.width,  game.camera.height);
+        ScreenOverlay.drawFullCamera();
 
         // Display the title.
         this.introductionLogo = game.add.sprite(LevelConstants.TITLE_X, LevelConstants.TITLE_Y, LevelConstants.SPRITE_TITLE);
@@ -66,8 +64,7 @@ class ScreenManagerController
     public displayInstructions(onExit: () => void): void
     {
         // Draw a black rectangle.
-        LevelRevealSequence.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
-        LevelRevealSequence.upperBlackRectangle.drawRect(0, 0, game.stage.width, game.stage.height);
+        ScreenOverlay.drawFullScreen();
 
         var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
         font.setText ("Players control Slippery Sid, who is an\n" +
@@ -95,7 +92,7 @@ class ScreenManagerController
         game.input.keyboard.onPressCallback = function(key: string)
         {
             image.destroy();
-            LevelRevealSequence.upperBlackRectangle.clear();
+            ScreenOverlay.clearUpperRectangle();
             game.input.keyboard.onPressCallback = null;
 
             onExit();
