@@ -10,7 +10,7 @@ type LevelRevealPhase =
  * Handles the progressive reveal played before each level starts.
  *
  * The original implementation lived in Level.display() and kept its counters
- * directly inside the Level object. This object isolates the small frame-by-
+ * directly inside the Level object. This class isolates the small frame-by-
  * frame sequence while preserving the old behaviour:
  *
  * 1. reset all key tiles so they are visible again;
@@ -22,21 +22,21 @@ type LevelRevealPhase =
  * EndGameSequence as a simple fixed-camera overlay. Keeping the same graphics
  * objects avoids changing rendering order or Phaser 2 behaviour.
  */
-export const LevelRevealSequence =
+class LevelRevealSequenceController
 {
     // Fixed-camera graphics used for the progressive reveal and black overlays.
-    upperBlackRectangle : null as any | null,
-    lowerBlackRectangle : null as any | null,
+    upperBlackRectangle: any | null = null;
+    lowerBlackRectangle: any | null = null;
 
     // Current rectangle dimensions during the reveal.
-    rectangleHeight : 0,
-    rectangleWidth : 0,
+    rectangleHeight: number = 0;
+    rectangleWidth: number = 0;
 
     // Counter used to preserve the original reveal animation speed.
-    counter : LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER,
+    counter: number = LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER;
 
     // Current phase of the reveal sequence.
-    phase : LevelConstants.DISPLAY_STEP_INITIALIZE as LevelRevealPhase,
+    phase: LevelRevealPhase = LevelConstants.DISPLAY_STEP_INITIALIZE;
 
     /**
      * Creates the graphics used to cover/uncover the screen.
@@ -44,30 +44,30 @@ export const LevelRevealSequence =
      * This must be called once during Phaser create(), before the title screen
      * or level reveal attempts to draw anything.
      */
-    createBlackRectangles : function(): void
+    createBlackRectangles(): void
     {
         this.upperBlackRectangle = game.add.graphics();
         this.upperBlackRectangle.fixedToCamera = true;
 
         this.lowerBlackRectangle = game.add.graphics();
         this.lowerBlackRectangle.fixedToCamera = true;
-    },
+    }
 
     /**
      * Resets the reveal sequence to the first phase.
      */
-    reset : function(): void
+    reset(): void
     {
         this.rectangleHeight = 0;
         this.rectangleWidth = 0;
         this.counter = LevelConstants.DISPLAY_REVEAL_INITIAL_COUNTER;
         this.phase = LevelConstants.DISPLAY_STEP_INITIALIZE;
-    },
+    }
 
     /**
      * Advances the reveal sequence by one frame.
      */
-    update : function(): void
+    update(): void
     {
         switch(this.phase)
         {
@@ -79,12 +79,12 @@ export const LevelRevealSequence =
                 this.revealNextFrame();
                 break;
         }
-    },
+    }
 
     /**
      * Initializes the reveal dimensions and makes key tiles visible again.
      */
-    initializeReveal : function(): void
+    private initializeReveal(): void
     {
         this.rectangleHeight = game.camera.height / 2;
         this.rectangleWidth = game.camera.width;
@@ -98,12 +98,12 @@ export const LevelRevealSequence =
         });
 
         this.phase = LevelConstants.DISPLAY_STEP_REVEAL;
-    },
+    }
 
     /**
      * Draws one frame of the shrinking black rectangles.
      */
-    revealNextFrame : function(): void
+    private revealNextFrame(): void
     {
         this.counter -= 1;
 
@@ -118,34 +118,34 @@ export const LevelRevealSequence =
 
         if (this.rectangleHeight <= 0)
             this.finishReveal();
-    },
+    }
 
     /**
      * Draws the upper black rectangle over the camera.
      */
-    drawUpperRectangle : function(): void
+    private drawUpperRectangle(): void
     {
         this.upperBlackRectangle.clear();
         this.upperBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
         this.upperBlackRectangle.drawRect(0, 0, this.rectangleWidth, this.rectangleHeight);
         this.upperBlackRectangle.endFill();
-    },
+    }
 
     /**
      * Draws the lower black rectangle over the camera.
      */
-    drawLowerRectangle : function(): void
+    private drawLowerRectangle(): void
     {
         this.lowerBlackRectangle.clear();
         this.lowerBlackRectangle.beginFill(LevelConstants.BLACK_COLOR, 1);
         this.lowerBlackRectangle.drawRect(0, game.camera.height - this.rectangleHeight, this.rectangleWidth, this.rectangleHeight);
         this.lowerBlackRectangle.endFill();
-    },
+    }
 
     /**
      * Clears the reveal rectangles and starts the monster reveal sequence.
      */
-    finishReveal : function(): void
+    private finishReveal(): void
     {
         this.upperBlackRectangle.clear();
         this.lowerBlackRectangle.clear();
@@ -153,4 +153,6 @@ export const LevelRevealSequence =
 
         GameController.gameState = GameStates.START_LEVEL;
     }
-};
+}
+
+export const LevelRevealSequence = new LevelRevealSequenceController();
