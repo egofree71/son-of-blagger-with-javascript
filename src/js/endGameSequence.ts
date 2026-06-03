@@ -136,6 +136,8 @@ class EndGameSequenceController
             if (this.congratulationsImage)
                 this.congratulationsImage.destroy();
 
+            GameController.updateHiScoreIfNeeded();
+            GameController.resetScoreAndLives();
             Level.resetGame();
             HUD.displayAirLevel();
             GameController.loadIntroduction();

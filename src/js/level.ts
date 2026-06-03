@@ -6,7 +6,6 @@ import { LevelObjectLoader } from "./levelObjectLoader.ts";
 import { LevelTransition } from "./levelTransition.ts";
 import { Player } from "./player.ts";
 import { HUD } from "./HUD.ts";
-import { GameController } from "./gameController.ts";
 import type { Monster } from "./monster.ts";
 
 class LevelController
@@ -225,17 +224,20 @@ class LevelController
 
     /**
      * Before displaying monsters, show 'explosions'.
+     *
+     * Returns true when an asynchronous reveal animation has started. Returns
+     * false when there are no monsters and the caller can immediately continue.
      */
-    displayMonsters(): void
+    displayMonsters(onComplete: () => void): boolean
     {
         this.explosionGroup.removeAll(true);
 
         // Defensive fallback: all current levels have monsters, but if a future
-        // level has none, do not leave the game stuck in DISPLAYING_MONSTERS.
+        // level has none, do not leave the game stuck before gameplay starts.
         if (this.currentMonsters.length == 0)
         {
-            GameController.startPlaying();
-            return;
+            onComplete();
+            return false;
         }
 
         const level = this;
@@ -249,13 +251,13 @@ class LevelController
             anim.onComplete.add(function()
             {
                 level.showMonsters();
-                GameController.startPlaying();
+                onComplete();
             });
 
             explosion.animations.play(LevelConstants.SPRITE_EXPLOSION, LevelConstants.EXPLOSION_FRAME_RATE, false, true);
         }
 
-        GameController.displayMonsters();
+        return true;
     }
 
     /**
@@ -287,14 +289,13 @@ class LevelController
     }
 
     /**
-     * Reset the game properties.
+     * Reset runtime state owned by Level and level-related sequences.
+     *
+     * Score and lives are owned by GameController and are reset by the caller.
      */
     resetGame(): void
     {
-        GameController.updateHiScoreIfNeeded();
-
         this.currentLevel = LevelConstants.INITIAL_LEVEL;
-        GameController.resetScoreAndLives();
 
         LevelTransition.reset();
         EndGameSequence.reset();

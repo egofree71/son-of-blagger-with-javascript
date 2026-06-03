@@ -276,12 +276,20 @@ class GameControllerController
     /**
      * Continue the monster reveal sequence before gameplay starts.
      *
-     * Level.displayMonsters() is responsible for switching to PLAYING when the
-     * sequence has finished.
+     * Level owns the monster reveal visuals, while GameController owns the game
+     * state transitions around that sequence.
      */
     private updateStartLevel(): void
     {
-        Level.displayMonsters();
+        const controller = this;
+
+        const revealStarted = Level.displayMonsters(function(): void
+        {
+            controller.startPlaying();
+        });
+
+        if (revealStarted)
+            this.displayMonsters();
     }
 
     /**
@@ -290,6 +298,8 @@ class GameControllerController
      */
     private updateShowGameOver(): void
     {
+        this.updateHiScoreIfNeeded();
+        this.resetScoreAndLives();
         Level.resetGame();
         ScreenManager.displayGameOver();
 
