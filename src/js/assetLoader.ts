@@ -1,25 +1,25 @@
 /**
  * Centralizes Phaser asset preloading.
  *
- * phaserGame.ts owns the Phaser lifecycle, but the list of files to load is kept here
+ * GameRuntime owns the Phaser lifecycle, but the list of files to load is kept here
  * so startup code stays focused on orchestration. Asset keys and dimensions are
  * intentionally preserved from the previous implementation because other files
  * still refer to these keys directly.
  */
 export const AssetLoader =
 {
-    preload : function()
+    preload : function(gameInstance: any)
     {
-        this.loadMapAndTilesets();
-        this.loadPlayerSprites();
-        this.loadMonsterSprites();
-        this.loadEffectSprites();
-        this.loadHudAndScreenSprites();
-        this.loadAnimatedTileSprites();
-        this.loadFonts();
+        this.loadMapAndTilesets(gameInstance);
+        this.loadPlayerSprites(gameInstance);
+        this.loadMonsterSprites(gameInstance);
+        this.loadEffectSprites(gameInstance);
+        this.loadHudAndScreenSprites(gameInstance);
+        this.loadAnimatedTileSprites(gameInstance);
+        this.loadFonts(gameInstance);
     },
 
-    loadMapAndTilesets : function()
+    loadMapAndTilesets : function(game: any)
     {
         // Load the map and its tilesets.
         game.load.tilemap('map', 'assets/maps/son-of-blagger.json', null, Phaser.Tilemap.TILED_JSON);
@@ -27,7 +27,7 @@ export const AssetLoader =
         game.load.image('monsters', 'assets/tileset/monsters.png');
     },
 
-    loadPlayerSprites : function()
+    loadPlayerSprites : function(game: any)
     {
         game.load.spritesheet('blagger', 'assets/sprites/blagger.png', 48, 42);
         game.load.spritesheet('blaggerWhite', 'assets/sprites/blagger white.png', 48, 42);
@@ -35,7 +35,7 @@ export const AssetLoader =
         game.load.spritesheet('blaggerDyingWhite', 'assets/sprites/blagger dying white.png', 36, 42);
     },
 
-    loadMonsterSprites : function()
+    loadMonsterSprites : function(game: any)
     {
         game.load.spritesheet('shoe', 'assets/sprites/shoe.png', 48, 42);
         game.load.spritesheet('heart', 'assets/sprites/heart.png', 48, 42);
@@ -62,13 +62,13 @@ export const AssetLoader =
         game.load.spritesheet('alien_3', 'assets/sprites/alien_3.png', 48, 42);
     },
 
-    loadEffectSprites : function()
+    loadEffectSprites : function(game: any)
     {
         game.load.spritesheet('explosion', 'assets/sprites/explosion.png', 48, 42);
         game.load.spritesheet('reverseExplosion', 'assets/sprites/reverse explosion.png', 48, 42);
     },
 
-    loadHudAndScreenSprites : function()
+    loadHudAndScreenSprites : function(game: any)
     {
         game.load.spritesheet('bonusMan', 'assets/sprites/bonus man.png', 112, 14);
         game.load.spritesheet('title', 'assets/sprites/title.png', 272, 82);
@@ -76,7 +76,7 @@ export const AssetLoader =
         game.load.spritesheet('end level', 'assets/sprites/end level.png', 16, 16);
     },
 
-    loadAnimatedTileSprites : function()
+    loadAnimatedTileSprites : function(game: any)
     {
         game.load.spritesheet('conveyorRight', 'assets/sprites/conveyor right.png', 16, 16);
         game.load.spritesheet('conveyorLeft', 'assets/sprites/conveyor left.png', 16, 16);
@@ -87,7 +87,7 @@ export const AssetLoader =
         game.load.spritesheet('vanishingPlatform', 'assets/sprites/vanishing platform.png', 16, 16);
     },
 
-    loadFonts : function()
+    loadFonts : function(game: any)
     {
         game.load.image('blaggerFont', 'assets/tileset/fonts.png');
     }

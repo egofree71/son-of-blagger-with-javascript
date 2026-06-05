@@ -12,6 +12,7 @@ import { LevelTransitionController } from "./levelTransition.ts";
 import { EndGameSequenceController } from "./endGameSequence.ts";
 import { GameControllerController } from "./gameController.ts";
 import { GameInitializerController } from "./gameInitializer.ts";
+import { PhaserRuntimeContext } from "./phaserRuntimeContext.ts";
 
 /**
  * Centralizes the creation of runtime controller instances.
@@ -23,6 +24,8 @@ import { GameInitializerController } from "./gameInitializer.ts";
  */
 export class GameRuntime
 {
+    readonly phaserContext = new PhaserRuntimeContext();
+
     readonly screenOverlay = new ScreenOverlayController();
     readonly screenManager = new ScreenManagerController(this.screenOverlay);
 
@@ -53,6 +56,7 @@ export class GameRuntime
     );
 
     readonly gameInitializer = new GameInitializerController(
+        this.phaserContext,
         this.gameController,
         this.screenOverlay,
         this.player,
@@ -66,17 +70,14 @@ export class GameRuntime
      *
      * phaserGame.ts is only the Vite-loaded launcher now; the runtime owns the
      * creation of the Phaser.Game object and wires Phaser callbacks to the
-     * active controller graph. The remaining Phaser globals are still kept on
-     * window for compatibility with legacy Phaser 2 code.
+     * active controller graph. The remaining Phaser globals are accessed through
+     * PhaserRuntimeContext, which still mirrors them on window for legacy Phaser 2 code.
      */
     public start(): void
     {
-        window.map = null;
-        window.keyPressed = null;
-        window.layer = null;
-        window.vanishingPlatformGroup = null;
+        this.phaserContext.reset();
 
-        window.game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+        this.phaserContext.createGame({
             preload: () => this.preload(),
             create: () => this.create(),
             update: () => this.update()
@@ -91,7 +92,7 @@ export class GameRuntime
      */
     public preload(): void
     {
-        AssetLoader.preload();
+        AssetLoader.preload(this.phaserContext.game);
     }
 
     /**

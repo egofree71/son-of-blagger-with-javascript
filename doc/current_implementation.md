@@ -37,7 +37,7 @@ The game source files live under `src/js` and are imported through `src/js/phase
 
 The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Runtime controllers such as `GameControllerController`, `LevelController`, `PlayerController`, and `HUDController` are instantiated and wired together there. The older runtime singleton exports such as `GameController`, `Level`, `Player`, and `HUD` have been removed to avoid accidentally driving stale controller instances from modules or browser-console helpers. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
-The remaining Phaser runtime globals are initialized by `GameRuntime.start()` and populated during startup by `GameInitializer`, then declared for TypeScript in `src/types/globals.d.ts`:
+The remaining Phaser runtime globals are now accessed through `PhaserRuntimeContext`, which is created by `GameRuntime`. It still mirrors values to `window` because older gameplay modules continue to read the historical globals directly. These globals are declared for TypeScript in `src/types/globals.d.ts`:
 
 - `game`
 - `map`
@@ -45,7 +45,7 @@ The remaining Phaser runtime globals are initialized by `GameRuntime.start()` an
 - `keyPressed`
 - `vanishingPlatformGroup`
 
-These are still direct global dependencies and remain the main architectural limitation before a fuller migration to an explicit runtime context or a modern Phaser scene architecture.
+These are still legacy global dependencies for many gameplay modules, but startup code now goes through an explicit context bridge instead of assigning all globals directly. They remain the main architectural limitation before a fuller migration to explicit dependencies or a modern Phaser scene architecture.
 
 ---
 
@@ -201,13 +201,14 @@ const player = new PlayerController(
 );
 ```
 
-`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, creates the Phaser game through `Runtime.start()`, and exposes the Phaser lifecycle façade: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, owns the `PhaserRuntimeContext`, creates the Phaser game through `Runtime.start()`, and exposes the Phaser lifecycle façade: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
 The following modules still use object-literal or service-style exports:
 
 - `AssetLoader`: Phaser asset preloading.
+- `PhaserRuntimeContext`: bridge around the remaining Phaser 2 globals.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `CollisionDetector`: generic manual tile/rectangle collision checks.
 - `Util`: shared non-collision helper functions.
@@ -254,7 +255,7 @@ Some couplings remain intentionally:
 
 - `GameRuntime` wires together the active runtime graph.
 - `GameController` coordinates the injected runtime controllers during the main game flow.
-- Phaser globals are still directly accessed by several modules.
+- Phaser globals are still directly accessed by several gameplay modules, but startup code now writes them through `PhaserRuntimeContext`.
 
 The goal is not to create a pure dependency-injection framework. The goal is to reduce the most fragile cross-module dependencies while keeping the retro-game code readable.
 
@@ -329,7 +330,7 @@ Runtime.start();
 `GameRuntime.start()` creates the Phaser game instance and wires Phaser's callbacks to the active runtime:
 
 ```ts
-window.game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+this.phaserContext.createGame({
   preload: () => this.preload(),
   create: () => this.create(),
   update: () => this.update()
@@ -379,9 +380,9 @@ This file does not contain gameplay logic.
 Runtime.start();
 ```
 
-`GameRuntime.start()` owns the Phaser game creation and callback wiring.
+`GameRuntime.start()` owns the Phaser game creation and callback wiring through `PhaserRuntimeContext`.
 
-Important globals still used by the runtime:
+Important globals still bridged through the runtime context:
 
 ```text
 game
@@ -397,7 +398,7 @@ vanishingPlatformGroup
 
 `AssetLoader` centralizes Phaser asset preloading.
 
-It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.start()` -> `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
+It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.start()` -> `Runtime.preload()`, which delegates to `AssetLoader.preload(this.phaserContext.game)`.
 
 Responsibilities:
 
@@ -414,9 +415,27 @@ The asset keys and sprite dimensions are part of the current runtime contract an
 
 ---
 
+## `src/js/phaserRuntimeContext.ts`
+
+`PhaserRuntimeContext` is a small bridge around the remaining Phaser 2 runtime globals.
+
+It is not a full scene/context migration yet. Its job is to centralize access to:
+
+```text
+game
+map
+layer
+keyPressed
+vanishingPlatformGroup
+```
+
+New startup code uses the context explicitly, while older gameplay modules can still read the same values through the browser globals. This makes the next migration steps safer because the remaining global state now has one visible owner.
+
+---
+
 ## `src/js/gameInitializer.ts`
 
-`GameInitializer` owns the runtime startup sequence executed from `Runtime.create()`, which is itself called by Phaser's `create()` callback.
+`GameInitializer` owns the runtime startup sequence executed from `Runtime.create()`, which is itself called by Phaser's `create()` callback. It receives `PhaserRuntimeContext` through its constructor and uses it to populate `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` while preserving the legacy global bridge.
 
 Main responsibilities:
 
@@ -1088,9 +1107,9 @@ Avoid adding trivial `getX()` / `setX()` methods everywhere just to make fields 
 
 ### Global Phaser runtime context
 
-The project still relies on `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` globals.
+The project still relies on `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` globals in several gameplay modules.
 
-This shared context is workable, but it remains the main architectural limitation before a fuller migration to an explicit runtime context or modern Phaser scenes.
+`PhaserRuntimeContext` now centralizes creation and startup-time assignment of those values, but many modules still read the legacy globals directly. This bridge is workable, but replacing those remaining direct reads with explicit dependencies remains the main architectural limitation before a fuller migration to modern Phaser scenes.
 
 ### TypeScript strictness is still gentle
 
@@ -1148,7 +1167,7 @@ A dedicated document such as `doc/tiled_map_conventions.md` would be useful. It 
 
 ### Reduce remaining Phaser globals
 
-A future architecture could group shared Phaser runtime objects into a context object, then later replace the remaining global variables with explicit dependencies or Phaser scenes.
+`PhaserRuntimeContext` now groups the shared Phaser runtime objects during startup. A future step can migrate gameplay modules one by one so they receive the context, or narrower dependencies, instead of reading `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` directly.
 
 ### Consider a LevelTransition context only if it stays readable
 

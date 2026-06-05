@@ -1,3 +1,4 @@
+import type { PhaserRuntimeContext } from "./phaserRuntimeContext.ts";
 import type { GameControllerController } from "./gameController.ts";
 import { Util } from "./util.ts";
 import type { ScreenOverlayController } from "./screenOverlay.ts";
@@ -8,7 +9,7 @@ import type { LevelController } from "./level.ts";
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
  *
- * phaserGame.ts owns the Phaser lifecycle callbacks, while this object owns the
+ * GameRuntime owns the Phaser lifecycle callbacks, while this object owns the
  * startup sequence that wires together the map, animated tiles, input, HUD,
  * player, monsters, screen overlays, and the initial game state.
  *
@@ -21,6 +22,7 @@ import type { LevelController } from "./level.ts";
 export class GameInitializerController
 {
     constructor(
+        private readonly phaserContext: PhaserRuntimeContext,
         private readonly gameController: GameControllerController,
         private readonly screenOverlay: ScreenOverlayController,
         private readonly player: PlayerController,
@@ -64,6 +66,8 @@ export class GameInitializerController
      */
     private configureScaling(): void
     {
+        const game = this.phaserContext.game;
+
         game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
         game.scale.setScreenSize(true);
         game.scale.pageAlignHorizontally = true;
@@ -79,6 +83,8 @@ export class GameInitializerController
      */
     private startPhysics(): void
     {
+        const game = this.phaserContext.game;
+
         game.physics.startSystem(Phaser.Physics.ARCADE);
         game.stage.backgroundColor = '#c0c0c0';
     }
@@ -86,19 +92,22 @@ export class GameInitializerController
     /**
      * Creates the Tiled map and the visible background layer.
      *
-     * The map and layer remain global because the original Phaser 2 code and many
-     * gameplay helpers still access them directly. A later migration could wrap
-     * these globals into a context object, but this initializer keeps the current
-     * architecture stable.
+     * The map and layer are now assigned through PhaserRuntimeContext. The context
+     * still mirrors them to window because older gameplay helpers access the
+     * historical globals directly.
      */
     private createMap(): void
     {
-        map = game.add.tilemap('map');
+        const game = this.phaserContext.game;
+
+        this.phaserContext.map = game.add.tilemap('map');
+        const map = this.phaserContext.map;
+
         map.addTilesetImage('background', 'background');
         map.addTilesetImage('monsters', 'monsters');
 
-        layer = map.createLayer('background');
-        layer.resizeWorld();
+        this.phaserContext.layer = map.createLayer('background');
+        this.phaserContext.layer.resizeWorld();
     }
 
     /**
@@ -117,9 +126,9 @@ export class GameInitializerController
         Util.createSpritesFromTiles(31, 'waveLeft', 30);
         Util.createSpritesFromTiles(32, 'waveRight', 30);
 
-        // Stored globally because CollisionDetector checks collisions against
-        // this group when the player stands on a disappearing platform.
-        vanishingPlatformGroup = Util.createSpritesFromTiles(33, 'vanishingPlatform', 2);
+        // Stored through the Phaser runtime context because CollisionDetector
+        // still checks this group through the legacy global bridge.
+        this.phaserContext.vanishingPlatformGroup = Util.createSpritesFromTiles(33, 'vanishingPlatform', 2);
     }
 
     /**
@@ -151,11 +160,11 @@ export class GameInitializerController
      * Creates the cursor-key helper used by player movement.
      *
      * The spacebar is read directly from game.input.keyboard in PlayerMovement,
-     * while cursor keys are stored in the historical global keyPressed variable.
+     * while cursor keys are exposed through the historical keyPressed bridge.
      */
     private createInput(): void
     {
-        keyPressed = game.input.keyboard.createCursorKeys();
+        this.phaserContext.keyPressed = this.phaserContext.game.input.keyboard.createCursorKeys();
     }
 
     /**
