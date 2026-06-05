@@ -1,8 +1,26 @@
-// Main Vite module entry point.
-//
-// Phaser 2.3 is still loaded as a classic browser script from public/js/phaser.min.js.
-// The game runtime itself is now loaded through ES module imports starting from
-// src/js/phaserGame.ts. That file creates the Phaser.Game instance and
-// routes the Phaser lifecycle callbacks to the active Runtime instance.
+import { AUTO, Game } from "phaser";
+import { PreloadScene } from "./scenes/PreloadScene";
+import { GameScene } from "./scenes/GameScene";
+import { HUDScene } from "./scenes/HUDScene";
 
-import "./js/phaserGame.ts";
+const GAME_WIDTH = 640;
+const GAME_HEIGHT = 400;
+
+const config = {
+    type: AUTO,
+    parent: "game-container",
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    backgroundColor: "#000000",
+    pixelArt: true,
+    roundPixels: true,
+    scene: [
+        PreloadScene,
+        GameScene,
+        HUDScene
+    ]
+};
+
+window.addEventListener("load", () => {
+    new Game(config);
+});
