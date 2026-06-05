@@ -1,27 +1,27 @@
-import { Scene, Tilemaps } from "phaser";
+import { Scene, Tilemaps, Types } from "phaser";
 import { Player } from "../entities/Player";
 import { findObjectByLevel } from "../tiled/tiledObjects";
 
 /**
- * Displays the imported Tiled map and a minimal Player entity in Phaser 4.
+ * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
  *
- * This scene is still not gameplay. Its job is to prove that Phaser 4 can load
- * the existing Son of Blagger map, render the main background layer, and place a
- * player object at the same level-1 start position as the Phaser 2 reference.
+ * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
+ * load the existing Son of Blagger map, render the main background layer, place
+ * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
+ * run a small horizontal walking animation test.
  *
- * Keyboard camera scrolling is included as a temporary inspection helper, not as
- * future gameplay input. The real player movement should be ported separately
- * once the map rendering and player placement are stable.
+ * The real movement rules should still be ported separately from the Phaser 2
+ * implementation. In particular, this scene does not yet perform tile collision,
+ * jumping, falling, ladders, deadly falls, key collection or exit checks.
  */
 export class GameScene extends Scene
 {
     private static readonly GAMEPLAY_VIEW_HEIGHT = 368;
-    private static readonly CAMERA_SCROLL_SPEED = 6;
     private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
 
     private map?: Tilemaps.Tilemap;
     private player?: Player;
-    private cursors?: any;
+    private cursors?: Types.Input.Keyboard.CursorKeys;
 
     constructor()
     {
@@ -60,32 +60,11 @@ export class GameScene extends Scene
 
     update(): void
     {
-        if (!this.map || !this.cursors) {
+        if (!this.map || !this.player || !this.cursors) {
             return;
         }
 
-        let deltaX = 0;
-        let deltaY = 0;
-
-        if (this.cursors.left?.isDown) {
-            deltaX -= GameScene.CAMERA_SCROLL_SPEED;
-        }
-
-        if (this.cursors.right?.isDown) {
-            deltaX += GameScene.CAMERA_SCROLL_SPEED;
-        }
-
-        if (this.cursors.up?.isDown) {
-            deltaY -= GameScene.CAMERA_SCROLL_SPEED;
-        }
-
-        if (this.cursors.down?.isDown) {
-            deltaY += GameScene.CAMERA_SCROLL_SPEED;
-        }
-
-        if (deltaX !== 0 || deltaY !== 0) {
-            this.scrollCameraBy(deltaX, deltaY);
-        }
+        this.player.updatePrototypeWalk(this.cursors, this.map);
     }
 
     /**
@@ -105,48 +84,31 @@ export class GameScene extends Scene
             return;
         }
 
-        this.player = new Player(this, "player-right");
+        this.player = new Player(this, "blagger");
         this.player.resetToTiledStart(playerStart);
 
-        this.centerCameraOnPlayer(this.player);
+        this.followPlayer(this.player);
     }
 
     /**
-     * Places the gameplay camera around the player while keeping the future HUD
-     * strip outside the gameplay viewport.
+     * Lets Phaser keep the gameplay camera centered on the prototype player.
+     *
+     * Camera bounds are already set to the full Tiled map, so following the sprite
+     * does not reveal empty space outside the imported level. The lower HUD strip
+     * remains outside the camera viewport because GameScene only renders the top
+     * gameplay area.
      */
-    private centerCameraOnPlayer(player: Player): void
+    private followPlayer(player: Player): void
     {
-        const playerCenter = player.getCenter();
-        this.cameras.main.centerOn(playerCenter.x, playerCenter.y);
-    }
-
-    /**
-     * Temporary camera panning helper used only to inspect the large imported map.
-     */
-    private scrollCameraBy(deltaX: number, deltaY: number): void
-    {
-        if (!this.map) {
-            return;
-        }
-
         const camera = this.cameras.main;
 
-        // The imported Tiled map is larger than the visible gameplay camera.
-        // Clamp this temporary inspection scroll so arrow-key panning never
-        // reveals empty space beyond the real map bounds.
-        const maxScrollX = Math.max(0, this.map.widthInPixels - camera.width);
-        const maxScrollY = Math.max(0, this.map.heightInPixels - camera.height);
+        // Round camera scrolling to whole pixels while following the player.
+        // The sprite can be centered on half-pixels, and sub-pixel camera scroll
+        // makes pixel-art tile edges shimmer during movement.
+        camera.startFollow(player.getSprite(), true, 1, 1);
 
-        camera.setScroll(
-            this.clamp(camera.scrollX + deltaX, 0, maxScrollX),
-            this.clamp(camera.scrollY + deltaY, 0, maxScrollY)
-        );
-    }
-
-    private clamp(value: number, min: number, max: number): number
-    {
-        return Math.min(Math.max(value, min), max);
+        const playerCenter = player.getCenter();
+        camera.centerOn(Math.round(playerCenter.x), Math.round(playerCenter.y));
     }
 
     /**
@@ -155,7 +117,7 @@ export class GameScene extends Scene
      */
     private addPrototypeOverlayText(): void
     {
-        this.add.text(8, 8, "Tilemap + player prototype — arrow keys move camera", {
+        this.add.text(8, 8, "Player animation prototype — left/right arrows move Sid", {
             fontFamily: "Arial",
             fontSize: "13px",
             color: "#ffffff",

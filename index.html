@@ -36,11 +36,12 @@
             overflow: hidden;
         }
 
-        /* Keep the retro pixel-art look when the browser scales the canvas. */
-        #game-container canvas {
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-        }
+        /*
+            Do not force image-rendering: pixelated on the scaled canvas.
+            The Phaser 2 reference used browser smoothing when SHOW_ALL enlarged
+            the game, which makes diagonal tile edges look steadier at non-integer
+            browser scale factors.
+        */
     </style>
 </head>
 <body>

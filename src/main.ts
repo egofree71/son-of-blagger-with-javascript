@@ -24,7 +24,9 @@ const GAME_HEIGHT = 400;
 const config = {
     type: AUTO,
     backgroundColor: "#c0c0c0",
-    pixelArt: true,
+    // Let the browser smooth the final scaled canvas, like the Phaser 2 reference.
+    // Forcing pixel-art scaling makes diagonal tiles shimmer at fractional sizes.
+    pixelArt: false,
     roundPixels: true,
     scale: {
         parent: "game-container",
