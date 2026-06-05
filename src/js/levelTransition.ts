@@ -48,7 +48,7 @@ export interface LevelTransitionResult
  * calling `LevelTransition.update()` and `LevelTransition.reset()` without any
  * API change.
  */
-class LevelTransitionController
+export class LevelTransitionController
 {
     // 1) Increase Level.level and read the player spawn position of the next level from the Tiled map.
     readonly PHASE_PREPARE_NEXT_LEVEL = PHASE_PREPARE_NEXT_LEVEL;

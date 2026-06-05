@@ -9,7 +9,7 @@ import { ScreenOverlay } from "./screenOverlay.ts";
  * a level. Moving them here keeps Level focused on actual level management
  * while preserving the original title/help/game-over behaviour.
  */
-class ScreenManagerController
+export class ScreenManagerController
 {
     // Title screen objects.
     private introductionLogo: any = null;

@@ -21,7 +21,7 @@ type LevelRevealPhase =
  * screens as simple fixed-camera overlays. This sequence only controls the
  * reveal animation itself.
  */
-class LevelRevealSequenceController
+export class LevelRevealSequenceController
 {
     // Current rectangle dimensions during the reveal.
     private rectangleHeight: number = 0;

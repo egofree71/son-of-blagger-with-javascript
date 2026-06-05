@@ -10,7 +10,7 @@ import type { PlayerController } from "./player.ts";
  * animation sequence focused on visuals instead of making it depend on the
  * whole runtime.
  */
-class PlayerDeathSequenceController
+export class PlayerDeathSequenceController
 {
     /**
      * Starts the death animation for the given player object.

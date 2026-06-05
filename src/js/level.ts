@@ -8,7 +8,7 @@ export interface LevelPlayer
     reset(levelNumber: number): void;
 }
 
-class LevelController
+export class LevelController
 {
     // Current level and level-attempt data are stored privately. The legacy
     // property names remain available as read-only getters for existing checks.

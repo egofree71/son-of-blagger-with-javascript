@@ -8,7 +8,7 @@ import { HUD } from "./HUD.ts";
 import { Player } from "./player.ts";
 import { Level } from "./level.ts";
 
-class GameControllerController
+export class GameControllerController
 {
     // The current game state is stored privately. Other modules should use
     // named transition methods instead of setting raw GameStates directly.

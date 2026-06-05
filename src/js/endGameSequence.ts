@@ -35,7 +35,7 @@ export interface EndGameSequenceResult
  * It reports what happened during the current frame through EndGameSequenceResult,
  * and GameController applies the corresponding gameplay/runtime consequences.
  */
-class EndGameSequenceController
+export class EndGameSequenceController
 {
     // Current phase of the final sequence.
     private phase: EndGamePhase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
