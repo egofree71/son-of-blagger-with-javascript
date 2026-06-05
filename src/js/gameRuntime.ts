@@ -60,10 +60,33 @@ export class GameRuntime
         this.level
     );
 
+
+    /**
+     * Starts the active Phaser game instance.
+     *
+     * phaserGame.ts is only the Vite-loaded launcher now; the runtime owns the
+     * creation of the Phaser.Game object and wires Phaser callbacks to the
+     * active controller graph. The remaining Phaser globals are still kept on
+     * window for compatibility with legacy Phaser 2 code.
+     */
+    public start(): void
+    {
+        window.map = null;
+        window.keyPressed = null;
+        window.layer = null;
+        window.vanishingPlatformGroup = null;
+
+        window.game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+            preload: () => this.preload(),
+            create: () => this.create(),
+            update: () => this.update()
+        });
+    }
+
     /**
      * Phaser preload callback.
      *
-     * AssetLoader remains a stateless module service for now, but main.ts no
+     * AssetLoader remains a stateless module service for now, but phaserGame.ts no
      * longer needs to import it directly.
      */
     public preload(): void

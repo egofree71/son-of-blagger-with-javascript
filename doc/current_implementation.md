@@ -37,7 +37,7 @@ The game source files live under `src/js` and are imported through `src/js/phase
 
 The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Runtime controllers such as `GameControllerController`, `LevelController`, `PlayerController`, and `HUDController` are instantiated and wired together there. The older runtime singleton exports such as `GameController`, `Level`, `Player`, and `HUD` have been removed to avoid accidentally driving stale controller instances from modules or browser-console helpers. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
-The remaining Phaser runtime globals are created in `src/js/phaserGame.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
+The remaining Phaser runtime globals are initialized by `GameRuntime.start()` and populated during startup by `GameInitializer`, then declared for TypeScript in `src/types/globals.d.ts`:
 
 - `game`
 - `map`
@@ -201,7 +201,7 @@ const player = new PlayerController(
 );
 ```
 
-`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, and exposes the Phaser lifecycle façade used by `src/js/phaserGame.ts`: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, creates the Phaser game through `Runtime.start()`, and exposes the Phaser lifecycle façade: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
@@ -320,25 +320,31 @@ LOAD_INTRODUCTION
 
 ## Main game loop
 
-`src/js/phaserGame.ts` creates the Phaser game instance:
+`src/js/phaserGame.ts` starts the active runtime:
 
 ```ts
-var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
-  preload: preload,
-  create: create,
-  update: updateGame
+Runtime.start();
+```
+
+`GameRuntime.start()` creates the Phaser game instance and wires Phaser's callbacks to the active runtime:
+
+```ts
+window.game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
+  preload: () => this.preload(),
+  create: () => this.create(),
+  update: () => this.update()
 });
 ```
 
 Every frame, Phaser calls:
 
 ```text
-updateGame()
+Phaser update callback
  -> Runtime.update()
    -> Runtime.gameController.update()
 ```
 
-`Runtime.update()` is the lifecycle façade used by `src/js/phaserGame.ts`; `Runtime.gameController.update()` then dispatches to one method per game state.
+`Runtime.update()` is the lifecycle façade owned by `GameRuntime`; `Runtime.gameController.update()` then dispatches to one method per game state.
 
 During normal gameplay, the preserved update order is:
 
@@ -359,7 +365,7 @@ The update order is gameplay-sensitive and should be changed only with care.
 
 This is the Vite module entry point referenced by `index.html`.
 
-It imports `src/js/phaserGame.ts`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
+It imports `src/js/phaserGame.ts`, which starts the active `Runtime` instance through normal ES module imports.
 
 This file does not contain gameplay logic.
 
@@ -367,18 +373,15 @@ This file does not contain gameplay logic.
 
 ## `src/js/phaserGame.ts`
 
-`phaserGame.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
+`phaserGame.ts` is now a tiny launcher. It imports the active runtime and calls:
 
-Main responsibilities:
+```ts
+Runtime.start();
+```
 
-- create the Phaser instance;
-- initialize the remaining Phaser globals on `window`;
-- delegate Phaser lifecycle callbacks to the active runtime instance:
-  - `Runtime.preload()`;
-  - `Runtime.create()`;
-  - `Runtime.update()`.
+`GameRuntime.start()` owns the Phaser game creation and callback wiring.
 
-Important globals created here:
+Important globals still used by the runtime:
 
 ```text
 game
@@ -394,7 +397,7 @@ vanishingPlatformGroup
 
 `AssetLoader` centralizes Phaser asset preloading.
 
-It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
+It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.start()` -> `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
 
 Responsibilities:
 
