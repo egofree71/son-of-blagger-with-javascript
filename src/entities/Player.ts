@@ -1,5 +1,6 @@
 import type { GameObjects, Scene, Tilemaps, Types } from "phaser";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
+import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 
 /**
  * Direction names used by the temporary Phaser 4 player animation slice.
@@ -14,10 +15,11 @@ type FacingDirection = "left" | "right";
  * Minimal Phaser 4 player entity used by the modernization prototype.
  *
  * This class owns the real Blagger sprite and a small horizontal walking test.
- * It is still not final gameplay: there is no tile collision, jumping, falling,
- * ladder logic or interaction handling yet. The current goal is only to validate
- * sprite placement, manual frame selection, direction changes and camera follow
- * before the sensitive Phaser 2 movement rules are ported.
+ * It is still not final gameplay: only a narrow horizontal wall-collision slice
+ * has been ported. Jumping, falling, ladder logic and interaction handling are
+ * still absent. The current goal is to validate sprite placement, manual frame
+ * selection, direction changes, camera follow and the first Tiled tile probes
+ * before the sensitive Phaser 2 movement rules are ported more fully.
  */
 export class Player
 {
@@ -35,6 +37,18 @@ export class Player
      * make the legs animate too quickly.
      */
     private static readonly WALK_ANIMATION_FRAME_INTERVAL = 5;
+
+    /**
+     * Side wall probes ported from the Phaser 2 movement controller.
+     *
+     * They intentionally do not cover the full sprite rectangle. The original
+     * movement allows Sid to stand close to edges and corners, so this prototype
+     * keeps the same forgiving horizontal wall checks.
+     */
+    private static readonly RIGHT_WALL_X_OFFSET = 24;
+    private static readonly LEFT_WALL_X_OFFSET = 5;
+    private static readonly SIDE_WALL_TOP_OFFSET = 6;
+    private static readonly SIDE_WALL_BOTTOM_OFFSET = 1;
 
     /**
      * Temporary prototype speed limiter.
@@ -89,7 +103,11 @@ export class Player
      * walking frames through counters, and preserving that idea avoids idle-frame
      * resets and accidental moonwalk-style direction bugs during the prototype.
      */
-    updatePrototypeWalk(cursors: Types.Input.Keyboard.CursorKeys, map: Tilemaps.Tilemap): void
+    updatePrototypeWalk(
+        cursors: Types.Input.Keyboard.CursorKeys,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): void
     {
         const requestedDirection = this.readHorizontalDirection(cursors);
 
@@ -100,7 +118,7 @@ export class Player
 
         this.applyDirectionChange(requestedDirection);
 
-        const moved = this.moveHorizontallyWhenDue(requestedDirection, map);
+        const moved = this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
 
         if (moved) {
             this.advanceWalkingFrameWhenDue();
@@ -153,7 +171,11 @@ export class Player
         this.sprite.setFrame(this.firstFrameFor(direction));
     }
 
-    private moveHorizontallyWhenDue(direction: FacingDirection, map: Tilemaps.Tilemap): boolean
+    private moveHorizontallyWhenDue(
+        direction: FacingDirection,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): boolean
     {
         this.movementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
 
@@ -163,6 +185,10 @@ export class Player
 
         this.movementAccumulator -= 1;
 
+        if (this.isBlockedHorizontally(direction, collisionProbe)) {
+            return false;
+        }
+
         const deltaX = direction === "right" ? 1 : -1;
         const maxX = Math.max(0, map.widthInPixels - this.sprite.displayWidth);
         const nextX = this.clamp(this.sprite.x + deltaX, 0, maxX);
@@ -171,10 +197,23 @@ export class Player
             return false;
         }
 
-        // Keep the temporary no-collision movement inside the imported map.
-        // This will be replaced by tile probes when the real movement is ported.
+        // Keep the temporary movement inside the imported map. The wall probes
+        // above only test level tiles; this clamp still protects the outer map edge.
         this.sprite.x = nextX;
         return true;
+    }
+
+    private isBlockedHorizontally(direction: FacingDirection, collisionProbe: TileCollisionProbe): boolean
+    {
+        const probeX = direction === "right"
+            ? this.sprite.x + Player.RIGHT_WALL_X_OFFSET
+            : this.sprite.x + Player.LEFT_WALL_X_OFFSET;
+
+        return collisionProbe.hasWallOnVerticalLine(
+            this.sprite.y + Player.SIDE_WALL_TOP_OFFSET,
+            this.sprite.y + this.sprite.displayHeight - Player.SIDE_WALL_BOTTOM_OFFSET,
+            probeX
+        );
     }
 
     private advanceWalkingFrameWhenDue(): void

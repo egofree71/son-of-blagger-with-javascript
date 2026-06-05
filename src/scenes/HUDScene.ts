@@ -25,7 +25,7 @@ export class HUDScene extends Scene
             color: "#ffffff"
         });
 
-        this.add.text(220, 374, "NO COLLISION", {
+        this.add.text(220, 374, "WALL CHECK", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"

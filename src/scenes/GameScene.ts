@@ -1,6 +1,7 @@
 import { Scene, Tilemaps, Types } from "phaser";
 import { Player } from "../entities/Player";
 import { findObjectByLevel } from "../tiled/tiledObjects";
+import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -8,11 +9,11 @@ import { findObjectByLevel } from "../tiled/tiledObjects";
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small horizontal walking animation test.
+ * run a small horizontal walking and wall-blocking test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform tile collision,
- * jumping, falling, ladders, deadly falls, key collection or exit checks.
+ * implementation. In particular, this scene does not yet perform gravity, jumping,
+ * ladders, deadly falls, key collection or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -21,6 +22,7 @@ export class GameScene extends Scene
 
     private map?: Tilemaps.Tilemap;
     private player?: Player;
+    private collisionProbe?: TileCollisionProbe;
     private cursors?: Types.Input.Keyboard.CursorKeys;
 
     constructor()
@@ -50,6 +52,8 @@ export class GameScene extends Scene
             return;
         }
 
+        this.collisionProbe = new TileCollisionProbe(backgroundLayer);
+
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(1);
         this.addPrototypeOverlayText();
@@ -60,11 +64,11 @@ export class GameScene extends Scene
 
     update(): void
     {
-        if (!this.map || !this.player || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.cursors) {
             return;
         }
 
-        this.player.updatePrototypeWalk(this.cursors, this.map);
+        this.player.updatePrototypeWalk(this.cursors, this.map, this.collisionProbe);
     }
 
     /**
@@ -117,7 +121,7 @@ export class GameScene extends Scene
      */
     private addPrototypeOverlayText(): void
     {
-        this.add.text(8, 8, "Player animation prototype — left/right arrows move Sid", {
+        this.add.text(8, 8, "Player wall-collision prototype — left/right arrows move Sid", {
             fontFamily: "Arial",
             fontSize: "13px",
             color: "#ffffff",
