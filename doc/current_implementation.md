@@ -199,7 +199,7 @@ const player = new PlayerController(
 );
 ```
 
-`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance and wires the runtime controllers together. Browser-console helpers should import `Runtime`, not older controller singleton names.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, and exposes the Phaser lifecycle façade used by `main.ts`: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
@@ -332,10 +332,11 @@ Every frame, Phaser calls:
 
 ```text
 updateGame()
- -> Runtime.gameController.update()
+ -> Runtime.update()
+   -> Runtime.gameController.update()
 ```
 
-`Runtime.gameController.update()` dispatches to one method per game state.
+`Runtime.update()` is the lifecycle façade used by `main.ts`; `Runtime.gameController.update()` then dispatches to one method per game state.
 
 During normal gameplay, the preserved update order is:
 
@@ -369,9 +370,11 @@ This file does not contain gameplay logic.
 Main responsibilities:
 
 - create the Phaser instance;
-- delegate asset preloading to `AssetLoader`;
-- delegate runtime startup to `Runtime.gameInitializer`;
-- delegate each frame to `Runtime.gameController.update()`.
+- initialize the remaining Phaser globals on `window`;
+- delegate Phaser lifecycle callbacks to the active runtime instance:
+  - `Runtime.preload()`;
+  - `Runtime.create()`;
+  - `Runtime.update()`.
 
 Important globals created here:
 
@@ -388,6 +391,8 @@ vanishingPlatformGroup
 ## `src/js/assetLoader.ts`
 
 `AssetLoader` centralizes Phaser asset preloading.
+
+It remains a stateless service-style module. `main.ts` no longer imports it directly; the preload lifecycle callback now goes through `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
 
 Responsibilities:
 
@@ -406,7 +411,7 @@ The asset keys and sprite dimensions are part of the current runtime contract an
 
 ## `src/js/gameInitializer.ts`
 
-`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback.
+`GameInitializer` owns the runtime startup sequence executed from `Runtime.create()`, which is itself called by Phaser's `create()` callback.
 
 Main responsibilities:
 

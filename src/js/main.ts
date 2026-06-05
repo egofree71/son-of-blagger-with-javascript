@@ -1,6 +1,5 @@
 "use strict";
 
-import { AssetLoader } from "./assetLoader.ts";
 import { Runtime } from "./gameRuntime.ts";
 
 // These Phaser runtime objects are still shared through the browser global scope.
@@ -13,18 +12,18 @@ window.vanishingPlatformGroup = null;
 
 window.game = new Phaser.Game(640, 400, Phaser.AUTO, '', { preload: preload, create: create, update: updateGame });
 
-// Load all Phaser assets before create() runs.
+// Phaser lifecycle callbacks are routed through the active runtime instance.
 function preload()
 {
-	AssetLoader.preload();
+	Runtime.preload();
 }
 
 function create()
 {
-	Runtime.gameInitializer.create();
+	Runtime.create();
 }
 
 function updateGame()
 {
-	Runtime.gameController.update();
+	Runtime.update();
 }

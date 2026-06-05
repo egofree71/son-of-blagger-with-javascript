@@ -1,3 +1,4 @@
+import { AssetLoader } from "./assetLoader.ts";
 import { ScreenOverlayController } from "./screenOverlay.ts";
 import { ScreenManagerController } from "./screenManager.ts";
 import { HUDController } from "./HUD.ts";
@@ -16,10 +17,9 @@ import { GameInitializerController } from "./gameInitializer.ts";
  * Centralizes the creation of runtime controller instances.
  *
  * The exported Runtime instance is the active runtime used by main.ts. Phaser
- * lifecycle callbacks are routed through it. Older singleton exports remain
- * available as a compatibility
- * bridge for manual console helpers and for modules that have not moved to
- * explicit runtime instances yet.
+ * lifecycle callbacks are routed through this class so the Phaser entry point
+ * does not need to know which controllers perform preload, create, or update
+ * work internally.
  */
 export class GameRuntime
 {
@@ -59,6 +59,33 @@ export class GameRuntime
         this.hud,
         this.level
     );
+
+    /**
+     * Phaser preload callback.
+     *
+     * AssetLoader remains a stateless module service for now, but main.ts no
+     * longer needs to import it directly.
+     */
+    public preload(): void
+    {
+        AssetLoader.preload();
+    }
+
+    /**
+     * Phaser create callback.
+     */
+    public create(): void
+    {
+        this.gameInitializer.create();
+    }
+
+    /**
+     * Phaser update callback.
+     */
+    public update(): void
+    {
+        this.gameController.update();
+    }
 }
 
 export const Runtime = new GameRuntime();
