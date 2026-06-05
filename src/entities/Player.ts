@@ -3,7 +3,7 @@ import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 
 /**
- * Direction names used by the temporary Phaser 4 player animation slice.
+ * Direction names used by the temporary Phaser 4 player movement slice.
  *
  * These names are deliberately local to the prototype for now. They can later be
  * merged with the gameplay-level player states when the real movement rules are
@@ -14,51 +14,33 @@ type FacingDirection = "left" | "right";
 /**
  * Minimal Phaser 4 player entity used by the modernization prototype.
  *
- * This class owns the real Blagger sprite and a small horizontal walking test.
- * It is still not final gameplay: only a narrow horizontal wall-collision slice
- * has been ported. Jumping, falling, ladder logic and interaction handling are
- * still absent. The current goal is to validate sprite placement, manual frame
- * selection, direction changes, camera follow and the first Tiled tile probes
- * before the sensitive Phaser 2 movement rules are ported more fully.
+ * This class owns the real Blagger sprite and a small movement test. It is still
+ * not final gameplay: only horizontal walking, side wall blocking and simple
+ * falling have been ported. Jumping, ladder logic, slides, conveyors and
+ * interaction handling are still absent. The current goal is to validate the
+ * first manual tile probes before the sensitive Phaser 2 movement rules are
+ * moved over more fully.
  */
 export class Player
 {
-    /**
-     * Tiled stores the player start at the bottom of the original 42px sprite.
-     * The Phaser 2 implementation subtracts this value when resetting the player;
-     * the prototype keeps the same offset so the sprite appears at the same spot.
-     */
+    // Tiled stores the player start at the bottom of the original 42px sprite.
     private static readonly TILED_Y_OFFSET = 42;
 
-    /**
-     * The Phaser 2 reference advances the walking animation manually with a
-     * small counter. In this prototype the counter is tied to accepted pixel
-     * movement, not raw update frames, so slowing the temporary movement does not
-     * make the legs animate too quickly.
-     */
+    // Advance the walking frame only after a few accepted pixel moves.
     private static readonly WALK_ANIMATION_FRAME_INTERVAL = 5;
 
-    /**
-     * Side wall probes ported from the Phaser 2 movement controller.
-     *
-     * They intentionally do not cover the full sprite rectangle. The original
-     * movement allows Sid to stand close to edges and corners, so this prototype
-     * keeps the same forgiving horizontal wall checks.
-     */
+    // Horizontal foot probes copied from the Phaser 2 movement controller.
+    private static readonly FOOT_LEFT_OFFSET = 7;
+    private static readonly FOOT_RIGHT_OFFSET = 23;
+
+    // Side wall probes copied from the Phaser 2 movement controller.
     private static readonly RIGHT_WALL_X_OFFSET = 24;
     private static readonly LEFT_WALL_X_OFFSET = 5;
     private static readonly SIDE_WALL_TOP_OFFSET = 6;
     private static readonly SIDE_WALL_BOTTOM_OFFSET = 1;
 
-    /**
-     * Temporary prototype speed limiter.
-     *
-     * The real game moves by one pixel per accepted movement frame, but this
-     * Phaser 4 slice has no collision, gravity or other gameplay timing yet, so
-     * direct one-pixel-per-update movement feels too fast during visual testing.
-     * Moving one pixel every two update frames gives a closer prototype feel until
-     * the original movement controller is ported properly.
-     */
+    // Temporary prototype speed limiter. The real movement timing will be
+    // revisited when the full Phaser 2 movement controller is ported.
     private static readonly PROTOTYPE_MOVE_FRAME_INTERVAL = 2;
 
     private static readonly LEFT_FRAMES: readonly number[] = [0, 1, 2, 3, 4, 5];
@@ -68,7 +50,8 @@ export class Player
     private facingDirection: FacingDirection = "right";
     private animationFrameIndex = 0;
     private animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
-    private movementAccumulator = 1;
+    private horizontalMovementAccumulator = 1;
+    private verticalMovementAccumulator = 1;
 
     constructor(scene: Scene, textureKey: string)
     {
@@ -90,25 +73,34 @@ export class Player
         this.facingDirection = "right";
         this.animationFrameIndex = 0;
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
-        this.movementAccumulator = 1;
+        this.horizontalMovementAccumulator = 1;
+        this.verticalMovementAccumulator = 1;
         this.sprite.setFrame(this.firstFrameFor(this.facingDirection));
         this.sprite.setVisible(true);
     }
 
     /**
-     * Runs the temporary left/right walking slice for one frame.
+     * Runs the temporary walking/falling movement slice for one frame.
      *
-     * This method intentionally keeps the player animation manual instead of
-     * using Phaser's timed animation playback. The Phaser 2 reference advances
-     * walking frames through counters, and preserving that idea avoids idle-frame
-     * resets and accidental moonwalk-style direction bugs during the prototype.
+     * This method intentionally keeps movement manual instead of using Arcade
+     * Physics. The Phaser 2 reference moves through one-pixel decisions based on
+     * tile probes, and preserving that idea makes later comparison much easier.
      */
-    updatePrototypeWalk(
+    updatePrototypeMovement(
         cursors: Types.Input.Keyboard.CursorKeys,
         map: Tilemaps.Tilemap,
         collisionProbe: TileCollisionProbe
     ): void
     {
+        if (!this.hasGroundBelow(collisionProbe)) {
+            this.stopPrototypeWalk(false);
+            this.moveDownWhenDue(map);
+            return;
+        }
+
+        // Keep the next fall responsive after walking over a platform edge.
+        this.verticalMovementAccumulator = 1;
+
         const requestedDirection = this.readHorizontalDirection(cursors);
 
         if (!requestedDirection) {
@@ -177,13 +169,9 @@ export class Player
         collisionProbe: TileCollisionProbe
     ): boolean
     {
-        this.movementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
-
-        if (this.movementAccumulator < 1) {
+        if (!this.shouldMoveHorizontallyThisFrame()) {
             return false;
         }
-
-        this.movementAccumulator -= 1;
 
         if (this.isBlockedHorizontally(direction, collisionProbe)) {
             return false;
@@ -203,6 +191,23 @@ export class Player
         return true;
     }
 
+    private moveDownWhenDue(map: Tilemaps.Tilemap): boolean
+    {
+        if (!this.shouldMoveVerticallyThisFrame()) {
+            return false;
+        }
+
+        const maxY = Math.max(0, map.heightInPixels - this.sprite.displayHeight);
+        const nextY = this.clamp(this.sprite.y + 1, 0, maxY);
+
+        if (nextY === this.sprite.y) {
+            return false;
+        }
+
+        this.sprite.y = nextY;
+        return true;
+    }
+
     private isBlockedHorizontally(direction: FacingDirection, collisionProbe: TileCollisionProbe): boolean
     {
         const probeX = direction === "right"
@@ -214,6 +219,39 @@ export class Player
             this.sprite.y + this.sprite.displayHeight - Player.SIDE_WALL_BOTTOM_OFFSET,
             probeX
         );
+    }
+
+    private hasGroundBelow(collisionProbe: TileCollisionProbe): boolean
+    {
+        return collisionProbe.hasSolidOnHorizontalLine(
+            this.sprite.x + Player.FOOT_LEFT_OFFSET,
+            this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+            this.sprite.y + this.sprite.displayHeight
+        );
+    }
+
+    private shouldMoveHorizontallyThisFrame(): boolean
+    {
+        this.horizontalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+
+        if (this.horizontalMovementAccumulator < 1) {
+            return false;
+        }
+
+        this.horizontalMovementAccumulator -= 1;
+        return true;
+    }
+
+    private shouldMoveVerticallyThisFrame(): boolean
+    {
+        this.verticalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+
+        if (this.verticalMovementAccumulator < 1) {
+            return false;
+        }
+
+        this.verticalMovementAccumulator -= 1;
+        return true;
     }
 
     private advanceWalkingFrameWhenDue(): void
@@ -229,9 +267,11 @@ export class Player
         this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }
 
-    private stopPrototypeWalk(): void
+    private stopPrototypeWalk(resetHorizontalMovement = true): void
     {
-        this.movementAccumulator = 1;
+        if (resetHorizontalMovement) {
+            this.horizontalMovementAccumulator = 1;
+        }
 
         // Do not reset to an idle frame here. The Phaser 2 version simply stops
         // the current animation, so the player keeps the last walking frame.

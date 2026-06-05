@@ -19,13 +19,13 @@ export class HUDScene extends Scene
         this.add.rectangle(320, 384, 640, 32, 0x000000)
             .setOrigin(0.5);
 
-        this.add.text(16, 374, "PLAYER WALK", {
+        this.add.text(16, 374, "PLAYER FALL", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.add.text(220, 374, "WALL CHECK", {
+        this.add.text(220, 374, "FLOOR CHECK", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"

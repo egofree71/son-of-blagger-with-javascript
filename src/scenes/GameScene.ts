@@ -9,11 +9,11 @@ import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small horizontal walking and wall-blocking test.
+ * run a small walking, wall-blocking and falling test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
  * implementation. In particular, this scene does not yet perform gravity, jumping,
- * ladders, deadly falls, key collection or exit checks.
+ * ladders, deadly falls, slides, conveyors, key collection or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -68,7 +68,7 @@ export class GameScene extends Scene
             return;
         }
 
-        this.player.updatePrototypeWalk(this.cursors, this.map, this.collisionProbe);
+        this.player.updatePrototypeMovement(this.cursors, this.map, this.collisionProbe);
     }
 
     /**
@@ -121,7 +121,7 @@ export class GameScene extends Scene
      */
     private addPrototypeOverlayText(): void
     {
-        this.add.text(8, 8, "Player wall-collision prototype — left/right arrows move Sid", {
+        this.add.text(8, 8, "Player falling prototype — left/right arrows move Sid", {
             fontFamily: "Arial",
             fontSize: "13px",
             color: "#ffffff",
