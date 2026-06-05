@@ -1144,23 +1144,6 @@ The player is the most sensitive part of the game. The jump trajectory, fall det
 
 ## Possible future improvements
 
-### Add explicit debug helpers
-
-A debug mode would be useful for testing transitions and levels. It should not be active by default in production. A safe approach would be to enable it only through an explicit URL parameter such as:
-
-```text
-?debug=1
-```
-
-Possible helper methods:
-
-```ts
-Level.collectAllKeysForDebug();
-GameController.startEndLevelForDebug();
-```
-
-This would be cleaner than running manual console loops.
-
 ### Document Tiled conventions separately
 
 A dedicated document such as `doc/tiled_map_conventions.md` would be useful. It could describe every expected layer, object type, tile property, monster property, and coordinate offset.
@@ -1204,35 +1187,36 @@ After any small architecture change, test at least:
 
 ---
 
-## Manual console helper for testing level transition
+## Debug helpers for manual testing
 
-While running `npm run dev`, the following browser-console snippet gives the player all keys for the current level:
+A small debug console is available only when the game is launched with:
 
-```js
-const { Runtime } = await import('/src/js/gameRuntime.ts');
-
-while (!Runtime.level.hasCollectedAllKeys()) {
-    Runtime.level.collectKey();
-}
+```text
+?debug=1
 ```
 
-Then touch the exit normally.
+For example, while running `npm run dev`:
 
-To trigger the transition directly:
-
-```js
-const { Runtime } = await import('/src/js/gameRuntime.ts');
-
-while (!Runtime.level.hasCollectedAllKeys()) {
-    Runtime.level.collectKey();
-}
-
-if (Runtime.level.isLastLevel()) {
-    Runtime.gameController.endGame();
-}
-else {
-    Runtime.gameController.endLevel();
-}
+```text
+http://localhost:5173/?debug=1
 ```
 
-This should remain a manual development helper unless a real debug mode is added later.
+This installs `sobDebug` on `window` for browser-console testing. It is intentionally not installed during normal gameplay.
+
+Useful commands:
+
+```js
+sobDebug.collectAllKeys();
+sobDebug.finishLevel();
+sobDebug.status();
+sobDebug.runtime();
+sobDebug.help();
+```
+
+`collectAllKeys()` gives the player all keys for the current level, then the exit can be touched normally. This is the safest helper for testing the real gameplay flow.
+
+`finishLevel()` also gives all keys, then starts the end-level transition directly. On the last level, it starts the end-game sequence instead. This is useful for quickly testing transitions without walking to the exit.
+
+`status()` returns a small readable object with the current state, level, key count, air, lives, score and hi-score.
+
+`runtime()` returns the active `GameRuntime` instance for deeper manual inspection. This should remain a debug-only escape hatch, not production gameplay code.

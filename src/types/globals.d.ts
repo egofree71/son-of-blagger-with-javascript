@@ -1,3 +1,5 @@
+import type { SonOfBlaggerDebugTools } from "../js/debugTools.ts";
+
 declare global {
   const Phaser: any;
 
@@ -17,6 +19,7 @@ declare global {
     layer: any;
     keyPressed: any;
     vanishingPlatformGroup: any;
+    sobDebug?: SonOfBlaggerDebugTools;
   }
 }
 

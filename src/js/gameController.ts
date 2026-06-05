@@ -46,6 +46,11 @@ export class GameControllerController
         return this.currentLives;
     }
 
+    public get state(): GameState | null
+    {
+        return this.currentGameState;
+    }
+
     private setState(gameState: GameState): void
     {
         this.currentGameState = gameState;

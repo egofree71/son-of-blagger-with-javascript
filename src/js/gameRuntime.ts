@@ -13,6 +13,7 @@ import { EndGameSequenceController } from "./endGameSequence.ts";
 import { GameControllerController } from "./gameController.ts";
 import { GameInitializerController } from "./gameInitializer.ts";
 import { PhaserRuntimeContext } from "./phaserRuntimeContext.ts";
+import { installDebugTools } from "./debugTools.ts";
 
 /**
  * Centralizes the creation of runtime controller instances.
@@ -76,6 +77,7 @@ export class GameRuntime
     public start(): void
     {
         this.phaserContext.reset();
+        installDebugTools(this);
 
         this.phaserContext.createGame({
             preload: () => this.preload(),
