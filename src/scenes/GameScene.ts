@@ -171,6 +171,10 @@ export class GameScene extends Scene
         }
 
         const camera = this.cameras.main;
+
+        // The imported Tiled map is larger than the visible gameplay camera.
+        // Clamp this temporary inspection scroll so arrow-key panning never
+        // reveals empty space beyond the real map bounds.
         const maxScrollX = Math.max(0, this.map.widthInPixels - camera.width);
         const maxScrollY = Math.max(0, this.map.heightInPixels - camera.height);
 

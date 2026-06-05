@@ -1,4 +1,4 @@
-import { AUTO, Game } from "phaser";
+import { AUTO, Game, Scale } from "phaser";
 import { PreloadScene } from "./scenes/PreloadScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
@@ -7,8 +7,9 @@ import { HUDScene } from "./scenes/HUDScene";
  * Browser entry point for the Phaser 4 prototype.
  *
  * This file replaces the old Phaser 2 bootstrap only on the prototype branch.
- * It keeps the canvas at the same rough size as the current remake so screenshots
- * and manual comparisons remain easy while the port is still incomplete.
+ * The game keeps the original 640x400 logical resolution, while Phaser's Scale
+ * Manager enlarges the canvas in the browser so manual comparisons remain close
+ * to the previous remake.
  */
 const GAME_WIDTH = 640;
 const GAME_HEIGHT = 400;
@@ -16,20 +17,22 @@ const GAME_HEIGHT = 400;
 /**
  * Minimal Phaser 4 game configuration.
  *
- * The scene list is still deliberately small: PreloadScene loads the current
- * assets, GameScene displays the map prototype, and HUDScene proves that a
- * parallel overlay scene can cover the old lower status area.
+ * FIT preserves the game aspect ratio and scales the canvas to the largest size
+ * that fits in the browser window. CENTER_BOTH then keeps the scaled canvas
+ * centered inside the full-viewport parent element.
  */
 const config = {
     type: AUTO,
-    parent: "game-container",
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    // Keep the canvas background aligned with the original Phaser 2 stage color.
-    // GameScene also sets its camera background explicitly for the scrolling viewport.
     backgroundColor: "#c0c0c0",
     pixelArt: true,
     roundPixels: true,
+    scale: {
+        parent: "game-container",
+        mode: Scale.FIT,
+        autoCenter: Scale.CENTER_BOTH,
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT
+    },
     scene: [
         PreloadScene,
         GameScene,

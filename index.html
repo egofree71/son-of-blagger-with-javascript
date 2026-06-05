@@ -22,9 +22,17 @@
         }
 
         body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            overflow: hidden;
+        }
+
+        /*
+            Phaser's Scale Manager needs a parent with real bounds before it can
+            fit and center the canvas. Giving the container the full viewport lets
+            the 640x400 logical game grow like the previous Phaser 2 version.
+        */
+        #game-container {
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
         }
 
