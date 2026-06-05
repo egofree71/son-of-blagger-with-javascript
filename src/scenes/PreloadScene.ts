@@ -1,8 +1,13 @@
 import { Scene } from "phaser";
 
-// PreloadScene is the Phaser 4 replacement for the old AssetLoader entry point.
-// For now it only loads a couple of visual test assets; later it will load the tilemap,
-// tilesets, spritesheets, HUD graphics and bitmap font used by the real game.
+/**
+ * Loads the first real assets needed by the Phaser 4 prototype.
+ *
+ * This is the modern replacement for the old Phaser 2 AssetLoader entry point,
+ * but only a very small subset is loaded for now: the Tiled map, the background
+ * tileset used by the main tile layer, and a single player image used as a
+ * visual start-position marker. Gameplay assets will be added as the port grows.
+ */
 export class PreloadScene extends Scene
 {
     constructor()
@@ -17,7 +22,7 @@ export class PreloadScene extends Scene
         const centerX = this.cameras.main.centerX;
         const centerY = this.cameras.main.centerY;
 
-        this.add.text(centerX, centerY - 48, "Loading Phaser 4 prototype...", {
+        this.add.text(centerX, centerY - 48, "Loading Phaser 4 map prototype...", {
             fontFamily: "Arial",
             fontSize: "18px",
             color: "#ffffff"
@@ -29,8 +34,6 @@ export class PreloadScene extends Scene
         const bar = this.add.rectangle(centerX - 158, centerY, 4, 18, 0xffffff)
             .setOrigin(0, 0.5);
 
-        // The loading bar is intentionally basic. Its only role is to prove that the
-        // Phaser 4 loader events are wired correctly before we start loading the real map.
         this.load.on("progress", (progress: number) => {
             bar.width = 4 + 316 * progress;
         });
@@ -40,15 +43,18 @@ export class PreloadScene extends Scene
             bar.destroy();
         });
 
-        // Assets are still served from public/assets by Vite.
-        // This validates that the modern Phaser runtime can reuse the existing asset folder.
-        this.load.image("title", "assets/sprites/title.png");
-        this.load.image("player-preview", "assets/sprites/blagger.png");
+        /**
+         * Asset keys are intentionally explicit instead of reusing the old global
+         * constants. The prototype can later converge on a cleaner asset-key module
+         * once the map, player and monsters are all loading correctly.
+         */
+        this.load.tilemapTiledJSON("son-of-blagger-map", "assets/maps/son-of-blagger.json");
+        this.load.image("background-tiles", "assets/tileset/background.png");
+        this.load.image("player-start", "assets/sprites/blagger right.png");
     }
 
     create(): void
     {
-        // Once the test assets are available, hand control to the first gameplay prototype scene.
         this.scene.start("GameScene");
     }
 }
