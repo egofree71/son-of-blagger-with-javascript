@@ -19,7 +19,7 @@ export class HUDScene extends Scene
         this.add.rectangle(320, 384, 640, 32, 0x000000)
             .setOrigin(0.5);
 
-        this.add.text(16, 374, "MAP DISPLAY", {
+        this.add.text(16, 374, "MAP + PLAYER", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
@@ -31,7 +31,7 @@ export class HUDScene extends Scene
             color: "#ffffff"
         });
 
-        this.add.text(392, 374, "LEVEL 1 START", {
+        this.add.text(392, 374, "LEVEL 1", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"

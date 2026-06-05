@@ -5,8 +5,8 @@ import { Scene } from "phaser";
  *
  * This is the modern replacement for the old Phaser 2 AssetLoader entry point,
  * but only a very small subset is loaded for now: the Tiled map, the background
- * tileset used by the main tile layer, and a single player image used as a
- * visual start-position marker. Gameplay assets will be added as the port grows.
+ * tileset used by the main tile layer, and a single player image used by the
+ * first minimal Player entity. Gameplay assets will be added as the port grows.
  */
 export class PreloadScene extends Scene
 {
@@ -50,7 +50,7 @@ export class PreloadScene extends Scene
          */
         this.load.tilemapTiledJSON("son-of-blagger-map", "assets/maps/son-of-blagger.json");
         this.load.image("background-tiles", "assets/tileset/background.png");
-        this.load.image("player-start", "assets/sprites/blagger right.png");
+        this.load.image("player-right", "assets/sprites/blagger right.png");
     }
 
     create(): void

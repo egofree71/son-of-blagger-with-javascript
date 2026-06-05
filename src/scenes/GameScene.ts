@@ -1,36 +1,26 @@
-import { GameObjects, Scene, Tilemaps } from "phaser";
-
-interface PrototypeTiledObject
-{
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    name?: string;
-    properties?: Record<string, unknown> | Array<{ name: string; value: unknown }>;
-}
+import { Scene, Tilemaps } from "phaser";
+import { Player } from "../entities/Player";
+import { findObjectByLevel } from "../tiled/tiledObjects";
 
 /**
- * Displays the current Tiled map inside a Phaser 4 scene.
+ * Displays the imported Tiled map and a minimal Player entity in Phaser 4.
  *
- * This scene is still not gameplay. Its only job is to prove that Phaser 4 can
- * load the existing Son of Blagger JSON map, bind the current background tileset,
- * create the main tile layer, and read the level-1 player start object.
+ * This scene is still not gameplay. Its job is to prove that Phaser 4 can load
+ * the existing Son of Blagger map, render the main background layer, and place a
+ * player object at the same level-1 start position as the Phaser 2 reference.
  *
  * Keyboard camera scrolling is included as a temporary inspection helper, not as
  * future gameplay input. The real player movement should be ported separately
- * once the map rendering is known to be correct.
+ * once the map rendering and player placement are stable.
  */
 export class GameScene extends Scene
 {
     private static readonly GAMEPLAY_VIEW_HEIGHT = 368;
     private static readonly CAMERA_SCROLL_SPEED = 6;
-    private static readonly PLAYER_TILED_Y_OFFSET = 42;
     private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
 
     private map?: Tilemaps.Tilemap;
-    private backgroundLayer?: Tilemaps.TilemapLayer;
-    private playerStartMarker?: GameObjects.Image;
+    private player?: Player;
     private cursors?: any;
 
     constructor()
@@ -53,29 +43,15 @@ export class GameScene extends Scene
             return;
         }
 
-        this.backgroundLayer = this.map.createLayer("background", backgroundTileset, 0, 0) ?? undefined;
+        const backgroundLayer = this.map.createLayer("background", backgroundTileset, 0, 0);
 
-        if (!this.backgroundLayer) {
+        if (!backgroundLayer) {
             this.showFatalPrototypeMessage("Could not create the Tiled 'background' tile layer.");
             return;
         }
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-
-        const playerStart = this.findObjectByLevel(this.map, "player", 1);
-
-        if (playerStart) {
-            this.playerStartMarker = this.add.image(
-                playerStart.x,
-                playerStart.y - GameScene.PLAYER_TILED_Y_OFFSET,
-                "player-start"
-            ).setOrigin(0, 0);
-
-            this.centerCameraOnObject(playerStart);
-        } else {
-            this.showFatalPrototypeMessage("Could not find the level-1 player object in the Tiled map.");
-        }
-
+        this.createPlayerAtLevelStart(1);
         this.addPrototypeOverlayText();
 
         this.cursors = this.input.keyboard?.createCursorKeys();
@@ -113,52 +89,36 @@ export class GameScene extends Scene
     }
 
     /**
-     * Reads a Tiled object layer and returns the first object whose `level`
-     * property matches the requested level number.
+     * Creates the prototype Player entity and places it on the Tiled start object
+     * for the requested level.
      */
-    private findObjectByLevel(map: Tilemaps.Tilemap, layerName: string, levelNumber: number): PrototypeTiledObject | undefined
+    private createPlayerAtLevelStart(levelNumber: number): void
     {
-        const objectLayer = map.getObjectLayer(layerName);
-
-        if (!objectLayer) {
-            return undefined;
+        if (!this.map) {
+            return;
         }
 
-        return (objectLayer.objects as PrototypeTiledObject[]).find((object) => {
-            return String(this.getTiledProperty(object, "level")) === String(levelNumber);
-        });
+        const playerStart = findObjectByLevel(this.map, "player", levelNumber);
+
+        if (!playerStart) {
+            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.player = new Player(this, "player-right");
+        this.player.resetToTiledStart(playerStart);
+
+        this.centerCameraOnPlayer(this.player);
     }
 
     /**
-     * Supports both old Tiled JSON property objects and newer Phaser-parsed
-     * property arrays. The current map uses the old object-shaped properties,
-     * but this helper keeps the prototype tolerant while we inspect Phaser 4.
+     * Places the gameplay camera around the player while keeping the future HUD
+     * strip outside the gameplay viewport.
      */
-    private getTiledProperty(object: PrototypeTiledObject, propertyName: string): unknown
+    private centerCameraOnPlayer(player: Player): void
     {
-        const properties = object.properties;
-
-        if (!properties) {
-            return undefined;
-        }
-
-        if (Array.isArray(properties)) {
-            return properties.find((property) => property.name === propertyName)?.value;
-        }
-
-        return properties[propertyName];
-    }
-
-    /**
-     * Places the gameplay camera around the level start marker while keeping the
-     * future HUD strip outside the gameplay viewport.
-     */
-    private centerCameraOnObject(object: PrototypeTiledObject): void
-    {
-        const markerCenterX = object.x + (object.width ?? 0) / 2;
-        const markerCenterY = object.y - GameScene.PLAYER_TILED_Y_OFFSET + (object.height ?? 0) / 2;
-
-        this.cameras.main.centerOn(markerCenterX, markerCenterY);
+        const playerCenter = player.getCenter();
+        this.cameras.main.centerOn(playerCenter.x, playerCenter.y);
     }
 
     /**
@@ -195,7 +155,7 @@ export class GameScene extends Scene
      */
     private addPrototypeOverlayText(): void
     {
-        this.add.text(8, 8, "Tilemap display prototype — arrow keys move camera", {
+        this.add.text(8, 8, "Tilemap + player prototype — arrow keys move camera", {
             fontFamily: "Arial",
             fontSize: "13px",
             color: "#ffffff",
