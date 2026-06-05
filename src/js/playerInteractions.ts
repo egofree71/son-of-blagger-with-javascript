@@ -12,10 +12,10 @@ export interface PlayerInteractionResult
 /**
  * Level-owned operations needed by player interactions.
  *
- * PlayerInteractions only needs to know that these operations exist; it should
- * not import the global Level singleton directly. GameController passes the
- * current Level object through Player.update(), which keeps the dependency
- * direction explicit and avoids a Player -> PlayerInteractions -> Level cycle.
+ * PlayerInteractions only needs to know that these operations exist; it does
+ * not import LevelController directly. GameController passes the current level
+ * instance through Player.update(), which keeps the dependency direction
+ * explicit and avoids a Player -> PlayerInteractions -> Level cycle.
  */
 export interface PlayerInteractionContext
 {
@@ -43,7 +43,7 @@ export interface PlayerInteractionContext
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-class PlayerInteractionsController
+export class PlayerInteractionsController
 {
     // Collision rectangle offsets used when collecting keys.
     private readonly KEY_LEFT_OFFSET = 7;
@@ -139,4 +139,3 @@ class PlayerInteractionsController
     }
 }
 
-export const PlayerInteractions = new PlayerInteractionsController();

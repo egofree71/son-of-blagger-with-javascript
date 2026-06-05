@@ -2,19 +2,17 @@ import { PlayerStates } from "./playerStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
 import { Data } from "./data.ts";
-import { PlayerMovement } from "./playerMovement.ts";
-import { PlayerInteractions, type PlayerInteractionContext, type PlayerInteractionResult } from "./playerInteractions.ts";
-import { PlayerDeathSequence } from "./playerDeathSequence.ts";
+import type { PlayerMovementController } from "./playerMovement.ts";
+import type { PlayerInteractionsController, PlayerInteractionContext, PlayerInteractionResult } from "./playerInteractions.ts";
+import type { PlayerDeathSequenceController } from "./playerDeathSequence.ts";
 import type { PlayerAnimationName, PlayerDirection } from "./playerStates.ts";
 
 /**
  * Owns the playable character sprite and player-specific runtime state.
  *
- * The exported Player value remains a singleton so existing callers can keep
- * using Player.create(), Player.reset(levelNumber), Player.update(...), and
- * Player.kill(onComplete). The class only replaces the previous object-literal container; movement rules,
- * interaction checks, animation timings, and death handling still live in their
- * dedicated modules.
+ * PlayerController is instantiated by GameRuntime and receives its specialized
+ * player subsystems through the constructor. Movement rules, interaction checks,
+ * animation timings, and death handling still live in their dedicated modules.
  */
 export interface MovementDirection {
     horizontal: PlayerDirection | null;
@@ -23,6 +21,14 @@ export interface MovementDirection {
 
 export class PlayerController
 {
+    constructor(
+        private readonly playerMovement: PlayerMovementController,
+        private readonly playerInteractions: PlayerInteractionsController,
+        private readonly playerDeathSequence: PlayerDeathSequenceController
+    )
+    {
+    }
+
     // Shows if the player is jumping.
     private jumping: boolean = false;
 
@@ -86,7 +92,7 @@ export class PlayerController
 
     public update(interactionContext: PlayerInteractionContext): PlayerInteractionResult
     {
-        const movementResult = PlayerMovement.update(this);
+        const movementResult = this.playerMovement.update(this);
 
         if (movementResult.playerKilled)
         {
@@ -98,7 +104,7 @@ export class PlayerController
         }
 
         if (movementResult.checkInteractions)
-            return PlayerInteractions.update(this, movementResult.x, movementResult.y, interactionContext);
+            return this.playerInteractions.update(this, movementResult.x, movementResult.y, interactionContext);
 
         return {
             keyCollected: false,
@@ -423,8 +429,7 @@ export class PlayerController
      */
     public kill(onComplete: () => void): void
     {
-        PlayerDeathSequence.start(this, onComplete);
+        this.playerDeathSequence.start(this, onComplete);
     }
 }
 
-export const Player = new PlayerController();

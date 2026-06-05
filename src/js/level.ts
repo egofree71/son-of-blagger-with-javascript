@@ -8,7 +8,7 @@ export interface LevelPlayer
     reset(levelNumber: number): void;
 }
 
-class LevelController
+export class LevelController
 {
     // Current level and level-attempt data are stored privately. The legacy
     // property names remain available as read-only getters for existing checks.
@@ -312,9 +312,9 @@ class LevelController
     /**
      * Load the objects needed for a given level.
      *
-     * The player instance is passed in explicitly so Level no longer imports the
-     * Player singleton. Level still controls the level-loading order, which is
-     * important for preserving the previous runtime behaviour.
+     * The player instance is passed in explicitly so Level does not import
+     * PlayerController directly. Level still controls the level-loading order,
+     * which is important for preserving the previous runtime behaviour.
      */
     load(player: LevelPlayer): void
     {
@@ -327,4 +327,3 @@ class LevelController
 
 }
 
-export const Level = new LevelController();

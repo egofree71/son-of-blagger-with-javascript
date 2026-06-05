@@ -8,7 +8,7 @@ import { Data } from "./data.ts";
  * It no longer imports Level, Player or GameController directly. Runtime values
  * such as score, lives, current level and air are passed in by the caller.
  */
-class HUDController
+export class HUDController
 {
     // Width of a character in pixels.
     private readonly charWidth = HudConstants.CHAR_WIDTH;
@@ -204,4 +204,3 @@ class HUDController
     }
 }
 
-export const HUD = new HUDController();

@@ -25,7 +25,7 @@ The engineering goal is to preserve the original gameplay behaviour while making
 - Development/build tool: **Vite**.
 - Type checking: `tsc --noEmit` through `npm run typecheck`.
 - Module system: TypeScript ES modules handled by Vite.
-- Main architecture style: TypeScript ES modules, class-based runtime singletons, and a small legacy Phaser runtime context kept on `window`.
+- Main architecture style: TypeScript ES modules, an explicit `Runtime` composition root, class-based runtime controllers, constructor-injected runtime dependencies, and a small legacy Phaser runtime context kept on `window`.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
@@ -33,11 +33,11 @@ The engineering goal is to preserve the original gameplay behaviour while making
 
 Phaser 2.3 is still loaded as a classic browser script from `public/js/phaser.min.js`. The current game code expects the global `Phaser` object. Phaser is not imported from npm.
 
-The game source files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
+The game source files live under `src/js` and are imported through `src/js/phaserGame.ts`, which is loaded from the Vite entry point `src/main.ts`.
 
-The code still uses singleton instances, but it is no longer the original global-object style. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
+The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Runtime controllers such as `GameControllerController`, `LevelController`, `PlayerController`, and `HUDController` are instantiated and wired together there. The older runtime singleton exports such as `GameController`, `Level`, `Player`, and `HUD` have been removed to avoid accidentally driving stale controller instances from modules or browser-console helpers. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
-The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
+The remaining Phaser runtime globals are now accessed through `PhaserRuntimeContext`, which is created by `GameRuntime`. It still mirrors values to `window` because older gameplay modules continue to read the historical globals directly. These globals are declared for TypeScript in `src/types/globals.d.ts`:
 
 - `game`
 - `map`
@@ -45,7 +45,7 @@ The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js
 - `keyPressed`
 - `vanishingPlatformGroup`
 
-These are still direct global dependencies and remain the main architectural limitation before a fuller migration to an explicit runtime context or a modern Phaser scene architecture.
+These are still legacy global dependencies for many gameplay modules, but startup code now goes through an explicit context bridge instead of assigning all globals directly. They remain the main architectural limitation before a fuller migration to explicit dependencies or a modern Phaser scene architecture.
 
 ---
 
@@ -132,6 +132,8 @@ vite.config.js
 src/
  main.ts
  js/
+  phaserGame.ts
+  gameRuntime.ts
   ...game runtime modules...
  types/
   globals.d.ts
@@ -148,7 +150,7 @@ doc/
 
 `public/` is still used for files that must be copied unchanged to the production `dist/` folder. This currently includes Phaser 2.3 and all Phaser-loaded game assets.
 
-The active Vite entry point is `src/main.ts`. Any old `src/main.js` file is obsolete and should not be kept.
+The active Vite entry point is `src/main.ts`. It should stay tiny and import `src/js/phaserGame.ts`. Any old `src/main.js` file is obsolete and should not be kept. The old `src/js/main.ts` bootstrap name is also obsolete; the Phaser-specific bootstrap lives in `src/js/phaserGame.ts` to avoid confusion between the two entry points.
 
 ---
 
@@ -169,9 +171,9 @@ All game files after Phaser are imported through TypeScript ES modules starting 
 
 The project is organized around ES module exports defined under `src/js`.
 
-### Class-based singleton runtime objects
+### Runtime controllers and explicit runtime composition
 
-The following runtime objects are implemented as internal classes with one exported singleton instance:
+The following runtime objects are implemented as exported controller classes. They are no longer exported as pre-created singleton instances; the active game runtime is composed by `Runtime` in `src/js/gameRuntime.ts`:
 
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
@@ -185,23 +187,28 @@ The following runtime objects are implemented as internal classes with one expor
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection.
 - `PlayerDeathSequence`: visual death animation only.
 - `HUD`: status-area display and HUD-specific counters.
+- `GameInitializer`: runtime startup after Phaser asset loading.
 
-The exported names are singleton values:
+The controller classes are instantiated explicitly in `GameRuntime`, for example:
 
 ```ts
-export const Level = new LevelController();
-export const Player = new PlayerController();
-export const HUD = new HUDController();
+const level = new LevelController();
+const hud = new HUDController();
+const player = new PlayerController(
+    playerMovement,
+    playerInteractions,
+    playerDeathSequence
+);
 ```
 
-This keeps runtime usage stable while still allowing private fields and smaller public APIs inside the classes.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, owns the `PhaserRuntimeContext`, creates the Phaser game through `Runtime.start()`, and exposes the Phaser lifecycle façade: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
 The following modules still use object-literal or service-style exports:
 
 - `AssetLoader`: Phaser asset preloading.
-- `GameInitializer`: runtime startup after asset loading.
+- `PhaserRuntimeContext`: bridge around the remaining Phaser 2 globals.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `CollisionDetector`: generic manual tile/rectangle collision checks.
 - `Util`: shared non-collision helper functions.
@@ -227,27 +234,28 @@ Some files also export derived TypeScript types, for example state or direction 
 
 ## Dependency direction after the runtime dependency refactoring
 
-`GameController` is now the main orchestration hub. It still imports several runtime objects, but this is intentional: it owns the overall game flow.
+`GameController` is still the main orchestration hub, but its runtime dependencies are now supplied through its constructor by `GameRuntime`. It imports controller types, not pre-created runtime singleton instances.
 
 Several subsystems were decoupled from each other:
 
 - `HUD` no longer imports `Level`, `Player`, or `GameController`. Runtime values are passed in by callers.
-- `PlayerInteractions` no longer imports `HUD`, `GameController`, or the global `Level` singleton. It returns a result object and receives a small `PlayerInteractionContext`.
+- `PlayerInteractions` no longer imports `HUD`, `GameController`, or `LevelController` directly. It returns a result object and receives a small `PlayerInteractionContext`.
 - `PlayerDeathSequence` no longer imports `HUD`, `Level`, or `GameController`. It only runs the visual death animation and invokes a callback when finished.
 - `EndGameSequence` no longer imports `HUD`, `Level`, or `GameController`. It returns an `EndGameSequenceResult`.
 - `LevelRevealSequence` no longer changes the global game state. It returns `true` when finished.
 - `ScreenManager` no longer changes the global game state. It receives callbacks for screen-exit actions.
 - `Monster` no longer imports `Level` or `GameController`. `Level` owns the monster animation cadence and passes each monster the information it needs.
 - `CollisionDetector` no longer knows about monsters or the level exit. Level-owned collision checks are now handled by `Level`.
-- `Level` no longer imports the global `Player` singleton. `Level.load()` receives a small `LevelPlayer` interface.
+- `Level` no longer imports `PlayerController` directly. `Level.load()` receives a small `LevelPlayer` interface.
 - `Level` no longer delegates to visual sequence objects such as `LevelRevealSequence`, `LevelTransition`, or `EndGameSequence`.
+- `LevelTransition` receives `Level` and `Player` through its constructor. It still coordinates both during the end-of-level transition, because that sequence moves the player, advances level state, converts air, refills air, hides monsters, and loads the next level.
+- `Player` receives `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` through its constructor. This is acceptable because those modules are specialized parts of player behaviour.
 
 Some couplings remain intentionally:
 
-- `GameController` coordinates the main runtime singletons.
-- `LevelTransition` still uses `Level` and `Player`, because the end-of-level transition moves the player, advances level state, converts air, refills air, hides monsters, and loads the next level. This may be a future candidate for a context-based refactor, but it is not urgent.
-- `Player` still owns and calls `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence`. This is acceptable because those modules are specialized parts of player behaviour.
-- Phaser globals are still directly accessed by several modules.
+- `GameRuntime` wires together the active runtime graph.
+- `GameController` coordinates the injected runtime controllers during the main game flow.
+- Phaser globals are still directly accessed by several gameplay modules, but startup code now writes them through `PhaserRuntimeContext`.
 
 The goal is not to create a pure dependency-injection framework. The goal is to reduce the most fragile cross-module dependencies while keeping the retro-game code readable.
 
@@ -313,33 +321,40 @@ LOAD_INTRODUCTION
 
 ## Main game loop
 
-`src/js/main.ts` creates the Phaser game instance:
+`src/js/phaserGame.ts` starts the active runtime:
 
 ```ts
-var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
-  preload: preload,
-  create: create,
-  update: updateGame
+Runtime.start();
+```
+
+`GameRuntime.start()` creates the Phaser game instance and wires Phaser's callbacks to the active runtime:
+
+```ts
+this.phaserContext.createGame({
+  preload: () => this.preload(),
+  create: () => this.create(),
+  update: () => this.update()
 });
 ```
 
 Every frame, Phaser calls:
 
 ```text
-updateGame()
- -> GameController.update()
+Phaser update callback
+ -> Runtime.update()
+   -> Runtime.gameController.update()
 ```
 
-`GameController.update()` dispatches to one method per game state.
+`Runtime.update()` is the lifecycle façade owned by `GameRuntime`; `Runtime.gameController.update()` then dispatches to one method per game state.
 
 During normal gameplay, the preserved update order is:
 
 ```text
-GameController.updatePlaying()
+Runtime.gameController.updatePlaying()
  -> update air gameplay rule and air HUD
- -> HUD.displayBonusMan(Level.bonusMan)
- -> Level.updateMonsters(GameController.isPlaying())
- -> Player.update(Level)
+ -> Runtime.hud.displayBonusMan(Runtime.level.bonusMan)
+ -> Runtime.level.updateMonsters(Runtime.gameController.isPlaying())
+ -> Runtime.player.update(Runtime.level)
  -> apply PlayerInteractionResult consequences
 ```
 
@@ -351,24 +366,23 @@ The update order is gameplay-sensitive and should be changed only with care.
 
 This is the Vite module entry point referenced by `index.html`.
 
-It imports `src/js/main.ts`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
+It imports `src/js/phaserGame.ts`, which starts the active `Runtime` instance through normal ES module imports.
 
 This file does not contain gameplay logic.
 
 ---
 
-## `src/js/main.ts`
+## `src/js/phaserGame.ts`
 
-`main.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
+`phaserGame.ts` is now a tiny launcher. It imports the active runtime and calls:
 
-Main responsibilities:
+```ts
+Runtime.start();
+```
 
-- create the Phaser instance;
-- delegate asset preloading to `AssetLoader`;
-- delegate runtime startup to `GameInitializer`;
-- delegate each frame to `GameController.update()`.
+`GameRuntime.start()` owns the Phaser game creation and callback wiring through `PhaserRuntimeContext`.
 
-Important globals created here:
+Important globals still bridged through the runtime context:
 
 ```text
 game
@@ -383,6 +397,8 @@ vanishingPlatformGroup
 ## `src/js/assetLoader.ts`
 
 `AssetLoader` centralizes Phaser asset preloading.
+
+It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.start()` -> `Runtime.preload()`, which delegates to `AssetLoader.preload(this.phaserContext.game)`.
 
 Responsibilities:
 
@@ -399,9 +415,27 @@ The asset keys and sprite dimensions are part of the current runtime contract an
 
 ---
 
+## `src/js/phaserRuntimeContext.ts`
+
+`PhaserRuntimeContext` is a small bridge around the remaining Phaser 2 runtime globals.
+
+It is not a full scene/context migration yet. Its job is to centralize access to:
+
+```text
+game
+map
+layer
+keyPressed
+vanishingPlatformGroup
+```
+
+New startup code uses the context explicitly, while older gameplay modules can still read the same values through the browser globals. This makes the next migration steps safer because the remaining global state now has one visible owner.
+
+---
+
 ## `src/js/gameInitializer.ts`
 
-`GameInitializer` owns the runtime startup sequence executed from Phaser's `create()` callback.
+`GameInitializer` owns the runtime startup sequence executed from `Runtime.create()`, which is itself called by Phaser's `create()` callback. It receives `PhaserRuntimeContext` through its constructor and uses it to populate `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` while preserving the legacy global bridge.
 
 Main responsibilities:
 
@@ -544,7 +578,7 @@ Important methods:
 - `collidesWithExitArea(...)`;
 - `hideMonstersWithReverseExplosions()`.
 
-`Level.load(player)` receives a `LevelPlayer` interface rather than importing the global `Player` singleton directly.
+`Level.load(player)` receives a `LevelPlayer` interface rather than importing `PlayerController` directly.
 
 `Level` owns monster and exit collisions because those objects belong to the level. `CollisionDetector` remains focused on generic tile/rectangle checks.
 
@@ -1053,7 +1087,7 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 The code is now much less coupled than the original global-object version. Several visual and gameplay subsystems return result objects or receive small context interfaces instead of importing the whole runtime.
 
-However, the architecture still uses singleton instances, and `GameController` remains the orchestration hub. This is acceptable for the current Phaser 2.3 remake. Avoid forcing dependency injection everywhere unless it makes the code clearly simpler.
+However, the architecture still has one active runtime instance, exported as `Runtime`, and `GameController` remains the orchestration hub. This is acceptable for the current Phaser 2.3 remake. Avoid forcing dependency injection everywhere unless it makes the code clearly simpler.
 
 ### Avoid bureaucratic getters and setters
 
@@ -1073,9 +1107,9 @@ Avoid adding trivial `getX()` / `setX()` methods everywhere just to make fields 
 
 ### Global Phaser runtime context
 
-The project still relies on `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` globals.
+The project still relies on `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` globals in several gameplay modules.
 
-This shared context is workable, but it remains the main architectural limitation before a fuller migration to an explicit runtime context or modern Phaser scenes.
+`PhaserRuntimeContext` now centralizes creation and startup-time assignment of those values, but many modules still read the legacy globals directly. This bridge is workable, but replacing those remaining direct reads with explicit dependencies remains the main architectural limitation before a fuller migration to modern Phaser scenes.
 
 ### TypeScript strictness is still gentle
 
@@ -1110,30 +1144,13 @@ The player is the most sensitive part of the game. The jump trajectory, fall det
 
 ## Possible future improvements
 
-### Add explicit debug helpers
-
-A debug mode would be useful for testing transitions and levels. It should not be active by default in production. A safe approach would be to enable it only through an explicit URL parameter such as:
-
-```text
-?debug=1
-```
-
-Possible helper methods:
-
-```ts
-Level.collectAllKeysForDebug();
-GameController.startEndLevelForDebug();
-```
-
-This would be cleaner than running manual console loops.
-
 ### Document Tiled conventions separately
 
 A dedicated document such as `doc/tiled_map_conventions.md` would be useful. It could describe every expected layer, object type, tile property, monster property, and coordinate offset.
 
 ### Reduce remaining Phaser globals
 
-A future architecture could group shared Phaser runtime objects into a context object, then later replace the remaining global variables with explicit dependencies or Phaser scenes.
+`PhaserRuntimeContext` now groups the shared Phaser runtime objects during startup. A future step can migrate gameplay modules one by one so they receive the context, or narrower dependencies, instead of reading `game`, `map`, `layer`, `keyPressed`, and `vanishingPlatformGroup` directly.
 
 ### Consider a LevelTransition context only if it stays readable
 
@@ -1170,36 +1187,36 @@ After any small architecture change, test at least:
 
 ---
 
-## Manual console helper for testing level transition
+## Debug helpers for manual testing
 
-While running `npm run dev`, the following browser-console snippet gives the player all keys for the current level:
+A small debug console is available only when the game is launched with:
 
-```js
-const { Level } = await import('/src/js/level.ts');
-
-while (!Level.hasCollectedAllKeys()) {
-    Level.collectKey();
-}
+```text
+?debug=1
 ```
 
-Then touch the exit normally.
+For example, while running `npm run dev`:
 
-To trigger the transition directly:
-
-```js
-const { Level } = await import('/src/js/level.ts');
-const { GameController } = await import('/src/js/gameController.ts');
-
-while (!Level.hasCollectedAllKeys()) {
-    Level.collectKey();
-}
-
-if (Level.isLastLevel()) {
-    GameController.endGame();
-}
-else {
-    GameController.endLevel();
-}
+```text
+http://localhost:5173/?debug=1
 ```
 
-This should remain a manual development helper unless a real debug mode is added later.
+This installs `sobDebug` on `window` for browser-console testing. It is intentionally not installed during normal gameplay.
+
+Useful commands:
+
+```js
+sobDebug.collectAllKeys();
+sobDebug.finishLevel();
+sobDebug.status();
+sobDebug.runtime();
+sobDebug.help();
+```
+
+`collectAllKeys()` gives the player all keys for the current level, then the exit can be touched normally. This is the safest helper for testing the real gameplay flow.
+
+`finishLevel()` also gives all keys, then starts the end-level transition directly. On the last level, it starts the end-game sequence instead. This is useful for quickly testing transitions without walking to the exit.
+
+`status()` returns a small readable object with the current state, level, key count, air, lives, score and hi-score.
+
+`runtime()` returns the active `GameRuntime` instance for deeper manual inspection. This should remain a debug-only escape hatch, not production gameplay code.

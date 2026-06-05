@@ -9,7 +9,7 @@ import { LevelConstants } from "./levelConstants.ts";
  * making unrelated visual components depend on LevelRevealSequence just to reuse
  * its Phaser graphics objects.
  */
-class ScreenOverlayController
+export class ScreenOverlayController
 {
     private upperBlackRectangle: any | null = null;
     private lowerBlackRectangle: any | null = null;
@@ -106,4 +106,3 @@ class ScreenOverlayController
     }
 }
 
-export const ScreenOverlay = new ScreenOverlayController();

@@ -1,15 +1,27 @@
 import { GameStates, type GameState } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenManager } from "./screenManager.ts";
-import { EndGameSequence } from "./endGameSequence.ts";
-import { LevelRevealSequence } from "./levelRevealSequence.ts";
-import { LevelTransition } from "./levelTransition.ts";
-import { HUD } from "./HUD.ts";
-import { Player } from "./player.ts";
-import { Level } from "./level.ts";
+import type { ScreenManagerController } from "./screenManager.ts";
+import type { EndGameSequenceController } from "./endGameSequence.ts";
+import type { LevelRevealSequenceController } from "./levelRevealSequence.ts";
+import type { LevelTransitionController } from "./levelTransition.ts";
+import type { HUDController } from "./HUD.ts";
+import type { PlayerController } from "./player.ts";
+import type { LevelController } from "./level.ts";
 
-class GameControllerController
+export class GameControllerController
 {
+    constructor(
+        private readonly screenManager: ScreenManagerController,
+        private readonly level: LevelController,
+        private readonly player: PlayerController,
+        private readonly hud: HUDController,
+        private readonly levelRevealSequence: LevelRevealSequenceController,
+        private readonly levelTransition: LevelTransitionController,
+        private readonly endGameSequence: EndGameSequenceController
+    )
+    {
+    }
+
     // The current game state is stored privately. Other modules should use
     // named transition methods instead of setting raw GameStates directly.
     private currentGameState: GameState | null = null;
@@ -32,6 +44,11 @@ class GameControllerController
     public get lives(): number
     {
         return this.currentLives;
+    }
+
+    public get state(): GameState | null
+    {
+        return this.currentGameState;
     }
 
     private setState(gameState: GameState): void
@@ -137,7 +154,7 @@ class GameControllerController
     /**
      * Main game loop entry point.
      *
-     * Phaser calls updateGame() in main.js once per frame, and updateGame()
+     * Phaser calls updateGame() in phaserGame.ts once per frame, and updateGame()
      * delegates here. GameController does not implement the gameplay itself:
      * it only decides which subsystem should run according to the current game
      * state.
@@ -193,14 +210,15 @@ class GameControllerController
      */
     private updateLoadIntroduction(): void
     {
-        ScreenManager.displayIntroduction();
+        this.screenManager.displayIntroduction();
 
         const controller = this;
+        const screenManager = this.screenManager;
 
         // If the user pressed a key, start a new game or display help.
         game.input.keyboard.onPressCallback = function(key: string)
         {
-            ScreenManager.removeIntroduction();
+            screenManager.removeIntroduction();
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
@@ -222,7 +240,7 @@ class GameControllerController
     {
         const controller = this;
 
-        ScreenManager.displayInstructions(function(): void
+        this.screenManager.displayInstructions(function(): void
         {
             controller.loadIntroduction();
         });
@@ -239,23 +257,23 @@ class GameControllerController
      */
     private updateEndLevel(): void
     {
-        const transitionResult = LevelTransition.update();
+        const transitionResult = this.levelTransition.update();
 
         if (transitionResult.scoreDelta > 0)
         {
             this.addScore(transitionResult.scoreDelta);
-            HUD.displayScore(this.score);
+            this.hud.displayScore(this.score);
         }
 
         if (transitionResult.airChanged)
-            HUD.displayAirLevel(Level.airLevel);
+            this.hud.displayAirLevel(this.level.airLevel);
 
         if (transitionResult.airCleared)
-            HUD.clearAirLevel();
+            this.hud.clearAirLevel();
 
         if (transitionResult.nextLevelLoaded)
         {
-            HUD.update(this.lives, this.score, this.hiScore, Level.level);
+            this.hud.update(this.lives, this.score, this.hiScore, this.level.level);
             this.startLevel();
         }
     }
@@ -267,25 +285,25 @@ class GameControllerController
      */
     private updateEndGame(): void
     {
-        const endGameResult = EndGameSequence.update(Level.airLevel);
+        const endGameResult = this.endGameSequence.update(this.level.airLevel);
 
         if (endGameResult.airDecreaseAmount > 0)
-            Level.decreaseAir(endGameResult.airDecreaseAmount);
+            this.level.decreaseAir(endGameResult.airDecreaseAmount);
 
         if (endGameResult.scoreDelta > 0)
         {
             this.addScore(endGameResult.scoreDelta);
-            HUD.displayScore(this.score);
+            this.hud.displayScore(this.score);
         }
 
         if (endGameResult.airChanged)
-            HUD.displayAirLevel(Level.airLevel);
+            this.hud.displayAirLevel(this.level.airLevel);
 
         if (endGameResult.airCleared)
-            HUD.clearAirLevel();
+            this.hud.clearAirLevel();
 
         if (endGameResult.airResetRequired)
-            Level.resetAirLevel();
+            this.level.resetAirLevel();
 
         if (endGameResult.finished)
             this.returnToIntroductionAfterEndGame();
@@ -299,9 +317,9 @@ class GameControllerController
         this.updateHiScoreIfNeeded();
         this.resetScoreAndLives();
         this.resetVisualSequences();
-        Level.resetGame();
-        HUD.update(this.lives, this.score, this.hiScore, Level.level);
-        HUD.displayAirLevel(Level.airLevel);
+        this.level.resetGame();
+        this.hud.update(this.lives, this.score, this.hiScore, this.level.level);
+        this.hud.displayAirLevel(this.level.airLevel);
         this.loadIntroduction();
     }
 
@@ -313,9 +331,9 @@ class GameControllerController
      */
     private resetVisualSequences(): void
     {
-        LevelTransition.reset();
-        EndGameSequence.reset();
-        LevelRevealSequence.reset();
+        this.levelTransition.reset();
+        this.endGameSequence.reset();
+        this.levelRevealSequence.reset();
     }
 
     /**
@@ -324,8 +342,8 @@ class GameControllerController
      */
     private updateLoadLevel(): void
     {
-        Level.load(Player);
-        HUD.update(this.lives, this.score, this.hiScore, Level.level);
+        this.level.load(this.player);
+        this.hud.update(this.lives, this.score, this.hiScore, this.level.level);
         this.displayLevel();
     }
 
@@ -337,7 +355,7 @@ class GameControllerController
      */
     private updateDisplayLevel(): void
     {
-        if (LevelRevealSequence.update())
+        if (this.levelRevealSequence.update())
             this.startLevel();
     }
 
@@ -351,7 +369,7 @@ class GameControllerController
     {
         const controller = this;
 
-        const revealStarted = Level.displayMonsters(function(): void
+        const revealStarted = this.level.displayMonsters(function(): void
         {
             controller.startPlaying();
         });
@@ -369,17 +387,18 @@ class GameControllerController
         this.updateHiScoreIfNeeded();
         this.resetScoreAndLives();
         this.resetVisualSequences();
-        Level.resetGame();
-        HUD.update(this.lives, this.score, this.hiScore, Level.level);
-        ScreenManager.displayGameOver();
+        this.level.resetGame();
+        this.hud.update(this.lives, this.score, this.hiScore, this.level.level);
+        this.screenManager.displayGameOver();
 
         const controller = this;
+        const screenManager = this.screenManager;
 
         // If the user pressed a key, show the introduction again.
         game.input.keyboard.onPressCallback = function()
         {
             game.input.keyboard.onPressCallback = null;
-            ScreenManager.removeGameOver();
+            screenManager.removeGameOver();
             controller.loadIntroduction();
         };
 
@@ -398,21 +417,21 @@ class GameControllerController
     private updatePlaying(): void
     {
         this.updateAirLevelDuringGameplay();
-        HUD.displayBonusMan(Level.bonusMan);
+        this.hud.displayBonusMan(this.level.bonusMan);
 
         // updateAirLevelDuringGameplay() can kill the player and leave PLAYING during this frame.
         // Preserve the previous behaviour: monsters are asked to update, but Level
         // skips their movement if gameplay has already stopped.
-        Level.updateMonsters(this.isPlaying());
+        this.level.updateMonsters(this.isPlaying());
 
         if (!this.isPlaying()) return;
 
-        const playerResult = Player.update(Level);
+        const playerResult = this.player.update(this.level);
 
         if (playerResult.keyCollected)
         {
             this.addScore(LevelConstants.KEY_SCORE_INCREMENT);
-            HUD.displayScore(this.score);
+            this.hud.displayScore(this.score);
         }
 
         if (playerResult.playerKilled)
@@ -423,7 +442,7 @@ class GameControllerController
 
         if (playerResult.exitReached)
         {
-            if (Level.isLastLevel())
+            if (this.level.isLastLevel())
                 this.endGame();
             else
                 this.endLevel();
@@ -436,18 +455,18 @@ class GameControllerController
      */
     private updateAirLevelDuringGameplay(): void
     {
-        const airDecreaseAmount = HUD.consumeAirDecreaseAmount();
+        const airDecreaseAmount = this.hud.consumeAirDecreaseAmount();
 
         if (airDecreaseAmount > 0)
-            Level.decreaseAir(airDecreaseAmount);
+            this.level.decreaseAir(airDecreaseAmount);
 
-        if (Level.airLevel <= 0)
+        if (this.level.airLevel <= 0)
         {
             this.startPlayerDeath();
             return;
         }
 
-        HUD.displayAirLevel(Level.airLevel);
+        this.hud.displayAirLevel(this.level.airLevel);
     }
 
     /**
@@ -459,7 +478,7 @@ class GameControllerController
     private startPlayerDeath(): void
     {
         this.killPlayer();
-        Player.kill((): void =>
+        this.player.kill((): void =>
         {
             this.finishPlayerDeath();
         });
@@ -472,9 +491,9 @@ class GameControllerController
     {
         this.consumeBonusManOrLife();
 
-        HUD.displayLives(this.lives);
-        Level.resetAirLevel();
-        HUD.displayAirLevel(Level.airLevel);
+        this.hud.displayLives(this.lives);
+        this.level.resetAirLevel();
+        this.hud.displayAirLevel(this.level.airLevel);
 
         if (this.hasNoLives())
             this.showGameOver();
@@ -487,9 +506,9 @@ class GameControllerController
      */
     private consumeBonusManOrLife(): void
     {
-        if (Level.consumeBonusMan())
+        if (this.level.consumeBonusMan())
         {
-            HUD.hideBonusMan();
+            this.hud.hideBonusMan();
         }
         else
         {
@@ -499,4 +518,3 @@ class GameControllerController
 
 }
 
-export const GameController = new GameControllerController();

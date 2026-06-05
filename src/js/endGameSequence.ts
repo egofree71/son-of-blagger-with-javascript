@@ -1,5 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenOverlay } from "./screenOverlay.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
 
 type EndGamePhase =
     | typeof LevelConstants.END_GAME_STEP_CONVERT_AIR
@@ -35,8 +35,12 @@ export interface EndGameSequenceResult
  * It reports what happened during the current frame through EndGameSequenceResult,
  * and GameController applies the corresponding gameplay/runtime consequences.
  */
-class EndGameSequenceController
+export class EndGameSequenceController
 {
+    constructor(private readonly screenOverlay: ScreenOverlayController)
+    {
+    }
+
     // Current phase of the final sequence.
     private phase: EndGamePhase = LevelConstants.END_GAME_STEP_CONVERT_AIR;
 
@@ -108,7 +112,7 @@ class EndGameSequenceController
         this.phase = LevelConstants.END_GAME_STEP_SCALE_MESSAGE;
 
         // Draw a black rectangle.
-        ScreenOverlay.drawFullScreen();
+        this.screenOverlay.drawFullScreen();
 
         var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
         font.setText (LevelConstants.END_GAME_MESSAGE_TEXT, true, 1 ,18);
@@ -151,7 +155,7 @@ class EndGameSequenceController
 
         if (this.counter == 0)
         {
-            ScreenOverlay.clearUpperRectangle();
+            this.screenOverlay.clearUpperRectangle();
 
             if (this.congratulationsImage)
                 this.congratulationsImage.destroy();
@@ -178,4 +182,3 @@ class EndGameSequenceController
     }
 }
 
-export const EndGameSequence = new EndGameSequenceController();

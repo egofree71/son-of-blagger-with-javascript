@@ -1,6 +1,6 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { ScreenOverlay } from "./screenOverlay.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
 
 /**
  * ScreenManager owns the non-gameplay screens.
@@ -9,8 +9,12 @@ import { ScreenOverlay } from "./screenOverlay.ts";
  * a level. Moving them here keeps Level focused on actual level management
  * while preserving the original title/help/game-over behaviour.
  */
-class ScreenManagerController
+export class ScreenManagerController
 {
+    constructor(private readonly screenOverlay: ScreenOverlayController)
+    {
+    }
+
     // Title screen objects.
     private introductionLogo: any = null;
     private fontIntroduction: any = null;
@@ -26,7 +30,7 @@ class ScreenManagerController
     public displayIntroduction(): void
     {
         // Draw a black rectangle behind the title.
-        ScreenOverlay.drawFullCamera();
+        this.screenOverlay.drawFullCamera();
 
         // Display the title.
         this.introductionLogo = game.add.sprite(LevelConstants.TITLE_X, LevelConstants.TITLE_Y, LevelConstants.SPRITE_TITLE);
@@ -64,7 +68,7 @@ class ScreenManagerController
     public displayInstructions(onExit: () => void): void
     {
         // Draw a black rectangle.
-        ScreenOverlay.drawFullScreen();
+        this.screenOverlay.drawFullScreen();
 
         var font = game.add.retroFont(LevelConstants.FONT_BLAGGER, 16, 16, Phaser.RetroFont.TEXT_SET2);
         font.setText ("Players control Slippery Sid, who is an\n" +
@@ -88,11 +92,13 @@ class ScreenManagerController
         image.tint = LevelConstants.HELP_TEXT_COLOR;
         image.fixedToCamera = true;
 
+        const screenOverlay = this.screenOverlay;
+
         // If the user pressed a key, go back to the introduction screen.
         game.input.keyboard.onPressCallback = function(key: string)
         {
             image.destroy();
-            ScreenOverlay.clearUpperRectangle();
+            screenOverlay.clearUpperRectangle();
             game.input.keyboard.onPressCallback = null;
 
             onExit();
@@ -121,4 +127,3 @@ class ScreenManagerController
     }
 }
 
-export const ScreenManager = new ScreenManagerController();
