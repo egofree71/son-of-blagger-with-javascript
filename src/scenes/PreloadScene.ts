@@ -1,5 +1,8 @@
 import { Scene } from "phaser";
 
+// PreloadScene is the Phaser 4 replacement for the old AssetLoader entry point.
+// For now it only loads a couple of visual test assets; later it will load the tilemap,
+// tilesets, spritesheets, HUD graphics and bitmap font used by the real game.
 export class PreloadScene extends Scene
 {
     constructor()
@@ -26,6 +29,8 @@ export class PreloadScene extends Scene
         const bar = this.add.rectangle(centerX - 158, centerY, 4, 18, 0xffffff)
             .setOrigin(0, 0.5);
 
+        // The loading bar is intentionally basic. Its only role is to prove that the
+        // Phaser 4 loader events are wired correctly before we start loading the real map.
         this.load.on("progress", (progress: number) => {
             bar.width = 4 + 316 * progress;
         });
@@ -36,13 +41,14 @@ export class PreloadScene extends Scene
         });
 
         // Assets are still served from public/assets by Vite.
-        // This validates that Phaser 4 can load from the existing asset folder.
+        // This validates that the modern Phaser runtime can reuse the existing asset folder.
         this.load.image("title", "assets/sprites/title.png");
         this.load.image("player-preview", "assets/sprites/blagger.png");
     }
 
     create(): void
     {
+        // Once the test assets are available, hand control to the first gameplay prototype scene.
         this.scene.start("GameScene");
     }
 }

@@ -1,5 +1,8 @@
 import { Scene } from "phaser";
 
+// HUDScene is a temporary overlay scene.
+// It currently displays fixed placeholder values; later it should receive real score, lives,
+// level, hi-score, air and bonus-man updates from GameScene or from a small game-state model.
 export class HUDScene extends Scene
 {
     constructor()
@@ -9,6 +12,8 @@ export class HUDScene extends Scene
 
     create(): void
     {
+        // Draw a simple black strip matching the old lower status area.
+        // This helps validate that a Phaser 4 overlay scene can cover the bottom HUD region.
         this.add.rectangle(320, 384, 640, 32, 0x000000)
             .setOrigin(0.5);
 

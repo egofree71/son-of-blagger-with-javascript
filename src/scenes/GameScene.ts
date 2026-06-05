@@ -1,8 +1,11 @@
-import { Scene } from "phaser";
+import { GameObjects, Scene } from "phaser";
 
+// GameScene will become the main porting target for level display and gameplay.
+// At this shell stage it does not contain real gameplay yet: it only proves that Phaser 4
+// can create a scene, display existing assets and run an update loop.
 export class GameScene extends Scene
 {
-    private marker: any;
+    private marker!: GameObjects.Rectangle;
     private markerDirection = 1;
 
     constructor()
@@ -20,6 +23,8 @@ export class GameScene extends Scene
             color: "#ffffff"
         }).setOrigin(0.5);
 
+        // The title and player images are deliberately only smoke-test assets here.
+        // The next migration step should replace this test layout with the real tilemap display.
         this.add.image(320, 92, "title")
             .setOrigin(0.5)
             .setScale(2);
@@ -40,9 +45,10 @@ export class GameScene extends Scene
             color: "#cccccc"
         }).setOrigin(0.5);
 
+        // Simple moving marker used to confirm that the Phaser update loop is active.
         this.marker = this.add.rectangle(320, 340, 96, 8, 0xffffff);
 
-        // HUDScene runs in parallel, like a future overlay HUD.
+        // HUDScene runs in parallel, like the future overlay HUD.
         this.scene.launch("HUDScene");
     }
 

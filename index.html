@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Son of Blagger — Phaser 4 Prototype</title>
     <link rel="icon" href="data:,">
+
+    <!-- The prototype uses Phaser from npm through Vite, so the old Phaser 2 script is not loaded here. -->
     <script type="module" src="/src/main.ts"></script>
+
     <style>
         html,
         body {
@@ -22,6 +25,7 @@
             overflow: hidden;
         }
 
+        /* Keep the retro pixel-art look when the browser scales the canvas. */
         #game-container canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
