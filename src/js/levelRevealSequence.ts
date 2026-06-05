@@ -1,5 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
 
 type LevelRevealPhase =
     | typeof LevelConstants.DISPLAY_STEP_INITIALIZE
@@ -23,7 +23,7 @@ type LevelRevealPhase =
  */
 export class LevelRevealSequenceController
 {
-    constructor(private readonly screenOverlay: ScreenOverlayController = ScreenOverlay)
+    constructor(private readonly screenOverlay: ScreenOverlayController)
     {
     }
 
@@ -134,4 +134,3 @@ export class LevelRevealSequenceController
     }
 }
 
-export const LevelRevealSequence = new LevelRevealSequenceController();

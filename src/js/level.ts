@@ -312,9 +312,9 @@ export class LevelController
     /**
      * Load the objects needed for a given level.
      *
-     * The player instance is passed in explicitly so Level no longer imports the
-     * Player singleton. Level still controls the level-loading order, which is
-     * important for preserving the previous runtime behaviour.
+     * The player instance is passed in explicitly so Level does not import
+     * PlayerController directly. Level still controls the level-loading order,
+     * which is important for preserving the previous runtime behaviour.
      */
     load(player: LevelPlayer): void
     {
@@ -327,4 +327,3 @@ export class LevelController
 
 }
 
-export const Level = new LevelController();

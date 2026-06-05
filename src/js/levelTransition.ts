@@ -1,7 +1,7 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { Player, type PlayerController } from "./player.ts";
-import { Level, type LevelController } from "./level.ts";
+import type { PlayerController } from "./player.ts";
+import type { LevelController } from "./level.ts";
 
 const PHASE_PREPARE_NEXT_LEVEL = 1;
 const PHASE_HIDE_MONSTERS = 2;
@@ -51,8 +51,8 @@ export interface LevelTransitionResult
 export class LevelTransitionController
 {
     constructor(
-        private readonly level: LevelController = Level,
-        private readonly player: PlayerController = Player
+        private readonly level: LevelController,
+        private readonly player: PlayerController
     )
     {
     }
@@ -384,5 +384,4 @@ export class LevelTransitionController
     }
 }
 
-export const LevelTransition = new LevelTransitionController();
 

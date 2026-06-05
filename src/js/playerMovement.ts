@@ -437,4 +437,3 @@ export class PlayerMovementController
     }
 }
 
-export const PlayerMovement = new PlayerMovementController();

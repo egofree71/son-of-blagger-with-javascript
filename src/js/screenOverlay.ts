@@ -106,4 +106,3 @@ export class ScreenOverlayController
     }
 }
 
-export const ScreenOverlay = new ScreenOverlayController();

@@ -25,7 +25,7 @@ The engineering goal is to preserve the original gameplay behaviour while making
 - Development/build tool: **Vite**.
 - Type checking: `tsc --noEmit` through `npm run typecheck`.
 - Module system: TypeScript ES modules handled by Vite.
-- Main architecture style: TypeScript ES modules, an explicit `Runtime` composition root, class-based runtime controllers, compatibility singleton exports, and a small legacy Phaser runtime context kept on `window`.
+- Main architecture style: TypeScript ES modules, an explicit `Runtime` composition root, class-based runtime controllers, constructor-injected runtime dependencies, and a small legacy Phaser runtime context kept on `window`.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
@@ -35,7 +35,7 @@ Phaser 2.3 is still loaded as a classic browser script from `public/js/phaser.mi
 
 The game source files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
 
-The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Older singleton exports such as `GameController`, `Level`, `Player`, and `HUD` still exist as a compatibility bridge, but `main.ts` no longer drives the game through those individual singleton exports. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
+The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Runtime controllers such as `GameControllerController`, `LevelController`, `PlayerController`, and `HUDController` are instantiated and wired together there. The older runtime singleton exports such as `GameController`, `Level`, `Player`, and `HUD` have been removed to avoid accidentally driving stale controller instances from modules or browser-console helpers. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
 The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
 
@@ -169,9 +169,9 @@ All game files after Phaser are imported through TypeScript ES modules starting 
 
 The project is organized around ES module exports defined under `src/js`.
 
-### Runtime controllers and compatibility singleton exports
+### Runtime controllers and explicit runtime composition
 
-The following runtime objects are implemented as exported controller classes. Most files still also export one compatibility singleton instance, but the active game runtime is now composed by `Runtime` in `src/js/gameRuntime.ts`:
+The following runtime objects are implemented as exported controller classes. They are no longer exported as pre-created singleton instances; the active game runtime is composed by `Runtime` in `src/js/gameRuntime.ts`:
 
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
@@ -185,31 +185,27 @@ The following runtime objects are implemented as exported controller classes. Mo
 - `PlayerInteractions`: key collection, deadly collision checks, and exit detection.
 - `PlayerDeathSequence`: visual death animation only.
 - `HUD`: status-area display and HUD-specific counters.
+- `GameInitializer`: runtime startup after Phaser asset loading.
 
-The controller classes can be instantiated explicitly:
+The controller classes are instantiated explicitly in `GameRuntime`, for example:
 
 ```ts
 const level = new LevelController();
-const player = new PlayerController();
 const hud = new HUDController();
+const player = new PlayerController(
+    playerMovement,
+    playerInteractions,
+    playerDeathSequence
+);
 ```
 
-The compatibility singleton exports still exist:
-
-```ts
-export const Level = new LevelController();
-export const Player = new PlayerController();
-export const HUD = new HUDController();
-```
-
-`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance and wires the runtime controllers together. This keeps the old imports available while allowing the real game loop to move toward explicit runtime instances.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance and wires the runtime controllers together. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
 The following modules still use object-literal or service-style exports:
 
 - `AssetLoader`: Phaser asset preloading.
-- `GameInitializer`: compatibility singleton for runtime startup after asset loading; the active game uses `Runtime.gameInitializer`.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `CollisionDetector`: generic manual tile/rectangle collision checks.
 - `Util`: shared non-collision helper functions.
@@ -235,26 +231,27 @@ Some files also export derived TypeScript types, for example state or direction 
 
 ## Dependency direction after the runtime dependency refactoring
 
-`GameController` is now the main orchestration hub. It still imports several runtime objects, but this is intentional: it owns the overall game flow.
+`GameController` is still the main orchestration hub, but its runtime dependencies are now supplied through its constructor by `GameRuntime`. It imports controller types, not pre-created runtime singleton instances.
 
 Several subsystems were decoupled from each other:
 
 - `HUD` no longer imports `Level`, `Player`, or `GameController`. Runtime values are passed in by callers.
-- `PlayerInteractions` no longer imports `HUD`, `GameController`, or the global `Level` singleton. It returns a result object and receives a small `PlayerInteractionContext`.
+- `PlayerInteractions` no longer imports `HUD`, `GameController`, or `LevelController` directly. It returns a result object and receives a small `PlayerInteractionContext`.
 - `PlayerDeathSequence` no longer imports `HUD`, `Level`, or `GameController`. It only runs the visual death animation and invokes a callback when finished.
 - `EndGameSequence` no longer imports `HUD`, `Level`, or `GameController`. It returns an `EndGameSequenceResult`.
 - `LevelRevealSequence` no longer changes the global game state. It returns `true` when finished.
 - `ScreenManager` no longer changes the global game state. It receives callbacks for screen-exit actions.
 - `Monster` no longer imports `Level` or `GameController`. `Level` owns the monster animation cadence and passes each monster the information it needs.
 - `CollisionDetector` no longer knows about monsters or the level exit. Level-owned collision checks are now handled by `Level`.
-- `Level` no longer imports the global `Player` singleton. `Level.load()` receives a small `LevelPlayer` interface.
+- `Level` no longer imports `PlayerController` directly. `Level.load()` receives a small `LevelPlayer` interface.
 - `Level` no longer delegates to visual sequence objects such as `LevelRevealSequence`, `LevelTransition`, or `EndGameSequence`.
+- `LevelTransition` receives `Level` and `Player` through its constructor. It still coordinates both during the end-of-level transition, because that sequence moves the player, advances level state, converts air, refills air, hides monsters, and loads the next level.
+- `Player` receives `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence` through its constructor. This is acceptable because those modules are specialized parts of player behaviour.
 
 Some couplings remain intentionally:
 
-- `GameController` coordinates the main runtime singletons.
-- `LevelTransition` still uses `Level` and `Player`, because the end-of-level transition moves the player, advances level state, converts air, refills air, hides monsters, and loads the next level. This may be a future candidate for a context-based refactor, but it is not urgent.
-- `Player` still owns and calls `PlayerMovement`, `PlayerInteractions`, and `PlayerDeathSequence`. This is acceptable because those modules are specialized parts of player behaviour.
+- `GameRuntime` wires together the active runtime graph.
+- `GameController` coordinates the injected runtime controllers during the main game flow.
 - Phaser globals are still directly accessed by several modules.
 
 The goal is not to create a pure dependency-injection framework. The goal is to reduce the most fragile cross-module dependencies while keeping the retro-game code readable.
@@ -552,7 +549,7 @@ Important methods:
 - `collidesWithExitArea(...)`;
 - `hideMonstersWithReverseExplosions()`.
 
-`Level.load(player)` receives a `LevelPlayer` interface rather than importing the global `Player` singleton directly.
+`Level.load(player)` receives a `LevelPlayer` interface rather than importing `PlayerController` directly.
 
 `Level` owns monster and exit collisions because those objects belong to the level. `CollisionDetector` remains focused on generic tile/rectangle checks.
 
@@ -1061,7 +1058,7 @@ These conventions are partly represented by `LevelConstants` and `MonsterConstan
 
 The code is now much less coupled than the original global-object version. Several visual and gameplay subsystems return result objects or receive small context interfaces instead of importing the whole runtime.
 
-However, the architecture still uses singleton instances, and `GameController` remains the orchestration hub. This is acceptable for the current Phaser 2.3 remake. Avoid forcing dependency injection everywhere unless it makes the code clearly simpler.
+However, the architecture still has one active runtime instance, exported as `Runtime`, and `GameController` remains the orchestration hub. This is acceptable for the current Phaser 2.3 remake. Avoid forcing dependency injection everywhere unless it makes the code clearly simpler.
 
 ### Avoid bureaucratic getters and setters
 

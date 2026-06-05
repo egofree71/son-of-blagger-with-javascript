@@ -1,6 +1,6 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
 
 /**
  * ScreenManager owns the non-gameplay screens.
@@ -11,7 +11,7 @@ import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts"
  */
 export class ScreenManagerController
 {
-    constructor(private readonly screenOverlay: ScreenOverlayController = ScreenOverlay)
+    constructor(private readonly screenOverlay: ScreenOverlayController)
     {
     }
 
@@ -127,4 +127,3 @@ export class ScreenManagerController
     }
 }
 
-export const ScreenManager = new ScreenManagerController();

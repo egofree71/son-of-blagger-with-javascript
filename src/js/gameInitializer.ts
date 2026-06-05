@@ -1,9 +1,9 @@
-import { GameController, type GameControllerController } from "./gameController.ts";
+import type { GameControllerController } from "./gameController.ts";
 import { Util } from "./util.ts";
-import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
-import { Player, type PlayerController } from "./player.ts";
-import { HUD, type HUDController } from "./HUD.ts";
-import { Level, type LevelController } from "./level.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
+import type { PlayerController } from "./player.ts";
+import type { HUDController } from "./HUD.ts";
+import type { LevelController } from "./level.ts";
 
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
@@ -21,11 +21,11 @@ import { Level, type LevelController } from "./level.ts";
 export class GameInitializerController
 {
     constructor(
-        private readonly gameController: GameControllerController = GameController,
-        private readonly screenOverlay: ScreenOverlayController = ScreenOverlay,
-        private readonly player: PlayerController = Player,
-        private readonly hud: HUDController = HUD,
-        private readonly level: LevelController = Level
+        private readonly gameController: GameControllerController,
+        private readonly screenOverlay: ScreenOverlayController,
+        private readonly player: PlayerController,
+        private readonly hud: HUDController,
+        private readonly level: LevelController
     )
     {
     }
@@ -191,4 +191,3 @@ export class GameInitializerController
     }
 }
 
-export const GameInitializer = new GameInitializerController();

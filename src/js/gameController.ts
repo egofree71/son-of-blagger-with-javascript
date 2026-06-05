@@ -1,23 +1,23 @@
 import { GameStates, type GameState } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenManager, type ScreenManagerController } from "./screenManager.ts";
-import { EndGameSequence, type EndGameSequenceController } from "./endGameSequence.ts";
-import { LevelRevealSequence, type LevelRevealSequenceController } from "./levelRevealSequence.ts";
-import { LevelTransition, type LevelTransitionController } from "./levelTransition.ts";
-import { HUD, type HUDController } from "./HUD.ts";
-import { Player, type PlayerController } from "./player.ts";
-import { Level, type LevelController } from "./level.ts";
+import type { ScreenManagerController } from "./screenManager.ts";
+import type { EndGameSequenceController } from "./endGameSequence.ts";
+import type { LevelRevealSequenceController } from "./levelRevealSequence.ts";
+import type { LevelTransitionController } from "./levelTransition.ts";
+import type { HUDController } from "./HUD.ts";
+import type { PlayerController } from "./player.ts";
+import type { LevelController } from "./level.ts";
 
 export class GameControllerController
 {
     constructor(
-        private readonly screenManager: ScreenManagerController = ScreenManager,
-        private readonly level: LevelController = Level,
-        private readonly player: PlayerController = Player,
-        private readonly hud: HUDController = HUD,
-        private readonly levelRevealSequence: LevelRevealSequenceController = LevelRevealSequence,
-        private readonly levelTransition: LevelTransitionController = LevelTransition,
-        private readonly endGameSequence: EndGameSequenceController = EndGameSequence
+        private readonly screenManager: ScreenManagerController,
+        private readonly level: LevelController,
+        private readonly player: PlayerController,
+        private readonly hud: HUDController,
+        private readonly levelRevealSequence: LevelRevealSequenceController,
+        private readonly levelTransition: LevelTransitionController,
+        private readonly endGameSequence: EndGameSequenceController
     )
     {
     }
@@ -513,4 +513,3 @@ export class GameControllerController
 
 }
 
-export const GameController = new GameControllerController();

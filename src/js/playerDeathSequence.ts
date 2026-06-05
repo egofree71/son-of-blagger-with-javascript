@@ -54,4 +54,3 @@ export class PlayerDeathSequenceController
     }
 }
 
-export const PlayerDeathSequence = new PlayerDeathSequenceController();

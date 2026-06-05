@@ -12,10 +12,10 @@ export interface PlayerInteractionResult
 /**
  * Level-owned operations needed by player interactions.
  *
- * PlayerInteractions only needs to know that these operations exist; it should
- * not import the global Level singleton directly. GameController passes the
- * current Level object through Player.update(), which keeps the dependency
- * direction explicit and avoids a Player -> PlayerInteractions -> Level cycle.
+ * PlayerInteractions only needs to know that these operations exist; it does
+ * not import LevelController directly. GameController passes the current level
+ * instance through Player.update(), which keeps the dependency direction
+ * explicit and avoids a Player -> PlayerInteractions -> Level cycle.
  */
 export interface PlayerInteractionContext
 {
@@ -139,4 +139,3 @@ export class PlayerInteractionsController
     }
 }
 
-export const PlayerInteractions = new PlayerInteractionsController();

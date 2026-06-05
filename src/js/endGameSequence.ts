@@ -1,5 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
+import type { ScreenOverlayController } from "./screenOverlay.ts";
 
 type EndGamePhase =
     | typeof LevelConstants.END_GAME_STEP_CONVERT_AIR
@@ -37,7 +37,7 @@ export interface EndGameSequenceResult
  */
 export class EndGameSequenceController
 {
-    constructor(private readonly screenOverlay: ScreenOverlayController = ScreenOverlay)
+    constructor(private readonly screenOverlay: ScreenOverlayController)
     {
     }
 
@@ -182,4 +182,3 @@ export class EndGameSequenceController
     }
 }
 
-export const EndGameSequence = new EndGameSequenceController();

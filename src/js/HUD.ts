@@ -204,4 +204,3 @@ export class HUDController
     }
 }
 
-export const HUD = new HUDController();
