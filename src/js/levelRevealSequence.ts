@@ -1,5 +1,5 @@
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenOverlay } from "./screenOverlay.ts";
+import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
 
 type LevelRevealPhase =
     | typeof LevelConstants.DISPLAY_STEP_INITIALIZE
@@ -23,6 +23,10 @@ type LevelRevealPhase =
  */
 export class LevelRevealSequenceController
 {
+    constructor(private readonly screenOverlay: ScreenOverlayController = ScreenOverlay)
+    {
+    }
+
     // Current rectangle dimensions during the reveal.
     private rectangleHeight: number = 0;
     private rectangleWidth: number = 0;
@@ -108,7 +112,7 @@ export class LevelRevealSequenceController
      */
     private drawUpperRectangle(): void
     {
-        ScreenOverlay.drawUpperRectangle(0, 0, this.rectangleWidth, this.rectangleHeight);
+        this.screenOverlay.drawUpperRectangle(0, 0, this.rectangleWidth, this.rectangleHeight);
     }
 
     /**
@@ -116,7 +120,7 @@ export class LevelRevealSequenceController
      */
     private drawLowerRectangle(): void
     {
-        ScreenOverlay.drawLowerRectangle(0, game.camera.height - this.rectangleHeight, this.rectangleWidth, this.rectangleHeight);
+        this.screenOverlay.drawLowerRectangle(0, game.camera.height - this.rectangleHeight, this.rectangleWidth, this.rectangleHeight);
     }
 
     /**
@@ -124,7 +128,7 @@ export class LevelRevealSequenceController
      */
     private finishReveal(): boolean
     {
-        ScreenOverlay.clearAll();
+        this.screenOverlay.clearAll();
         this.reset();
         return true;
     }
