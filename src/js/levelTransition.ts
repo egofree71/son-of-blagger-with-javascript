@@ -1,7 +1,7 @@
 import { LevelConstants } from "./levelConstants.ts";
 import { Util } from "./util.ts";
-import { Player } from "./player.ts";
-import { Level } from "./level.ts";
+import { Player, type PlayerController } from "./player.ts";
+import { Level, type LevelController } from "./level.ts";
 
 const PHASE_PREPARE_NEXT_LEVEL = 1;
 const PHASE_HIDE_MONSTERS = 2;
@@ -50,6 +50,13 @@ export interface LevelTransitionResult
  */
 export class LevelTransitionController
 {
+    constructor(
+        private readonly level: LevelController = Level,
+        private readonly player: PlayerController = Player
+    )
+    {
+    }
+
     // 1) Increase Level.level and read the player spawn position of the next level from the Tiled map.
     readonly PHASE_PREPARE_NEXT_LEVEL = PHASE_PREPARE_NEXT_LEVEL;
 
@@ -165,9 +172,9 @@ export class LevelTransitionController
      */
     private prepareNextLevel(): void
     {
-        Level.advanceToNextLevel();
+        this.level.advanceToNextLevel();
 
-        var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, Level.level, LevelConstants.OBJECT_LAYER_PLAYER);
+        var results = Util.findObjectsByProperty(map, LevelConstants.TILED_PROPERTY_LEVEL, this.level.level, LevelConstants.OBJECT_LAYER_PLAYER);
         this.nextPlayerPositionX = results[0].x;
         this.nextPlayerPositionY = results[0].y - LevelConstants.PLAYER_TILED_Y_OFFSET;
 
@@ -187,7 +194,7 @@ export class LevelTransitionController
     {
         game.stage.backgroundColor = LevelConstants.STAGE_COLOR_TRANSITION;
 
-        Level.hideMonstersWithReverseExplosions();
+        this.level.hideMonstersWithReverseExplosions();
 
         this.phase = this.PHASE_RESTORE_BACKGROUND;
     }
@@ -217,8 +224,8 @@ export class LevelTransitionController
      */
     private fineAlignPlayer(): void
     {
-        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
-        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
+        var horizontalDistance = this.player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = this.player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         // Preserve the original behaviour: leave this phase as soon as one axis is aligned.
         if (verticalDistance == 0 || horizontalDistance == 0)
@@ -231,16 +238,16 @@ export class LevelTransitionController
         if (Math.abs(verticalDistance) < Math.abs(horizontalDistance))
         {
             if (verticalDistance > 0)
-                Player.moveBodyY(-1);
+                this.player.moveBodyY(-1);
             else
-                Player.moveBodyY(1);
+                this.player.moveBodyY(1);
         }
         else
         {
             if (horizontalDistance > 0)
-                Player.moveBodyX(-1);
+                this.player.moveBodyX(-1);
             else
-                Player.moveBodyX(1);
+                this.player.moveBodyX(1);
         }
     }
 
@@ -255,9 +262,9 @@ export class LevelTransitionController
     {
         const result = this.createResult();
 
-        if (Level.airLevel > 0)
+        if (this.level.airLevel > 0)
         {
-            Level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
+            this.level.decreaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
             result.scoreDelta = LevelConstants.END_LEVEL_TRANSITION_SCORE_INCREMENT;
             result.airChanged = true;
         }
@@ -291,8 +298,8 @@ export class LevelTransitionController
 
         this.counter = this.MOVE_DELAY;
 
-        var horizontalDistance = Player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
-        var verticalDistance = Player.getVerticalDistanceFrom(this.nextPlayerPositionY);
+        var horizontalDistance = this.player.getHorizontalDistanceFrom(this.nextPlayerPositionX);
+        var verticalDistance = this.player.getVerticalDistanceFrom(this.nextPlayerPositionY);
 
         if (verticalDistance == 0 && horizontalDistance == 0)
         {
@@ -304,29 +311,29 @@ export class LevelTransitionController
         {
             if (Math.abs(horizontalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.setBodyX(this.nextPlayerPositionX);
+                this.player.setBodyX(this.nextPlayerPositionX);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (horizontalDistance > 0)
-                Player.moveBodyX(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
+                this.player.moveBodyX(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.moveBodyX(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
+                this.player.moveBodyX(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
         else
         {
             if (Math.abs(verticalDistance) < LevelConstants.END_LEVEL_TRANSITION_TILE_STEP)
             {
-                Player.setBodyY(this.nextPlayerPositionY);
+                this.player.setBodyY(this.nextPlayerPositionY);
                 this.phase = this.PHASE_REFILL_AIR;
                 return;
             }
 
             if (verticalDistance > 0)
-                Player.moveBodyY(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
+                this.player.moveBodyY(-LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
             else
-                Player.moveBodyY(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
+                this.player.moveBodyY(LevelConstants.END_LEVEL_TRANSITION_TILE_STEP);
         }
     }
 
@@ -339,9 +346,9 @@ export class LevelTransitionController
     {
         const result = this.createResult();
 
-        if (Level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
+        if (this.level.airLevel < LevelConstants.DEFAULT_AIR_LEVEL)
         {
-            Level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
+            this.level.increaseAir(LevelConstants.END_LEVEL_TRANSITION_AIR_DECREMENT);
             result.airChanged = true;
         }
         else
@@ -365,10 +372,10 @@ export class LevelTransitionController
     {
         const result = this.createResult();
 
-        Level.load(Player);
+        this.level.load(this.player);
 
         // On every new level, the user gets a bonus man.
-        Level.enableBonusMan();
+        this.level.enableBonusMan();
 
         this.reset();
         result.nextLevelLoaded = true;

@@ -43,7 +43,7 @@ export interface PlayerInteractionContext
  * implementation, which performed the interaction checks with those same values
  * after applying the one-pixel movement.
  */
-class PlayerInteractionsController
+export class PlayerInteractionsController
 {
     // Collision rectangle offsets used when collecting keys.
     private readonly KEY_LEFT_OFFSET = 7;
