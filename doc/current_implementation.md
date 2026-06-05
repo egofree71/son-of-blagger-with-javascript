@@ -33,11 +33,11 @@ The engineering goal is to preserve the original gameplay behaviour while making
 
 Phaser 2.3 is still loaded as a classic browser script from `public/js/phaser.min.js`. The current game code expects the global `Phaser` object. Phaser is not imported from npm.
 
-The game source files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
+The game source files live under `src/js` and are imported through `src/js/phaserGame.ts`, which is loaded from the Vite entry point `src/main.ts`.
 
 The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Runtime controllers such as `GameControllerController`, `LevelController`, `PlayerController`, and `HUDController` are instantiated and wired together there. The older runtime singleton exports such as `GameController`, `Level`, `Player`, and `HUD` have been removed to avoid accidentally driving stale controller instances from modules or browser-console helpers. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
-The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
+The remaining Phaser runtime globals are created in `src/js/phaserGame.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
 
 - `game`
 - `map`
@@ -132,6 +132,8 @@ vite.config.js
 src/
  main.ts
  js/
+  phaserGame.ts
+  gameRuntime.ts
   ...game runtime modules...
  types/
   globals.d.ts
@@ -148,7 +150,7 @@ doc/
 
 `public/` is still used for files that must be copied unchanged to the production `dist/` folder. This currently includes Phaser 2.3 and all Phaser-loaded game assets.
 
-The active Vite entry point is `src/main.ts`. Any old `src/main.js` file is obsolete and should not be kept.
+The active Vite entry point is `src/main.ts`. It should stay tiny and import `src/js/phaserGame.ts`. Any old `src/main.js` file is obsolete and should not be kept. The old `src/js/main.ts` bootstrap name is also obsolete; the Phaser-specific bootstrap lives in `src/js/phaserGame.ts` to avoid confusion between the two entry points.
 
 ---
 
@@ -199,7 +201,7 @@ const player = new PlayerController(
 );
 ```
 
-`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, and exposes the Phaser lifecycle façade used by `main.ts`: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance, wires the runtime controllers together, and exposes the Phaser lifecycle façade used by `src/js/phaserGame.ts`: `Runtime.preload()`, `Runtime.create()`, and `Runtime.update()`. Browser-console helpers should import `Runtime`, not older controller singleton names.
 
 ### Service-style modules
 
@@ -318,7 +320,7 @@ LOAD_INTRODUCTION
 
 ## Main game loop
 
-`src/js/main.ts` creates the Phaser game instance:
+`src/js/phaserGame.ts` creates the Phaser game instance:
 
 ```ts
 var game = new Phaser.Game(640, 400, Phaser.AUTO, '', {
@@ -336,7 +338,7 @@ updateGame()
    -> Runtime.gameController.update()
 ```
 
-`Runtime.update()` is the lifecycle façade used by `main.ts`; `Runtime.gameController.update()` then dispatches to one method per game state.
+`Runtime.update()` is the lifecycle façade used by `src/js/phaserGame.ts`; `Runtime.gameController.update()` then dispatches to one method per game state.
 
 During normal gameplay, the preserved update order is:
 
@@ -357,15 +359,15 @@ The update order is gameplay-sensitive and should be changed only with care.
 
 This is the Vite module entry point referenced by `index.html`.
 
-It imports `src/js/main.ts`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
+It imports `src/js/phaserGame.ts`, which creates the Phaser game instance and pulls in the rest of the runtime through normal ES module imports.
 
 This file does not contain gameplay logic.
 
 ---
 
-## `src/js/main.ts`
+## `src/js/phaserGame.ts`
 
-`main.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
+`phaserGame.ts` owns the Phaser lifecycle entry points and the shared Phaser globals.
 
 Main responsibilities:
 
@@ -392,7 +394,7 @@ vanishingPlatformGroup
 
 `AssetLoader` centralizes Phaser asset preloading.
 
-It remains a stateless service-style module. `main.ts` no longer imports it directly; the preload lifecycle callback now goes through `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
+It remains a stateless service-style module. `phaserGame.ts` does not import it directly; the preload lifecycle callback goes through `Runtime.preload()`, which delegates to `AssetLoader.preload()`.
 
 Responsibilities:
 

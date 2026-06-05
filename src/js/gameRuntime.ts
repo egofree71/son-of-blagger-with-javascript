@@ -16,8 +16,8 @@ import { GameInitializerController } from "./gameInitializer.ts";
 /**
  * Centralizes the creation of runtime controller instances.
  *
- * The exported Runtime instance is the active runtime used by main.ts. Phaser
- * lifecycle callbacks are routed through this class so the Phaser entry point
+ * The exported Runtime instance is the active runtime used by phaserGame.ts.
+ * Phaser lifecycle callbacks are routed through this class so the Phaser entry point
  * does not need to know which controllers perform preload, create, or update
  * work internally.
  */

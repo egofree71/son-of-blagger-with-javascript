@@ -149,7 +149,7 @@ export class GameControllerController
     /**
      * Main game loop entry point.
      *
-     * Phaser calls updateGame() in main.js once per frame, and updateGame()
+     * Phaser calls updateGame() in phaserGame.ts once per frame, and updateGame()
      * delegates here. GameController does not implement the gameplay itself:
      * it only decides which subsystem should run according to the current game
      * state.

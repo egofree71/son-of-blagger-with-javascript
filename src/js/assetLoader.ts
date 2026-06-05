@@ -1,7 +1,7 @@
 /**
  * Centralizes Phaser asset preloading.
  *
- * main.js owns the Phaser lifecycle, but the list of files to load is kept here
+ * phaserGame.ts owns the Phaser lifecycle, but the list of files to load is kept here
  * so startup code stays focused on orchestration. Asset keys and dimensions are
  * intentionally preserved from the previous implementation because other files
  * still refer to these keys directly.

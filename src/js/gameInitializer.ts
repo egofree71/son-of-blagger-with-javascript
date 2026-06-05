@@ -8,7 +8,7 @@ import type { LevelController } from "./level.ts";
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
  *
- * main.js owns the Phaser lifecycle callbacks, while this object owns the
+ * phaserGame.ts owns the Phaser lifecycle callbacks, while this object owns the
  * startup sequence that wires together the map, animated tiles, input, HUD,
  * player, monsters, screen overlays, and the initial game state.
  *
