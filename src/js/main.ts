@@ -1,8 +1,7 @@
 "use strict";
 
 import { AssetLoader } from "./assetLoader.ts";
-import { GameInitializer } from "./gameInitializer.ts";
-import { GameController } from "./gameController.ts";
+import { Runtime } from "./gameRuntime.ts";
 
 // These Phaser runtime objects are still shared through the browser global scope.
 // The game now runs from a Vite module entry point, so they are attached
@@ -22,10 +21,10 @@ function preload()
 
 function create()
 {
-	GameInitializer.create();
+	Runtime.gameInitializer.create();
 }
 
 function updateGame()
 {
-	GameController.update();
+	Runtime.gameController.update();
 }

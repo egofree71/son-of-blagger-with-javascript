@@ -10,13 +10,16 @@ import { LevelRevealSequenceController } from "./levelRevealSequence.ts";
 import { LevelTransitionController } from "./levelTransition.ts";
 import { EndGameSequenceController } from "./endGameSequence.ts";
 import { GameControllerController } from "./gameController.ts";
+import { GameInitializerController } from "./gameInitializer.ts";
 
 /**
  * Centralizes the creation of runtime controller instances.
  *
- * This class is intentionally not wired into main.ts yet. The current game still
- * runs through the exported singleton instances, but GameRuntime documents and
- * type-checks the future instance-based composition shape.
+ * The exported Runtime instance is the active runtime used by main.ts. Phaser
+ * lifecycle callbacks are routed through it. Older singleton exports remain
+ * available as a compatibility
+ * bridge for manual console helpers and for modules that have not moved to
+ * explicit runtime instances yet.
  */
 export class GameRuntime
 {
@@ -48,4 +51,14 @@ export class GameRuntime
         this.levelTransition,
         this.endGameSequence
     );
+
+    readonly gameInitializer = new GameInitializerController(
+        this.gameController,
+        this.screenOverlay,
+        this.player,
+        this.hud,
+        this.level
+    );
 }
+
+export const Runtime = new GameRuntime();

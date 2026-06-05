@@ -25,7 +25,7 @@ The engineering goal is to preserve the original gameplay behaviour while making
 - Development/build tool: **Vite**.
 - Type checking: `tsc --noEmit` through `npm run typecheck`.
 - Module system: TypeScript ES modules handled by Vite.
-- Main architecture style: TypeScript ES modules, class-based runtime singletons, and a small legacy Phaser runtime context kept on `window`.
+- Main architecture style: TypeScript ES modules, an explicit `Runtime` composition root, class-based runtime controllers, compatibility singleton exports, and a small legacy Phaser runtime context kept on `window`.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, generated bitmap-style text.
 - Physics: Phaser Arcade Physics is enabled, but many gameplay collisions are still handled manually through tile and rectangle checks.
@@ -35,7 +35,7 @@ Phaser 2.3 is still loaded as a classic browser script from `public/js/phaser.mi
 
 The game source files live under `src/js` and are imported through `src/js/main.ts`, which is loaded from the Vite entry point `src/main.ts`.
 
-The code still uses singleton instances, but it is no longer the original global-object style. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
+The active game runtime now goes through the exported `Runtime` instance from `src/js/gameRuntime.ts`. Older singleton exports such as `GameController`, `Level`, `Player`, and `HUD` still exist as a compatibility bridge, but `main.ts` no longer drives the game through those individual singleton exports. The most important runtime state in `GameController`, `Level`, and `Player` is private, read through readonly getters, or changed through behaviour-focused methods.
 
 The remaining Phaser runtime globals are created in `src/js/main.ts` and `src/js/gameInitializer.ts`, and declared for TypeScript in `src/types/globals.d.ts`:
 
@@ -169,9 +169,9 @@ All game files after Phaser are imported through TypeScript ES modules starting 
 
 The project is organized around ES module exports defined under `src/js`.
 
-### Class-based singleton runtime objects
+### Runtime controllers and compatibility singleton exports
 
-The following runtime objects are implemented as internal classes with one exported singleton instance:
+The following runtime objects are implemented as exported controller classes. Most files still also export one compatibility singleton instance, but the active game runtime is now composed by `Runtime` in `src/js/gameRuntime.ts`:
 
 - `GameController`: high-level game state orchestration.
 - `ScreenManager`: title, help, and game-over screens.
@@ -186,7 +186,15 @@ The following runtime objects are implemented as internal classes with one expor
 - `PlayerDeathSequence`: visual death animation only.
 - `HUD`: status-area display and HUD-specific counters.
 
-The exported names are singleton values:
+The controller classes can be instantiated explicitly:
+
+```ts
+const level = new LevelController();
+const player = new PlayerController();
+const hud = new HUDController();
+```
+
+The compatibility singleton exports still exist:
 
 ```ts
 export const Level = new LevelController();
@@ -194,14 +202,14 @@ export const Player = new PlayerController();
 export const HUD = new HUDController();
 ```
 
-This keeps runtime usage stable while still allowing private fields and smaller public APIs inside the classes.
+`src/js/gameRuntime.ts` is now the central composition root. It creates the active `Runtime` instance and wires the runtime controllers together. This keeps the old imports available while allowing the real game loop to move toward explicit runtime instances.
 
 ### Service-style modules
 
 The following modules still use object-literal or service-style exports:
 
 - `AssetLoader`: Phaser asset preloading.
-- `GameInitializer`: runtime startup after asset loading.
+- `GameInitializer`: compatibility singleton for runtime startup after asset loading; the active game uses `Runtime.gameInitializer`.
 - `LevelObjectLoader`: Tiled object lookup and Phaser sprite creation for level-owned objects.
 - `CollisionDetector`: generic manual tile/rectangle collision checks.
 - `Util`: shared non-collision helper functions.
@@ -327,19 +335,19 @@ Every frame, Phaser calls:
 
 ```text
 updateGame()
- -> GameController.update()
+ -> Runtime.gameController.update()
 ```
 
-`GameController.update()` dispatches to one method per game state.
+`Runtime.gameController.update()` dispatches to one method per game state.
 
 During normal gameplay, the preserved update order is:
 
 ```text
-GameController.updatePlaying()
+Runtime.gameController.updatePlaying()
  -> update air gameplay rule and air HUD
- -> HUD.displayBonusMan(Level.bonusMan)
- -> Level.updateMonsters(GameController.isPlaying())
- -> Player.update(Level)
+ -> Runtime.hud.displayBonusMan(Runtime.level.bonusMan)
+ -> Runtime.level.updateMonsters(Runtime.gameController.isPlaying())
+ -> Runtime.player.update(Runtime.level)
  -> apply PlayerInteractionResult consequences
 ```
 
@@ -365,8 +373,8 @@ Main responsibilities:
 
 - create the Phaser instance;
 - delegate asset preloading to `AssetLoader`;
-- delegate runtime startup to `GameInitializer`;
-- delegate each frame to `GameController.update()`.
+- delegate runtime startup to `Runtime.gameInitializer`;
+- delegate each frame to `Runtime.gameController.update()`.
 
 Important globals created here:
 
@@ -1175,10 +1183,10 @@ After any small architecture change, test at least:
 While running `npm run dev`, the following browser-console snippet gives the player all keys for the current level:
 
 ```js
-const { Level } = await import('/src/js/level.ts');
+const { Runtime } = await import('/src/js/gameRuntime.ts');
 
-while (!Level.hasCollectedAllKeys()) {
-    Level.collectKey();
+while (!Runtime.level.hasCollectedAllKeys()) {
+    Runtime.level.collectKey();
 }
 ```
 
@@ -1187,18 +1195,17 @@ Then touch the exit normally.
 To trigger the transition directly:
 
 ```js
-const { Level } = await import('/src/js/level.ts');
-const { GameController } = await import('/src/js/gameController.ts');
+const { Runtime } = await import('/src/js/gameRuntime.ts');
 
-while (!Level.hasCollectedAllKeys()) {
-    Level.collectKey();
+while (!Runtime.level.hasCollectedAllKeys()) {
+    Runtime.level.collectKey();
 }
 
-if (Level.isLastLevel()) {
-    GameController.endGame();
+if (Runtime.level.isLastLevel()) {
+    Runtime.gameController.endGame();
 }
 else {
-    GameController.endLevel();
+    Runtime.gameController.endLevel();
 }
 ```
 

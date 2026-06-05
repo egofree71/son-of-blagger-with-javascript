@@ -1,9 +1,9 @@
-import { GameController } from "./gameController.ts";
+import { GameController, type GameControllerController } from "./gameController.ts";
 import { Util } from "./util.ts";
-import { ScreenOverlay } from "./screenOverlay.ts";
-import { Player } from "./player.ts";
-import { HUD } from "./HUD.ts";
-import { Level } from "./level.ts";
+import { ScreenOverlay, type ScreenOverlayController } from "./screenOverlay.ts";
+import { Player, type PlayerController } from "./player.ts";
+import { HUD, type HUDController } from "./HUD.ts";
+import { Level, type LevelController } from "./level.ts";
 
 /**
  * Initializes the Phaser runtime once all assets have been preloaded.
@@ -18,8 +18,18 @@ import { Level } from "./level.ts";
  * lifecycle easier to understand and will also make a future Phaser migration
  * less risky.
  */
-export const GameInitializer =
+export class GameInitializerController
 {
+    constructor(
+        private readonly gameController: GameControllerController = GameController,
+        private readonly screenOverlay: ScreenOverlayController = ScreenOverlay,
+        private readonly player: PlayerController = Player,
+        private readonly hud: HUDController = HUD,
+        private readonly level: LevelController = Level
+    )
+    {
+    }
+
     /**
      * Runs the complete Phaser create() setup sequence.
      *
@@ -30,7 +40,7 @@ export const GameInitializer =
      *   layered correctly;
      * - the first game state is selected only after every runtime object exists.
      */
-    create : function()
+    public create(): void
     {
         this.configureScaling();
         this.startPhysics();
@@ -43,7 +53,7 @@ export const GameInitializer =
         this.initializeHud();
         this.createScreenOverlays();
         this.startAtIntroduction();
-    },
+    }
 
     /**
      * Configures Phaser's canvas scaling for the browser window.
@@ -52,13 +62,13 @@ export const GameInitializer =
      * much as possible without cropping. The page alignment flags keep the game
      * centered when the browser window is larger than the scaled canvas.
      */
-    configureScaling : function()
+    private configureScaling(): void
     {
         game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
         game.scale.setScreenSize(true);
         game.scale.pageAlignHorizontally = true;
         game.scale.pageAlignVertically = true;
-    },
+    }
 
     /**
      * Starts Phaser Arcade Physics and sets the default stage background.
@@ -67,11 +77,11 @@ export const GameInitializer =
      * position updates. Most tile collision checks are still custom pixel probes
      * handled by CollisionDetector.
      */
-    startPhysics : function()
+    private startPhysics(): void
     {
         game.physics.startSystem(Phaser.Physics.ARCADE);
         game.stage.backgroundColor = '#c0c0c0';
-    },
+    }
 
     /**
      * Creates the Tiled map and the visible background layer.
@@ -81,7 +91,7 @@ export const GameInitializer =
      * these globals into a context object, but this initializer keeps the current
      * architecture stable.
      */
-    createMap : function()
+    private createMap(): void
     {
         map = game.add.tilemap('map');
         map.addTilesetImage('background', 'background');
@@ -89,7 +99,7 @@ export const GameInitializer =
 
         layer = map.createLayer('background');
         layer.resizeWorld();
-    },
+    }
 
     /**
      * Replaces selected static tiles with animated sprite overlays.
@@ -98,7 +108,7 @@ export const GameInitializer =
      * sprites are visual overlays only, used for animated conveyors, ladders,
      * waves, and vanishing platforms.
      */
-    createAnimatedTiles : function()
+    private createAnimatedTiles(): void
     {
         Util.createSpritesFromTiles(17, 'conveyorRight', 30);
         Util.createSpritesFromTiles(16, 'conveyorLeft', 30);
@@ -110,15 +120,15 @@ export const GameInitializer =
         // Stored globally because CollisionDetector checks collisions against
         // this group when the player stands on a disappearing platform.
         vanishingPlatformGroup = Util.createSpritesFromTiles(33, 'vanishingPlatform', 2);
-    },
+    }
 
     /**
      * Creates Phaser groups that are reused while loading/reloading levels.
      */
-    createRuntimeGroups : function()
+    private createRuntimeGroups(): void
     {
-        Level.createMonstersGroup();
-    },
+        this.level.createMonstersGroup();
+    }
 
     /**
      * Creates long-lived player and monster runtime objects.
@@ -127,15 +137,15 @@ export const GameInitializer =
      * monster definitions from the Tiled map and prepares their sprites. Level
      * loading later decides which monsters are visible for the current level.
      */
-    createPlayerAndMonsters : function()
+    private createPlayerAndMonsters(): void
     {
-        Player.create();
-        Level.initMonsters();
+        this.player.create();
+        this.level.initMonsters();
 
         // The player must stay visually above the tile layer and most animated
         // tile overlays, especially during the level reveal sequence.
-        Player.bringToTop();
-    },
+        this.player.bringToTop();
+    }
 
     /**
      * Creates the cursor-key helper used by player movement.
@@ -143,41 +153,42 @@ export const GameInitializer =
      * The spacebar is read directly from game.input.keyboard in PlayerMovement,
      * while cursor keys are stored in the historical global keyPressed variable.
      */
-    createInput : function()
+    private createInput(): void
     {
         keyPressed = game.input.keyboard.createCursorKeys();
-    },
+    }
 
     /**
      * Loads the hi-score from browser localStorage.
      */
-    loadHiScore : function()
+    private loadHiScore(): void
     {
-        GameController.loadHiScore(localStorage.getItem('hiScore'));
-    },
+        this.gameController.loadHiScore(localStorage.getItem('hiScore'));
+    }
 
     /**
      * Creates HUD texts and sprites.
      */
-    initializeHud : function()
+    private initializeHud(): void
     {
-        HUD.init(GameController.lives, GameController.score, Level.level, GameController.hiScore, Level.airLevel);
-    },
+        this.hud.init(this.gameController.lives, this.gameController.score, this.level.level, this.gameController.hiScore, this.level.airLevel);
+    }
 
     /**
      * Creates the black overlay rectangles used by multiple screens and sequences.
      */
-    createScreenOverlays : function()
+    private createScreenOverlays(): void
     {
-        ScreenOverlay.createBlackRectangles();
-    },
+        this.screenOverlay.createBlackRectangles();
+    }
 
     /**
      * Selects the first game state after all runtime objects are ready.
      */
-    startAtIntroduction : function()
+    private startAtIntroduction(): void
     {
-        GameController.loadIntroduction();
+        this.gameController.loadIntroduction();
     }
-};
+}
 
+export const GameInitializer = new GameInitializerController();
