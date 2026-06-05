@@ -1,6 +1,6 @@
 import { GameStates, type GameState } from "./gameStates.ts";
 import { LevelConstants } from "./levelConstants.ts";
-import { ScreenManager } from "./screenManager.ts";
+import { ScreenManager, type ScreenManagerController } from "./screenManager.ts";
 import { EndGameSequence } from "./endGameSequence.ts";
 import { LevelRevealSequence } from "./levelRevealSequence.ts";
 import { LevelTransition } from "./levelTransition.ts";
@@ -10,6 +10,10 @@ import { Level } from "./level.ts";
 
 export class GameControllerController
 {
+    constructor(private readonly screenManager: ScreenManagerController = ScreenManager)
+    {
+    }
+
     // The current game state is stored privately. Other modules should use
     // named transition methods instead of setting raw GameStates directly.
     private currentGameState: GameState | null = null;
@@ -193,14 +197,15 @@ export class GameControllerController
      */
     private updateLoadIntroduction(): void
     {
-        ScreenManager.displayIntroduction();
+        this.screenManager.displayIntroduction();
 
         const controller = this;
+        const screenManager = this.screenManager;
 
         // If the user pressed a key, start a new game or display help.
         game.input.keyboard.onPressCallback = function(key: string)
         {
-            ScreenManager.removeIntroduction();
+            screenManager.removeIntroduction();
             game.input.keyboard.onPressCallback = null;
 
             if (key == 'h')
@@ -222,7 +227,7 @@ export class GameControllerController
     {
         const controller = this;
 
-        ScreenManager.displayInstructions(function(): void
+        this.screenManager.displayInstructions(function(): void
         {
             controller.loadIntroduction();
         });
@@ -371,15 +376,16 @@ export class GameControllerController
         this.resetVisualSequences();
         Level.resetGame();
         HUD.update(this.lives, this.score, this.hiScore, Level.level);
-        ScreenManager.displayGameOver();
+        this.screenManager.displayGameOver();
 
         const controller = this;
+        const screenManager = this.screenManager;
 
         // If the user pressed a key, show the introduction again.
         game.input.keyboard.onPressCallback = function()
         {
             game.input.keyboard.onPressCallback = null;
-            ScreenManager.removeGameOver();
+            screenManager.removeGameOver();
             controller.loadIntroduction();
         };
 
