@@ -11,23 +11,21 @@ import { HUDScene } from "./scenes/HUDScene";
  * Manager enlarges the canvas in the browser so manual comparisons remain close
  * to the previous remake.
  */
+
 const GAME_WIDTH = 640;
 const GAME_HEIGHT = 400;
 
-/**
- * Minimal Phaser 4 game configuration.
- *
- * FIT preserves the game aspect ratio and scales the canvas to the largest size
- * that fits in the browser window. CENTER_BOTH then keeps the scaled canvas
- * centered inside the full-viewport parent element.
- */
 const config = {
     type: AUTO,
     backgroundColor: "#c0c0c0",
+
     // Let the browser smooth the final scaled canvas, like the Phaser 2 reference.
     // Forcing pixel-art scaling makes diagonal tiles shimmer at fractional sizes.
     pixelArt: false,
     roundPixels: true,
+
+    // FIT preserves the aspect ratio and fills the browser height as much as the
+    // original Phaser 2 SHOW_ALL-style display did.
     scale: {
         parent: "game-container",
         mode: Scale.FIT,
@@ -35,6 +33,7 @@ const config = {
         width: GAME_WIDTH,
         height: GAME_HEIGHT
     },
+
     scene: [
         PreloadScene,
         GameScene,

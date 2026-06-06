@@ -6,7 +6,7 @@ import { Scene } from "phaser";
  * This is the modern replacement for the old Phaser 2 AssetLoader entry point,
  * but only a small subset is loaded for now: the Tiled map, the background
  * tileset used by the main tile layer, and the player spritesheet used by the
- * first animation test. Gameplay assets will be added as the port grows.
+ * first movement test. Gameplay assets will be added as the port grows.
  */
 export class PreloadScene extends Scene
 {
@@ -43,11 +43,9 @@ export class PreloadScene extends Scene
             bar.destroy();
         });
 
-        /**
-         * Asset keys are intentionally explicit instead of reusing the old global
-         * constants. The prototype can later converge on a cleaner asset-key module
-         * once the map, player and monsters are all loading correctly.
-         */
+        // Keep asset keys explicit while the prototype is still small. A shared
+        // asset-key module will make more sense once map, player, HUD and
+        // monsters have all moved into the Phaser 4 version.
         this.load.tilemapTiledJSON("son-of-blagger-map", "assets/maps/son-of-blagger.json");
         this.load.image("background-tiles", "assets/tileset/background.png");
         this.load.spritesheet("blagger", "assets/sprites/blagger.png", {

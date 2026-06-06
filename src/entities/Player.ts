@@ -2,13 +2,7 @@ import type { GameObjects, Scene, Tilemaps, Types } from "phaser";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 
-/**
- * Direction names used by the temporary Phaser 4 player movement slice.
- *
- * These names are deliberately local to the prototype for now. They can later be
- * merged with the gameplay-level player states when the real movement rules are
- * ported from the Phaser 2 reference implementation.
- */
+// Local direction names for the temporary Phaser 4 movement slice.
 type FacingDirection = "left" | "right";
 
 /**
@@ -157,6 +151,8 @@ export class Player
             return;
         }
 
+        // Restart the frame sequence when the player turns around. The Phaser 2
+        // version used separate left/right animations rather than mirroring.
         this.facingDirection = direction;
         this.animationFrameIndex = 0;
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
@@ -177,7 +173,12 @@ export class Player
             return false;
         }
 
+        // The temporary movement still uses one-pixel steps because the Phaser 2
+        // reference checks walls at pixel precision, not through velocities.
         const deltaX = direction === "right" ? 1 : -1;
+
+        // Keep the sprite inside the imported map. Tile probes detect walls, but
+        // the outer map edge is just a viewport boundary for this prototype.
         const maxX = Math.max(0, map.widthInPixels - this.sprite.displayWidth);
         const nextX = this.clamp(this.sprite.x + deltaX, 0, maxX);
 
@@ -185,8 +186,6 @@ export class Player
             return false;
         }
 
-        // Keep the temporary movement inside the imported map. The wall probes
-        // above only test level tiles; this clamp still protects the outer map edge.
         this.sprite.x = nextX;
         return true;
     }
@@ -197,6 +196,8 @@ export class Player
             return false;
         }
 
+        // This is a simple prototype fall, not the final Phaser 2 fall-speed or
+        // deadly-fall rule. The clamp only prevents falling outside the map data.
         const maxY = Math.max(0, map.heightInPixels - this.sprite.displayHeight);
         const nextY = this.clamp(this.sprite.y + 1, 0, maxY);
 
@@ -214,6 +215,9 @@ export class Player
             ? this.sprite.x + Player.RIGHT_WALL_X_OFFSET
             : this.sprite.x + Player.LEFT_WALL_X_OFFSET;
 
+        // The side probe ignores the very top and bottom of the sprite. That
+        // tolerance comes from the Phaser 2 movement code and avoids treating the
+        // whole visual rectangle as a hard collision box.
         return collisionProbe.hasWallOnVerticalLine(
             this.sprite.y + Player.SIDE_WALL_TOP_OFFSET,
             this.sprite.y + this.sprite.displayHeight - Player.SIDE_WALL_BOTTOM_OFFSET,
@@ -223,6 +227,8 @@ export class Player
 
     private hasGroundBelow(collisionProbe: TileCollisionProbe): boolean
     {
+        // The foot probe is deliberately narrower than the visible sprite. The
+        // old movement code used these offsets so Sid can stand close to edges.
         return collisionProbe.hasSolidOnHorizontalLine(
             this.sprite.x + Player.FOOT_LEFT_OFFSET,
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
@@ -232,6 +238,8 @@ export class Player
 
     private shouldMoveHorizontallyThisFrame(): boolean
     {
+        // Keep the temporary walking speed slower than one pixel every update.
+        // Later, this should be replaced by the real Phaser 2 movement timing.
         this.horizontalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
 
         if (this.horizontalMovementAccumulator < 1) {
@@ -244,6 +252,8 @@ export class Player
 
     private shouldMoveVerticallyThisFrame(): boolean
     {
+        // Reuse the same accumulator pattern as horizontal movement so the first
+        // falling prototype stays visually comparable to walking speed.
         this.verticalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
 
         if (this.verticalMovementAccumulator < 1) {
@@ -262,6 +272,8 @@ export class Player
             return;
         }
 
+        // Animation advances only after accepted pixel movement. This avoids the
+        // legs spinning while a wall or the map edge blocks the sprite.
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
         this.animationFrameIndex = (this.animationFrameIndex + 1) % this.framesFor(this.facingDirection).length;
         this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);

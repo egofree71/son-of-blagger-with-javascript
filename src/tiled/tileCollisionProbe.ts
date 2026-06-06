@@ -51,13 +51,6 @@ export class TileCollisionProbe
         );
     }
 
-    /**
-     * Generic vertical line scan used by the collision prototype.
-     *
-     * The loop intentionally checks every pixel, not just every tile boundary,
-     * because the old CollisionDetector did the same. That makes the port easier
-     * to compare before any performance cleanup is considered.
-     */
     private verticalLineHasProperty(
         yStart: number,
         yEnd: number,
@@ -66,10 +59,14 @@ export class TileCollisionProbe
         propertyValue: unknown
     ): boolean
     {
+        // Convert probe coordinates to integer pixels before scanning. The old
+        // CollisionDetector tested pixel positions, not fractional world values.
         const start = Math.floor(Math.min(yStart, yEnd));
         const end = Math.floor(Math.max(yStart, yEnd));
         const worldX = Math.floor(x);
 
+        // Check every pixel along the line, like the Phaser 2 reference. This is
+        // intentionally faithful first; any optimization can wait until parity.
         for (let y = start; y <= end; y += 1) {
             const tile = this.layer.getTileAtWorldXY(worldX, y) as Tilemaps.Tile | null;
 
@@ -81,9 +78,6 @@ export class TileCollisionProbe
         return false;
     }
 
-    /**
-     * Generic horizontal line scan used for the first floor probe.
-     */
     private horizontalLineHasProperty(
         xStart: number,
         xEnd: number,
@@ -92,10 +86,14 @@ export class TileCollisionProbe
         propertyValue: unknown
     ): boolean
     {
+        // Use integer pixel positions for the foot probe so edge comparisons stay
+        // stable when sprites or cameras contain fractional coordinates.
         const start = Math.floor(Math.min(xStart, xEnd));
         const end = Math.floor(Math.max(xStart, xEnd));
         const worldY = Math.floor(y);
 
+        // The first prototype keeps the original pixel-by-pixel style even
+        // though tile-step scans would be faster.
         for (let x = start; x <= end; x += 1) {
             const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
 

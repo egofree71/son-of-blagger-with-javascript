@@ -12,7 +12,7 @@ import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
  * run a small walking, wall-blocking and falling test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform gravity, jumping,
+ * implementation. In particular, this scene does not yet perform jumping,
  * ladders, deadly falls, slides, conveyors, key collection or exit checks.
  */
 export class GameScene extends Scene
@@ -32,7 +32,8 @@ export class GameScene extends Scene
 
     create(): void
     {
-        // Match the light grey Phaser 2 stage background so empty map areas are not rendered as black.
+        // Match the light grey Phaser 2 stage background so empty map areas are
+        // not rendered as black during early prototype testing.
         this.cameras.main.setBackgroundColor(GameScene.STAGE_BACKGROUND_COLOR);
         this.cameras.main.setViewport(0, 0, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
 
@@ -71,10 +72,6 @@ export class GameScene extends Scene
         this.player.updatePrototypeMovement(this.cursors, this.map, this.collisionProbe);
     }
 
-    /**
-     * Creates the prototype Player entity and places it on the Tiled start object
-     * for the requested level.
-     */
     private createPlayerAtLevelStart(levelNumber: number): void
     {
         if (!this.map) {
@@ -94,33 +91,26 @@ export class GameScene extends Scene
         this.followPlayer(this.player);
     }
 
-    /**
-     * Lets Phaser keep the gameplay camera centered on the prototype player.
-     *
-     * Camera bounds are already set to the full Tiled map, so following the sprite
-     * does not reveal empty space outside the imported level. The lower HUD strip
-     * remains outside the camera viewport because GameScene only renders the top
-     * gameplay area.
-     */
     private followPlayer(player: Player): void
     {
         const camera = this.cameras.main;
 
+        // Keep the camera inside the imported Tiled map. The HUD uses a separate
+        // scene, so this camera only owns the upper gameplay viewport.
+        camera.setBounds(0, 0, this.map?.widthInPixels ?? 0, this.map?.heightInPixels ?? 0);
+
         // Round camera scrolling to whole pixels while following the player.
-        // The sprite can be centered on half-pixels, and sub-pixel camera scroll
-        // makes pixel-art tile edges shimmer during movement.
+        // Sub-pixel camera scroll makes pixel-art tile edges shimmer.
         camera.startFollow(player.getSprite(), true, 1, 1);
 
         const playerCenter = player.getCenter();
         camera.centerOn(Math.round(playerCenter.x), Math.round(playerCenter.y));
     }
 
-    /**
-     * Fixed-camera text makes the current prototype state visible without
-     * affecting the map scroll position.
-     */
     private addPrototypeOverlayText(): void
     {
+        // Fixed-camera text makes the current prototype state visible without
+        // changing the map or player scroll position.
         this.add.text(8, 8, "Player falling prototype — left/right arrows move Sid", {
             fontFamily: "Arial",
             fontSize: "13px",
