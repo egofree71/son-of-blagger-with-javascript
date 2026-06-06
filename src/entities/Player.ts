@@ -1,4 +1,6 @@
 import type { GameObjects, Scene, Tilemaps, Types } from "phaser";
+import { Data } from "../js/data";
+import type { JumpStep } from "../js/data";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 
@@ -9,11 +11,11 @@ type FacingDirection = "left" | "right";
  * Minimal Phaser 4 player entity used by the modernization prototype.
  *
  * This class owns the real Blagger sprite and a small movement test. It is still
- * not final gameplay: only horizontal walking, side wall blocking and simple
- * falling have been ported. Jumping, ladder logic, slides, conveyors and
- * interaction handling are still absent. The current goal is to validate the
- * first manual tile probes before the sensitive Phaser 2 movement rules are
- * moved over more fully.
+ * not final gameplay: horizontal walking, side wall blocking, simple falling and
+ * a first jump-path prototype have been ported. Ladder logic, slides, conveyors
+ * and interaction handling are still absent. The current goal is to validate the
+ * most sensitive manual movement probes before the full Phaser 2 movement rules
+ * are moved over.
  */
 export class Player
 {
@@ -33,6 +35,12 @@ export class Player
     private static readonly SIDE_WALL_TOP_OFFSET = 6;
     private static readonly SIDE_WALL_BOTTOM_OFFSET = 1;
 
+    // Ceiling probes copied from the Phaser 2 movement controller.
+    private static readonly WALL_ABOVE_Y_OFFSET = -2;
+
+    // Data.jumpPath starts counting fall height again from this index onward.
+    private static readonly JUMP_FALL_START_INDEX = 50;
+
     // Temporary prototype speed limiter. The real movement timing will be
     // revisited when the full Phaser 2 movement controller is ported.
     private static readonly PROTOTYPE_MOVE_FRAME_INTERVAL = 2;
@@ -46,6 +54,10 @@ export class Player
     private animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
+    private jumpStepAccumulator = 1;
+    private jumping = false;
+    private jumpIndex = 0;
+    private jumpHorizontalDirection: FacingDirection | null = null;
 
     constructor(scene: Scene, textureKey: string)
     {
@@ -69,12 +81,16 @@ export class Player
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
+        this.jumpStepAccumulator = 1;
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
         this.sprite.setFrame(this.firstFrameFor(this.facingDirection));
         this.sprite.setVisible(true);
     }
 
     /**
-     * Runs the temporary walking/falling movement slice for one frame.
+     * Runs the temporary walking/falling/jumping movement slice for one frame.
      *
      * This method intentionally keeps movement manual instead of using Arcade
      * Physics. The Phaser 2 reference moves through one-pixel decisions based on
@@ -86,16 +102,28 @@ export class Player
         collisionProbe: TileCollisionProbe
     ): void
     {
+        if (this.jumping) {
+            this.updateJumpWhenDue(map, collisionProbe);
+            return;
+        }
+
         if (!this.hasGroundBelow(collisionProbe)) {
             this.stopPrototypeWalk(false);
             this.moveDownWhenDue(map);
             return;
         }
 
-        // Keep the next fall responsive after walking over a platform edge.
+        // Keep the next fall or jump responsive after walking on stable ground.
         this.verticalMovementAccumulator = 1;
+        this.jumpStepAccumulator = 1;
 
         const requestedDirection = this.readHorizontalDirection(cursors);
+
+        if (this.isJumpRequested(cursors)) {
+            this.startJump(requestedDirection);
+            this.updateJumpWhenDue(map, collisionProbe);
+            return;
+        }
 
         if (!requestedDirection) {
             this.stopPrototypeWalk();
@@ -145,6 +173,94 @@ export class Player
         return null;
     }
 
+    private isJumpRequested(cursors: Types.Input.Keyboard.CursorKeys): boolean
+    {
+        return cursors.space?.isDown === true;
+    }
+
+    private startJump(requestedDirection: FacingDirection | null): void
+    {
+        this.jumping = true;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = requestedDirection;
+
+        if (requestedDirection) {
+            this.applyDirectionChange(requestedDirection);
+        }
+
+        // Jump movement is driven by Data.jumpPath, so the normal falling
+        // accumulator should not leak into the first jump step.
+        this.jumpStepAccumulator = 1;
+    }
+
+    private updateJumpWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): void
+    {
+        if (!this.shouldAdvanceJumpThisFrame()) {
+            return;
+        }
+
+        const jumpStep = Data.jumpPath[this.jumpIndex];
+
+        if (!jumpStep) {
+            this.finishJump();
+            return;
+        }
+
+        this.applyJumpStep(jumpStep, map, collisionProbe);
+
+        this.jumpIndex += 1;
+
+        if (this.jumpIndex >= Data.jumpPath.length) {
+            this.finishJump();
+        }
+    }
+
+    private applyJumpStep(jumpStep: JumpStep, map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): void
+    {
+        const [allowHorizontalMovement, verticalDirection] = jumpStep;
+
+        if (allowHorizontalMovement && this.jumpHorizontalDirection) {
+            const movedHorizontally = this.moveHorizontallyByOnePixel(
+                this.jumpHorizontalDirection,
+                map,
+                collisionProbe
+            );
+
+            if (movedHorizontally) {
+                this.advanceWalkingFrameWhenDue();
+            }
+        }
+
+        if (verticalDirection === "UP") {
+            this.moveUpByOnePixel(map, collisionProbe);
+            return;
+        }
+
+        if (verticalDirection === "DOWN") {
+            this.moveDownDuringJump(map, collisionProbe);
+        }
+    }
+
+    private moveDownDuringJump(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    {
+        if (this.hasGroundBelow(collisionProbe)) {
+            this.finishJump();
+            return false;
+        }
+
+        return this.moveDownByOnePixel(map);
+    }
+
+    private finishJump(): void
+    {
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
+
+        // Like Phaser 2's stopAnimation(), landing keeps the current visual frame.
+        this.stopPrototypeWalk(false);
+    }
+
     private applyDirectionChange(direction: FacingDirection): void
     {
         if (this.facingDirection === direction) {
@@ -169,6 +285,15 @@ export class Player
             return false;
         }
 
+        return this.moveHorizontallyByOnePixel(direction, map, collisionProbe);
+    }
+
+    private moveHorizontallyByOnePixel(
+        direction: FacingDirection,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): boolean
+    {
         if (this.isBlockedHorizontally(direction, collisionProbe)) {
             return false;
         }
@@ -196,10 +321,33 @@ export class Player
             return false;
         }
 
+        return this.moveDownByOnePixel(map);
+    }
+
+    private moveDownByOnePixel(map: Tilemaps.Tilemap): boolean
+    {
         // This is a simple prototype fall, not the final Phaser 2 fall-speed or
         // deadly-fall rule. The clamp only prevents falling outside the map data.
         const maxY = Math.max(0, map.heightInPixels - this.sprite.displayHeight);
         const nextY = this.clamp(this.sprite.y + 1, 0, maxY);
+
+        if (nextY === this.sprite.y) {
+            return false;
+        }
+
+        this.sprite.y = nextY;
+        return true;
+    }
+
+    private moveUpByOnePixel(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    {
+        if (this.isBlockedAbove(collisionProbe)) {
+            return false;
+        }
+
+        // The jump path moves up in one-pixel steps. The map clamp prevents the
+        // prototype from leaving the Tiled world before upper collisions are final.
+        const nextY = this.clamp(this.sprite.y - 1, 0, map.heightInPixels - this.sprite.displayHeight);
 
         if (nextY === this.sprite.y) {
             return false;
@@ -222,6 +370,17 @@ export class Player
             this.sprite.y + Player.SIDE_WALL_TOP_OFFSET,
             this.sprite.y + this.sprite.displayHeight - Player.SIDE_WALL_BOTTOM_OFFSET,
             probeX
+        );
+    }
+
+    private isBlockedAbove(collisionProbe: TileCollisionProbe): boolean
+    {
+        // Ceiling checks reuse the same narrow foot span as the Phaser 2 code.
+        // Testing the full sprite width would make jumps hit ceilings too early.
+        return collisionProbe.hasWallOnHorizontalLine(
+            this.sprite.x + Player.FOOT_LEFT_OFFSET,
+            this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+            this.sprite.y + Player.WALL_ABOVE_Y_OFFSET
         );
     }
 
@@ -261,6 +420,20 @@ export class Player
         }
 
         this.verticalMovementAccumulator -= 1;
+        return true;
+    }
+
+    private shouldAdvanceJumpThisFrame(): boolean
+    {
+        // The real jump path is kept, but the whole prototype still runs at the
+        // temporary movement pace chosen during the first walking tests.
+        this.jumpStepAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+
+        if (this.jumpStepAccumulator < 1) {
+            return false;
+        }
+
+        this.jumpStepAccumulator -= 1;
         return true;
     }
 

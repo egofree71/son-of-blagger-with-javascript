@@ -38,6 +38,24 @@ export class TileCollisionProbe
     }
 
     /**
+     * Checks whether a horizontal pixel line touches a Tiled tile named "wall".
+     *
+     * The first jump prototype uses this for ceiling blocking. It mirrors the
+     * Phaser 2 movement rule that tests a narrow line slightly above the sprite
+     * instead of treating the full visual rectangle as collidable.
+     */
+    hasWallOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_WALL
+        );
+    }
+
+    /**
      * Checks whether a horizontal foot probe touches a solid tile.
      */
     hasSolidOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
