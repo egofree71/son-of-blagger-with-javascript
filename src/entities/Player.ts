@@ -377,24 +377,22 @@ export class Player
         collisionProbe: TileCollisionProbe
     ): void
     {
-        const movedVertically = this.moveUpWhenDue(map, collisionProbe);
+        this.moveUpWhenDue(map, collisionProbe);
 
         if (!requestedDirection) {
-            // Climbing is automatic in the Phaser 2 reference. Even without a
-            // horizontal key, Sid should look alive while the ladder moves him up.
-            if (movedVertically) {
-                this.advanceWalkingFrameWhenDue();
-            }
-
+            // Ladders move Sid upward automatically, but the player animation
+            // stays on its current frame unless left/right input is also held.
             return;
         }
 
         this.applyDirectionChange(requestedDirection);
-        this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
+        const movedHorizontally = this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
 
-        // Phaser 2 advances the walking animation from input before the final
-        // movement is blocked or applied. Keep that feel while climbing ladders.
-        this.advanceWalkingFrameWhenDue();
+        if (movedHorizontally) {
+            // Match normal walking cadence while Sid crosses a ladder. The
+            // vertical ladder movement alone must not spin the walking frames.
+            this.advanceWalkingFrameWhenDue();
+        }
     }
 
     private moveHorizontallyByOnePixel(
