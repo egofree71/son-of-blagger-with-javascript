@@ -15,6 +15,7 @@ export class TileCollisionProbe
     private static readonly TILE_NAME_WALL = "wall";
     private static readonly TILE_NAME_LEFT_SLIDE = "left slide";
     private static readonly TILE_NAME_RIGHT_SLIDE = "right slide";
+    private static readonly TILE_NAME_LADDER = "ladder";
     private static readonly TILE_TYPE_SOLID = "solid";
     private static readonly TILE_TYPE_SLIDE = "slide";
 
@@ -142,6 +143,38 @@ export class TileCollisionProbe
             TileCollisionProbe.TILED_PROPERTY_NAME,
             TileCollisionProbe.TILE_NAME_RIGHT_SLIDE
         );
+    }
+
+    /**
+     * Checks whether the small player probe rectangle touches a ladder tile.
+     */
+    hasLadderInRectangle(xStart: number, yStart: number, xEnd: number, yEnd: number): boolean
+    {
+        return this.rectangleHasProperty(
+            xStart,
+            yStart,
+            xEnd,
+            yEnd,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_LADDER
+        );
+    }
+
+    private rectangleHasProperty(
+        xStart: number,
+        yStart: number,
+        xEnd: number,
+        yEnd: number,
+        propertyName: string,
+        propertyValue: unknown
+    ): boolean
+    {
+        // Match the Phaser 2 collisionRectangle helper: only the four edges of
+        // the probe rectangle are tested, not the whole filled area.
+        return this.horizontalLineHasProperty(xStart, xEnd, yStart, propertyName, propertyValue) ||
+            this.horizontalLineHasProperty(xStart, xEnd, yEnd, propertyName, propertyValue) ||
+            this.verticalLineHasProperty(yStart, yEnd, xStart, propertyName, propertyValue) ||
+            this.verticalLineHasProperty(yStart, yEnd, xEnd, propertyName, propertyValue);
     }
 
     private verticalLineHasProperty(

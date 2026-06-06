@@ -13,10 +13,10 @@ type FacingDirection = "left" | "right";
  *
  * This class owns the real Blagger sprite and a small movement test. It is still
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
- * a first jump-path prototype, a small slide prototype and vanishing-platform
- * support have been ported. Ladder logic, conveyors and interaction handling
- * are still absent. The
- * current goal is to validate the most sensitive manual movement probes before
+ * a first jump-path prototype, a small slide prototype, vanishing-platform
+ * support, and a first automatic-ladder prototype have been ported. Conveyors
+ * and interaction handling are still absent. The current goal is to validate
+ * the most sensitive manual movement probes before
  * the full Phaser 2 movement rules are moved over.
  */
 export class Player
@@ -36,6 +36,12 @@ export class Player
 
     // Slides are detected below the feet, like the Phaser 2 movement controller.
     private static readonly SLIDE_PROBE_Y_OFFSET = 14;
+
+    // The ladder probe uses a small lower-body rectangle from the Phaser 2 code.
+    private static readonly LADDER_LEFT_OFFSET = 7;
+    private static readonly LADDER_RIGHT_OFFSET = 23;
+    private static readonly LADDER_TOP_FROM_BOTTOM_OFFSET = 18;
+    private static readonly LADDER_BOTTOM_FROM_BOTTOM_OFFSET = 1;
 
     // Side wall probes copied from the Phaser 2 movement controller.
     private static readonly RIGHT_WALL_X_OFFSET = 24;
@@ -118,20 +124,18 @@ export class Player
         }
 
         const slideDirection = this.readSlideDirectionBelow(collisionProbe);
-
-        if (!slideDirection && !this.hasStandingSurfaceBelow(collisionProbe, vanishingPlatforms)) {
-            this.stopPrototypeWalk(false);
-            this.moveDownWhenDue(map);
-            return;
-        }
-
-        // Keep the next fall or jump responsive after walking on stable ground.
-        this.verticalMovementAccumulator = 1;
-        this.jumpStepAccumulator = 1;
-
+        const onLadder = this.isOnLadder(collisionProbe);
+        const hasStandingSurface = this.hasStandingSurfaceBelow(collisionProbe, vanishingPlatforms);
         const requestedDirection = this.readHorizontalDirection(cursors);
 
-        if (this.isJumpRequested(cursors)) {
+        if (hasStandingSurface || slideDirection || onLadder) {
+            // Stable surfaces and ladders should not inherit a delayed fall from
+            // the previous frame. The full Phaser 2 fall-height rule comes later.
+            this.verticalMovementAccumulator = 1;
+            this.jumpStepAccumulator = 1;
+        }
+
+        if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
             return;
@@ -139,6 +143,17 @@ export class Player
 
         if (slideDirection) {
             this.moveOnSlideWhenDue(slideDirection, map, collisionProbe);
+            return;
+        }
+
+        if (onLadder) {
+            this.moveOnLadderWhenDue(requestedDirection, map, collisionProbe);
+            return;
+        }
+
+        if (!hasStandingSurface) {
+            this.stopPrototypeWalk(false);
+            this.moveDownWhenDue(map);
             return;
         }
 
@@ -339,6 +354,32 @@ export class Player
         }
     }
 
+    private moveOnLadderWhenDue(
+        requestedDirection: FacingDirection | null,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): void
+    {
+        const movedVertically = this.moveUpWhenDue(map, collisionProbe);
+
+        if (!requestedDirection) {
+            // Climbing is automatic in the Phaser 2 reference. Even without a
+            // horizontal key, Sid should look alive while the ladder moves him up.
+            if (movedVertically) {
+                this.advanceWalkingFrameWhenDue();
+            }
+
+            return;
+        }
+
+        this.applyDirectionChange(requestedDirection);
+        this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
+
+        // Phaser 2 advances the walking animation from input before the final
+        // movement is blocked or applied. Keep that feel while climbing ladders.
+        this.advanceWalkingFrameWhenDue();
+    }
+
     private moveHorizontallyByOnePixel(
         direction: FacingDirection,
         map: Tilemaps.Tilemap,
@@ -373,6 +414,15 @@ export class Player
         }
 
         return this.moveDownByOnePixel(map);
+    }
+
+    private moveUpWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    {
+        if (!this.shouldMoveVerticallyThisFrame()) {
+            return false;
+        }
+
+        return this.moveUpByOnePixel(map, collisionProbe);
     }
 
     private moveDownByOnePixel(map: Tilemaps.Tilemap): boolean
@@ -502,6 +552,18 @@ export class Player
         }
 
         return null;
+    }
+
+    private isOnLadder(collisionProbe: TileCollisionProbe): boolean
+    {
+        const xStart = this.sprite.x + Player.LADDER_LEFT_OFFSET;
+        const xEnd = this.sprite.x + Player.LADDER_RIGHT_OFFSET;
+        const yStart = this.sprite.y + this.sprite.displayHeight - Player.LADDER_TOP_FROM_BOTTOM_OFFSET;
+        const yEnd = this.sprite.y + this.sprite.displayHeight - Player.LADDER_BOTTOM_FROM_BOTTOM_OFFSET;
+
+        // The ladder probe is a small lower-body rectangle. Using the full sprite
+        // would let Sid catch ladders from too far away.
+        return collisionProbe.hasLadderInRectangle(xStart, yStart, xEnd, yEnd);
     }
 
     private shouldMoveHorizontallyThisFrame(): boolean

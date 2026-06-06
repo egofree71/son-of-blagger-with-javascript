@@ -3,6 +3,7 @@ import { Player } from "../entities/Player";
 import { findObjectByLevel } from "../tiled/tiledObjects";
 import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import { VanishingPlatforms } from "../entities/VanishingPlatforms";
+import { AnimatedLadders } from "../entities/AnimatedLadders";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -10,11 +11,11 @@ import { VanishingPlatforms } from "../entities/VanishingPlatforms";
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling, jumping and vanishing-platform test.
+ * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder and vanishing-platform test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform ladders,
- * deadly falls, conveyors, key collection or exit checks.
+ * implementation. In particular, this scene does not yet perform deadly falls,
+ * conveyors, key collection or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -25,6 +26,7 @@ export class GameScene extends Scene
     private player?: Player;
     private collisionProbe?: TileCollisionProbe;
     private vanishingPlatforms?: VanishingPlatforms;
+    private animatedLadders?: AnimatedLadders;
     private cursors?: Types.Input.Keyboard.CursorKeys;
 
     constructor()
@@ -57,6 +59,7 @@ export class GameScene extends Scene
 
         this.collisionProbe = new TileCollisionProbe(backgroundLayer);
         this.vanishingPlatforms = new VanishingPlatforms(this, backgroundLayer, "vanishing-platform");
+        this.animatedLadders = new AnimatedLadders(this, backgroundLayer, "ladder-left", "ladder-right");
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(1);
@@ -68,11 +71,12 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.cursors) {
             return;
         }
 
         this.vanishingPlatforms.update(delta);
+        this.animatedLadders.update(delta);
         this.player.updatePrototypeMovement(
             this.cursors,
             this.map,
@@ -120,7 +124,7 @@ export class GameScene extends Scene
     {
         // Fixed-camera text makes the current prototype state visible without
         // changing the map or player scroll position.
-        this.add.text(8, 8, "Player jump prototype — arrows move, space jumps", {
+        this.add.text(8, 8, "Player movement prototype — arrows move, space jumps", {
             fontFamily: "Arial",
             fontSize: "13px",
             color: "#ffffff",
