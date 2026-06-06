@@ -13,7 +13,10 @@ export class TileCollisionProbe
     private static readonly TILED_PROPERTY_NAME = "name";
     private static readonly TILED_PROPERTY_TYPE = "type";
     private static readonly TILE_NAME_WALL = "wall";
+    private static readonly TILE_NAME_LEFT_SLIDE = "left slide";
+    private static readonly TILE_NAME_RIGHT_SLIDE = "right slide";
     private static readonly TILE_TYPE_SOLID = "solid";
+    private static readonly TILE_TYPE_SLIDE = "slide";
 
     constructor(private readonly layer: Tilemaps.TilemapLayerBase)
     {
@@ -66,6 +69,48 @@ export class TileCollisionProbe
             y,
             TileCollisionProbe.TILED_PROPERTY_TYPE,
             TileCollisionProbe.TILE_TYPE_SOLID
+        );
+    }
+
+    /**
+     * Checks whether a horizontal foot probe touches any slide tile.
+     */
+    hasSlideOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_TYPE,
+            TileCollisionProbe.TILE_TYPE_SLIDE
+        );
+    }
+
+    /**
+     * Checks whether the probe touches a left-moving slide tile.
+     */
+    hasLeftSlideOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_LEFT_SLIDE
+        );
+    }
+
+    /**
+     * Checks whether the probe touches a right-moving slide tile.
+     */
+    hasRightSlideOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_RIGHT_SLIDE
         );
     }
 

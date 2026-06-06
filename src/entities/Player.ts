@@ -11,11 +11,11 @@ type FacingDirection = "left" | "right";
  * Minimal Phaser 4 player entity used by the modernization prototype.
  *
  * This class owns the real Blagger sprite and a small movement test. It is still
- * not final gameplay: horizontal walking, side wall blocking, simple falling and
- * a first jump-path prototype have been ported. Ladder logic, slides, conveyors
- * and interaction handling are still absent. The current goal is to validate the
- * most sensitive manual movement probes before the full Phaser 2 movement rules
- * are moved over.
+ * not final gameplay: horizontal walking, side wall blocking, simple falling,
+ * a first jump-path prototype and a small slide prototype have been ported.
+ * Ladder logic, conveyors and interaction handling are still absent. The
+ * current goal is to validate the most sensitive manual movement probes before
+ * the full Phaser 2 movement rules are moved over.
  */
 export class Player
 {
@@ -28,6 +28,9 @@ export class Player
     // Horizontal foot probes copied from the Phaser 2 movement controller.
     private static readonly FOOT_LEFT_OFFSET = 7;
     private static readonly FOOT_RIGHT_OFFSET = 23;
+
+    // Slides are detected below the feet, like the Phaser 2 movement controller.
+    private static readonly SLIDE_PROBE_Y_OFFSET = 14;
 
     // Side wall probes copied from the Phaser 2 movement controller.
     private static readonly RIGHT_WALL_X_OFFSET = 24;
@@ -107,7 +110,9 @@ export class Player
             return;
         }
 
-        if (!this.hasGroundBelow(collisionProbe)) {
+        const slideDirection = this.readSlideDirectionBelow(collisionProbe);
+
+        if (!slideDirection && !this.hasSolidGroundBelow(collisionProbe)) {
             this.stopPrototypeWalk(false);
             this.moveDownWhenDue(map);
             return;
@@ -122,6 +127,11 @@ export class Player
         if (this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe);
+            return;
+        }
+
+        if (slideDirection) {
+            this.moveOnSlideWhenDue(slideDirection, map, collisionProbe);
             return;
         }
 
@@ -243,7 +253,7 @@ export class Player
 
     private moveDownDuringJump(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
     {
-        if (this.hasGroundBelow(collisionProbe)) {
+        if (this.hasLandingSurfaceBelow(collisionProbe)) {
             this.finishJump();
             return false;
         }
@@ -286,6 +296,26 @@ export class Player
         }
 
         return this.moveHorizontallyByOnePixel(direction, map, collisionProbe);
+    }
+
+    private moveOnSlideWhenDue(
+        direction: FacingDirection,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): void
+    {
+        this.applyDirectionChange(direction);
+
+        // The slide prototype follows the Phaser 2 rule that a slide forces both
+        // horizontal movement and a one-pixel descent instead of behaving like
+        // normal ground. Jump input is checked before this method, so Sid can
+        // still jump while standing on the slope.
+        const movedHorizontally = this.moveHorizontallyWhenDue(direction, map, collisionProbe);
+        const movedVertically = this.moveDownWhenDue(map);
+
+        if (movedHorizontally || movedVertically) {
+            this.advanceWalkingFrameWhenDue();
+        }
     }
 
     private moveHorizontallyByOnePixel(
@@ -384,7 +414,7 @@ export class Player
         );
     }
 
-    private hasGroundBelow(collisionProbe: TileCollisionProbe): boolean
+    private hasSolidGroundBelow(collisionProbe: TileCollisionProbe): boolean
     {
         // The foot probe is deliberately narrower than the visible sprite. The
         // old movement code used these offsets so Sid can stand close to edges.
@@ -393,6 +423,38 @@ export class Player
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
             this.sprite.y + this.sprite.displayHeight
         );
+    }
+
+    private hasLandingSurfaceBelow(collisionProbe: TileCollisionProbe): boolean
+    {
+        // The Phaser 2 reference lets a jump land on both solid tiles and slide
+        // tiles. Without the slide check, pressing jump on a toboggan immediately
+        // falls instead of starting the jump path.
+        return this.hasSolidGroundBelow(collisionProbe) ||
+            collisionProbe.hasSlideOnHorizontalLine(
+                this.sprite.x + Player.FOOT_LEFT_OFFSET,
+                this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+                this.sprite.y + this.sprite.displayHeight
+            );
+    }
+
+    private readSlideDirectionBelow(collisionProbe: TileCollisionProbe): FacingDirection | null
+    {
+        const xStart = this.sprite.x + Player.FOOT_LEFT_OFFSET;
+        const xEnd = this.sprite.x + Player.FOOT_RIGHT_OFFSET;
+        const y = this.sprite.y + this.sprite.displayHeight + Player.SLIDE_PROBE_Y_OFFSET;
+
+        // The slope probe is lower than the normal foot probe. This matches the
+        // original check that detects slides only once Sid is visibly on them.
+        if (collisionProbe.hasLeftSlideOnHorizontalLine(xStart, xEnd, y)) {
+            return "left";
+        }
+
+        if (collisionProbe.hasRightSlideOnHorizontalLine(xStart, xEnd, y)) {
+            return "right";
+        }
+
+        return null;
     }
 
     private shouldMoveHorizontallyThisFrame(): boolean
