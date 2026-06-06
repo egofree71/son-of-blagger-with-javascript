@@ -1,5 +1,6 @@
 import { Scene, Tilemaps, Types } from "phaser";
 import { Player } from "../entities/Player";
+import type { TiledObjectLike } from "../tiled/tiledObjects";
 import { findObjectByLevel } from "../tiled/tiledObjects";
 import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import { VanishingPlatforms } from "../entities/VanishingPlatforms";
@@ -7,8 +8,9 @@ import { AnimatedLadders } from "../entities/AnimatedLadders";
 import { AnimatedConveyors } from "../entities/AnimatedConveyors";
 import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 import { KeyCollector } from "../entities/KeyCollector";
+import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { Data } from "../js/data";
-import { PROTOTYPE_KEYS_CHANGED_EVENT } from "./HUDScene";
+import { PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -16,11 +18,11 @@ import { PROTOTYPE_KEYS_CHANGED_EVENT } from "./HUDScene";
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, vanishing-platform and key-collection test.
+ * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, vanishing-platform, key-collection and deadly-tile test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform deadly falls
- * or exit checks.
+ * implementation. In particular, this scene does not yet perform lives, the
+ * death animation, monster collisions or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -35,8 +37,11 @@ export class GameScene extends Scene
     private animatedLadders?: AnimatedLadders;
     private animatedConveyors?: AnimatedConveyors;
     private keyCollector?: KeyCollector;
+    private deadlyTileDetector?: DeadlyTileDetector;
     private debugPlayerControls?: DebugPlayerControls;
     private cursors?: Types.Input.Keyboard.CursorKeys;
+    private currentPlayerStart?: TiledObjectLike;
+    private temporaryDeathCount = 0;
 
     constructor()
     {
@@ -71,6 +76,7 @@ export class GameScene extends Scene
         this.animatedLadders = new AnimatedLadders(this, backgroundLayer, "ladder-left", "ladder-right");
         this.animatedConveyors = new AnimatedConveyors(this, backgroundLayer, "conveyor-left", "conveyor-right");
         this.keyCollector = new KeyCollector(backgroundLayer);
+        this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
@@ -90,13 +96,14 @@ export class GameScene extends Scene
         this.scene.launch("HUDScene", {
             debugModeEnabled: this.debugPlayerControls !== undefined,
             keysCollected: this.keyCollector?.collectedKeys ?? 0,
-            keysNeeded: this.keysNeededForCurrentLevel()
+            keysNeeded: this.keysNeededForCurrentLevel(),
+            deaths: this.temporaryDeathCount
         });
     }
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.cursors) {
             return;
         }
 
@@ -117,9 +124,40 @@ export class GameScene extends Scene
             this.vanishingPlatforms
         );
 
+        if (this.killPlayerIfNeeded()) {
+            return;
+        }
+
         this.collectKeyIfNeeded();
     }
 
+    private killPlayerIfNeeded(): boolean
+    {
+        if (!this.player || !this.deadlyTileDetector || !this.keyCollector || !this.currentPlayerStart) {
+            return false;
+        }
+
+        if (!this.deadlyTileDetector.touchesDeadlyTile(this.player.getDeadlyCollisionBounds())) {
+            return false;
+        }
+
+        this.temporaryDeathCount += 1;
+
+        // This is only the first trap-collision slice. The real Phaser 2 flow
+        // will later play the death animation, update lives and reload the level.
+        this.player.resetToTiledStart(this.currentPlayerStart);
+        this.keyCollector.reset();
+
+        this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
+            deaths: this.temporaryDeathCount
+        });
+        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
+            keysCollected: this.keyCollector.collectedKeys,
+            keysNeeded: this.keysNeededForCurrentLevel()
+        });
+
+        return true;
+    }
 
     private collectKeyIfNeeded(): void
     {
@@ -159,6 +197,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.currentPlayerStart = playerStart;
         this.player = new Player(this, "blagger");
         this.player.resetToTiledStart(playerStart);
 

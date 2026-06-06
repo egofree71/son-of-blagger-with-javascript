@@ -1,18 +1,25 @@
 import { GameObjects, Scene } from "phaser";
 
 export const PROTOTYPE_KEYS_CHANGED_EVENT = "prototype-keys-changed";
+export const PROTOTYPE_PLAYER_KILLED_EVENT = "prototype-player-killed";
 
 interface HUDSceneData
 {
     debugModeEnabled?: boolean;
     keysCollected?: number;
     keysNeeded?: number;
+    deaths?: number;
 }
 
 interface PrototypeKeysChangedEvent
 {
     keysCollected: number;
     keysNeeded: number;
+}
+
+interface PrototypePlayerKilledEvent
+{
+    deaths: number;
 }
 
 /**
@@ -25,6 +32,7 @@ interface PrototypeKeysChangedEvent
 export class HUDScene extends Scene
 {
     private keysText?: GameObjects.Text;
+    private deathsText?: GameObjects.Text;
 
     constructor()
     {
@@ -42,19 +50,25 @@ export class HUDScene extends Scene
             color: "#ffffff"
         });
 
-        this.add.text(220, 374, "SPACE JUMP", {
+        this.add.text(180, 374, "SPACE JUMP", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.keysText = this.add.text(360, 374, "", {
+        this.keysText = this.add.text(315, 374, "", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.add.text(500, 374, "LEVEL 1", {
+        this.deathsText = this.add.text(430, 374, "", {
+            fontFamily: "Arial",
+            fontSize: "14px",
+            color: "#ffffff"
+        });
+
+        this.add.text(540, 374, "LEVEL 1", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
@@ -64,13 +78,21 @@ export class HUDScene extends Scene
             keysCollected: data.keysCollected ?? 0,
             keysNeeded: data.keysNeeded ?? 0
         });
+        this.updateDeathsText({ deaths: data.deaths ?? 0 });
 
         this.game.events.on(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
+        this.game.events.on(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
 
         // Game-wide events survive scene restarts, so the temporary HUD removes
         // its listener when the scene is stopped or destroyed.
-        this.events.once("shutdown", () => this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this));
-        this.events.once("destroy", () => this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this));
+        this.events.once("shutdown", () => {
+            this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
+            this.game.events.off(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
+        });
+        this.events.once("destroy", () => {
+            this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
+            this.game.events.off(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
+        });
 
         if (!data.debugModeEnabled) {
             return;
@@ -88,5 +110,10 @@ export class HUDScene extends Scene
     private updateKeysText(data: PrototypeKeysChangedEvent): void
     {
         this.keysText?.setText(`KEYS ${data.keysCollected}/${data.keysNeeded}`);
+    }
+
+    private updateDeathsText(data: PrototypePlayerKilledEvent): void
+    {
+        this.deathsText?.setText(`DEATHS ${data.deaths}`);
     }
 }

@@ -31,6 +31,15 @@ export class KeyCollector
     }
 
     /**
+     * Restores all key tiles and resets the temporary collected-key counter.
+     */
+    reset(): void
+    {
+        this.collectedCount = 0;
+        this.showAllKeyTiles();
+    }
+
+    /**
      * Collects the first visible key touched by the supplied player probe.
      */
     collectFromPlayerProbe(bounds: PlayerProbeRectangle): boolean

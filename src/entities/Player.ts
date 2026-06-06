@@ -27,8 +27,8 @@ export interface PlayerProbeRectangle
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
  * a first jump-path prototype, a small slide prototype, vanishing-platform
  * support, conveyors, and a first automatic-ladder prototype have been ported.
- * Key collection has a first prototype, while deadly tiles, exits and monsters
- * are still absent. The current goal is to validate the most sensitive manual
+ * Key collection and deadly-tile detection have first prototypes, while exits
+ * and monsters are still absent. The current goal is to validate the most sensitive manual
  * movement probes before the full Phaser 2 movement rules are moved over.
  */
 export class Player
@@ -51,6 +51,12 @@ export class Player
     private static readonly KEY_RIGHT_OFFSET = 23;
     private static readonly KEY_TOP_OFFSET = 0;
     private static readonly KEY_BOTTOM_OFFSET = 0;
+
+    // Deadly tile checks use the slightly wider rectangle from PlayerInteractions.
+    private static readonly DEADLY_LEFT_OFFSET = 5;
+    private static readonly DEADLY_RIGHT_OFFSET = 27;
+    private static readonly DEADLY_TOP_OFFSET = 0;
+    private static readonly DEADLY_BOTTOM_OFFSET = -1;
 
     // Slides are detected below the feet, like the Phaser 2 movement controller.
     private static readonly SLIDE_PROBE_Y_OFFSET = 14;
@@ -254,6 +260,19 @@ export class Player
             yStart: this.sprite.y + Player.KEY_TOP_OFFSET,
             xEnd: this.sprite.x + Player.KEY_RIGHT_OFFSET,
             yEnd: this.sprite.y + this.sprite.displayHeight + Player.KEY_BOTTOM_OFFSET
+        };
+    }
+
+    /**
+     * Returns the narrow rectangle used by the Phaser 2 deadly tile check.
+     */
+    getDeadlyCollisionBounds(): PlayerProbeRectangle
+    {
+        return {
+            xStart: this.sprite.x + Player.DEADLY_LEFT_OFFSET,
+            yStart: this.sprite.y + Player.DEADLY_TOP_OFFSET,
+            xEnd: this.sprite.x + Player.DEADLY_RIGHT_OFFSET,
+            yEnd: this.sprite.y + this.sprite.displayHeight + Player.DEADLY_BOTTOM_OFFSET
         };
     }
 
