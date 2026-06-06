@@ -19,6 +19,13 @@ export interface PlayerProbeRectangle
     yEnd: number;
 }
 
+/**
+ * Result returned by the temporary Phaser 4 movement slice.
+ */
+export interface PlayerPrototypeMovementResult
+{
+    playerKilledByDeadlyFall: boolean;
+}
 
 /**
  * Minimal Phaser 4 player entity used by the modernization prototype.
@@ -80,14 +87,22 @@ export class Player
     // Data.jumpPath starts counting fall height again from this index onward.
     private static readonly JUMP_FALL_START_INDEX = 50;
 
+    // A fall becomes deadly after the same 72-pixel threshold as Phaser 2.
+    private static readonly FALL_LIMIT = 72;
+
     // Temporary prototype speed limiter. The real movement timing will be
     // revisited when the full Phaser 2 movement controller is ported.
     private static readonly PROTOTYPE_MOVE_FRAME_INTERVAL = 2;
 
     private static readonly LEFT_FRAMES: readonly number[] = [0, 1, 2, 3, 4, 5];
     private static readonly RIGHT_FRAMES: readonly number[] = [6, 7, 8, 9, 10, 11];
+    private static readonly NO_PROTOTYPE_DEATH: PlayerPrototypeMovementResult = {
+        playerKilledByDeadlyFall: false
+    };
 
     private readonly sprite: GameObjects.Sprite;
+    private readonly normalTextureKey: string;
+    private readonly deadlyFallTextureKey: string;
     private facingDirection: FacingDirection = "right";
     private animationFrameIndex = 0;
     private animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
@@ -98,9 +113,13 @@ export class Player
     private jumping = false;
     private jumpIndex = 0;
     private jumpHorizontalDirection: FacingDirection | null = null;
+    private fallHeight = 0;
+    private deadlyFall = false;
 
-    constructor(scene: Scene, textureKey: string)
+    constructor(scene: Scene, textureKey: string, deadlyFallTextureKey: string)
     {
+        this.normalTextureKey = textureKey;
+        this.deadlyFallTextureKey = deadlyFallTextureKey;
         this.sprite = scene.add.sprite(0, 0, textureKey, this.firstFrameFor("right"))
             .setOrigin(0, 0)
             .setDepth(Player.SPRITE_DEPTH)
@@ -127,7 +146,9 @@ export class Player
         this.jumping = false;
         this.jumpIndex = 0;
         this.jumpHorizontalDirection = null;
-        this.sprite.setFrame(this.firstFrameFor(this.facingDirection));
+        this.fallHeight = 0;
+        this.deadlyFall = false;
+        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
         this.sprite.setVisible(true);
     }
 
@@ -143,11 +164,17 @@ export class Player
         map: Tilemaps.Tilemap,
         collisionProbe: TileCollisionProbe,
         vanishingPlatforms: VanishingPlatforms
-    ): void
+    ): PlayerPrototypeMovementResult
     {
+        if (this.deadlyFall) {
+            return {
+                playerKilledByDeadlyFall: this.updateDeadlyFall(map, collisionProbe)
+            };
+        }
+
         if (this.jumping) {
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         const slideDirection = this.readSlideDirectionBelow(collisionProbe);
@@ -163,6 +190,7 @@ export class Player
             // the previous frame. The full Phaser 2 fall-height rule comes later.
             this.verticalMovementAccumulator = 1;
             this.jumpStepAccumulator = 1;
+            this.fallHeight = 0;
         }
 
         if (!slideDirection) {
@@ -174,33 +202,37 @@ export class Player
         if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         if (slideDirection) {
             this.moveOnSlideWhenDue(slideDirection, requestedDirection, map, collisionProbe);
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         if (onLadder) {
             this.moveOnLadderWhenDue(requestedDirection, map, collisionProbe);
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         if (!hasStandingSurface) {
             this.stopPrototypeWalk(false);
-            this.moveDownWhenDue(map);
-            return;
+
+            if (this.moveDownWhileFallingWhenDue(map)) {
+                this.recordFallPixel();
+            }
+
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         if (conveyorDirection) {
             this.moveOnConveyorWhenDue(conveyorDirection, requestedDirection, map, collisionProbe);
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         if (!requestedDirection) {
             this.stopPrototypeWalk();
-            return;
+            return Player.NO_PROTOTYPE_DEATH;
         }
 
         this.applyDirectionChange(requestedDirection);
@@ -210,6 +242,8 @@ export class Player
         if (moved) {
             this.advanceWalkingFrameWhenDue();
         }
+
+        return Player.NO_PROTOTYPE_DEATH;
     }
 
     /**
@@ -227,6 +261,9 @@ export class Player
         this.jumping = false;
         this.jumpIndex = 0;
         this.jumpHorizontalDirection = null;
+        this.fallHeight = 0;
+        this.deadlyFall = false;
+        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
         this.stopPrototypeWalk(false);
     }
 
@@ -267,10 +304,25 @@ export class Player
      */
     hideForDeathAnimation(): void
     {
-        // Death interrupts any temporary movement state. Resetting the counters
-        // prevents an old jump, slide or fall from resuming after the respawn.
-        this.cancelPrototypeMovementForDebug();
+        // Death interrupts temporary movement, but preserves deadlyFall so the
+        // death sequence can choose the white falling-death sprite.
+        this.horizontalMovementAccumulator = 1;
+        this.verticalMovementAccumulator = 1;
+        this.slideMovementAccumulator = 1;
+        this.jumpStepAccumulator = 1;
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
+        this.stopPrototypeWalk(false);
         this.sprite.setVisible(false);
+    }
+
+    /**
+     * Tells whether the current death sequence was caused by falling too far.
+     */
+    isDeadlyFall(): boolean
+    {
+        return this.deadlyFall;
     }
 
     /**
@@ -345,7 +397,7 @@ export class Player
         const jumpStep = Data.jumpPath[this.jumpIndex];
 
         if (!jumpStep) {
-            this.finishJump();
+            this.finishJump(false);
             return;
         }
 
@@ -354,7 +406,7 @@ export class Player
         this.jumpIndex += 1;
 
         if (this.jumpIndex >= Data.jumpPath.length) {
-            this.finishJump();
+            this.finishJump(false);
         }
     }
 
@@ -397,18 +449,28 @@ export class Player
     ): boolean
     {
         if (this.hasLandingSurfaceBelow(collisionProbe, vanishingPlatforms)) {
-            this.finishJump();
+            this.finishJump(true);
             return false;
         }
 
-        return this.moveDownByOnePixel(map);
+        const moved = this.moveDownByOnePixel(map);
+
+        if (moved && this.jumpIndex >= Player.JUMP_FALL_START_INDEX) {
+            this.recordFallPixel();
+        }
+
+        return moved;
     }
 
-    private finishJump(): void
+    private finishJump(resetFallHeight: boolean): void
     {
         this.jumping = false;
         this.jumpIndex = 0;
         this.jumpHorizontalDirection = null;
+
+        if (resetFallHeight) {
+            this.fallHeight = 0;
+        }
 
         // Like Phaser 2's stopAnimation(), landing keeps the current visual frame.
         this.stopPrototypeWalk(false);
@@ -554,6 +616,33 @@ export class Player
         return true;
     }
 
+    private moveDownWhileFallingWhenDue(map: Tilemaps.Tilemap): boolean
+    {
+        if (!this.shouldMoveVerticallyThisFrame()) {
+            return false;
+        }
+
+        return this.moveDownByOnePixel(map);
+    }
+
+    private updateDeadlyFall(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    {
+        // Once a fall is deadly, Phaser 2 suspends controls and keeps dropping Sid
+        // until his feet reach the top of the next solid tile. Keep using the
+        // same vertical timer as the normal prototype fall so the white fall does
+        // not suddenly accelerate.
+        if (this.hasDeadlyFallLandingSurfaceBelow(collisionProbe)) {
+            return true;
+        }
+
+        if (!this.shouldMoveVerticallyThisFrame()) {
+            return false;
+        }
+
+        this.moveDownByOnePixel(map);
+        return false;
+    }
+
     private moveDownWhenDue(map: Tilemaps.Tilemap): boolean
     {
         if (!this.shouldMoveVerticallyThisFrame()) {
@@ -574,8 +663,8 @@ export class Player
 
     private moveDownByOnePixel(map: Tilemaps.Tilemap): boolean
     {
-        // This is a simple prototype fall, not the final Phaser 2 fall-speed or
-        // deadly-fall rule. The clamp only prevents falling outside the map data.
+        // The clamp prevents falling outside the map data while movement rules are
+        // still being ported one slice at a time.
         const maxY = Math.max(0, map.heightInPixels - this.sprite.displayHeight);
         const nextY = this.clamp(this.sprite.y + 1, 0, maxY);
 
@@ -673,6 +762,17 @@ export class Player
             this.hasVanishingPlatformBelow(vanishingPlatforms);
     }
 
+    private hasDeadlyFallLandingSurfaceBelow(collisionProbe: TileCollisionProbe): boolean
+    {
+        // Deadly falls stop only on solid tile tops in the Phaser 2 reference.
+        // Slides and vanishing platforms are deliberately not death triggers here.
+        return collisionProbe.hasSolidTopOnHorizontalLine(
+            this.sprite.x + Player.FOOT_LEFT_OFFSET,
+            this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+            this.sprite.y + this.sprite.displayHeight
+        );
+    }
+
     private hasVanishingPlatformBelow(vanishingPlatforms: VanishingPlatforms): boolean
     {
         return vanishingPlatforms.hasCollisionOnHorizontalLine(
@@ -730,6 +830,32 @@ export class Player
         // The ladder probe is a small lower-body rectangle. Using the full sprite
         // would let Sid catch ladders from too far away.
         return collisionProbe.hasLadderInRectangle(xStart, yStart, xEnd, yEnd);
+    }
+
+    private recordFallPixel(): void
+    {
+        if (this.deadlyFall) {
+            return;
+        }
+
+        this.fallHeight += 1;
+
+        if (this.fallHeight >= Player.FALL_LIMIT) {
+            this.startDeadlyFall();
+        }
+    }
+
+    private startDeadlyFall(): void
+    {
+        this.deadlyFall = true;
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
+        this.stopPrototypeWalk(false);
+
+        // The normal sprite turns white during the uncontrollable falling part,
+        // then the death sequence switches to the white dying spritesheet.
+        this.sprite.setTexture(this.deadlyFallTextureKey, this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }
 
     private shouldMoveHorizontallyThisFrame(): boolean

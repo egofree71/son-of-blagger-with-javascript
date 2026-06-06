@@ -54,7 +54,17 @@ export class PreloadScene extends Scene
             frameHeight: 42
         });
 
+        this.load.spritesheet("blagger-white", "assets/sprites/blagger white.png", {
+            frameWidth: 48,
+            frameHeight: 42
+        });
+
         this.load.spritesheet("blagger-dying", "assets/sprites/blagger dying.png", {
+            frameWidth: 36,
+            frameHeight: 42
+        });
+
+        this.load.spritesheet("blagger-dying-white", "assets/sprites/blagger dying white.png", {
             frameWidth: 36,
             frameHeight: 42
         });

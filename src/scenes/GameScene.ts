@@ -79,7 +79,7 @@ export class GameScene extends Scene
         this.animatedConveyors = new AnimatedConveyors(this, backgroundLayer, "conveyor-left", "conveyor-right");
         this.keyCollector = new KeyCollector(backgroundLayer);
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
-        this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying");
+        this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
@@ -125,12 +125,17 @@ export class GameScene extends Scene
             return;
         }
 
-        this.player.updatePrototypeMovement(
+        const movementResult = this.player.updatePrototypeMovement(
             this.cursors,
             this.map,
             this.collisionProbe,
             this.vanishingPlatforms
         );
+
+        if (movementResult.playerKilledByDeadlyFall) {
+            this.startTemporaryPlayerDeath();
+            return;
+        }
 
         if (this.killPlayerIfNeeded()) {
             return;
@@ -146,6 +151,15 @@ export class GameScene extends Scene
         }
 
         if (!this.deadlyTileDetector.touchesDeadlyTile(this.player.getDeadlyCollisionBounds())) {
+            return false;
+        }
+
+        return this.startTemporaryPlayerDeath();
+    }
+
+    private startTemporaryPlayerDeath(): boolean
+    {
+        if (!this.player || !this.playerDeathSequence) {
             return false;
         }
 
@@ -214,7 +228,7 @@ export class GameScene extends Scene
         }
 
         this.currentPlayerStart = playerStart;
-        this.player = new Player(this, "blagger");
+        this.player = new Player(this, "blagger", "blagger-white");
         this.player.resetToTiledStart(playerStart);
 
         this.followPlayer(this.player);

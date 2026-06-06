@@ -24,7 +24,8 @@ export class PlayerDeathSequence
 
     constructor(
         private readonly scene: Scene,
-        private readonly textureKey: string
+        private readonly normalTextureKey: string,
+        private readonly deadlyFallTextureKey: string
     )
     {
     }
@@ -43,10 +44,14 @@ export class PlayerDeathSequence
         this.frameIndex = 0;
         this.completeCallback = onComplete;
 
+        const textureKey = player.isDeadlyFall()
+            ? this.deadlyFallTextureKey
+            : this.normalTextureKey;
+
         this.dyingSprite = this.scene.add.sprite(
             origin.x,
             origin.y - PlayerDeathSequence.DYING_SPRITE_Y_OFFSET,
-            this.textureKey,
+            textureKey,
             0
         )
             .setOrigin(0, 0)
