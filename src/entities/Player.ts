@@ -68,6 +68,7 @@ export class Player
     private animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
+    private slideMovementAccumulator = 1;
     private jumpStepAccumulator = 1;
     private jumping = false;
     private jumpIndex = 0;
@@ -96,6 +97,7 @@ export class Player
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
+        this.slideMovementAccumulator = 1;
         this.jumpStepAccumulator = 1;
         this.jumping = false;
         this.jumpIndex = 0;
@@ -135,6 +137,12 @@ export class Player
             this.jumpStepAccumulator = 1;
         }
 
+        if (!slideDirection) {
+            // Entering a slide should start with an immediate diagonal step; do
+            // not inherit a half-used slide timer from a previous slope.
+            this.slideMovementAccumulator = 1;
+        }
+
         if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
@@ -142,7 +150,7 @@ export class Player
         }
 
         if (slideDirection) {
-            this.moveOnSlideWhenDue(slideDirection, map, collisionProbe);
+            this.moveOnSlideWhenDue(slideDirection, requestedDirection, map, collisionProbe);
             return;
         }
 
@@ -181,6 +189,7 @@ export class Player
     {
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
+        this.slideMovementAccumulator = 1;
         this.jumpStepAccumulator = 1;
         this.jumping = false;
         this.jumpIndex = 0;
@@ -352,21 +361,32 @@ export class Player
     }
 
     private moveOnSlideWhenDue(
-        direction: FacingDirection,
+        slideDirection: FacingDirection,
+        requestedDirection: FacingDirection | null,
         map: Tilemaps.Tilemap,
         collisionProbe: TileCollisionProbe
     ): void
     {
-        this.applyDirectionChange(direction);
+        if (requestedDirection) {
+            // Phaser 2 lets the slide force movement while left/right input still
+            // owns the walking animation direction. This can look odd on opposite
+            // input, but it keeps the old input-first, environment-second order.
+            this.applyDirectionChange(requestedDirection);
+        }
 
-        // The slide prototype follows the Phaser 2 rule that a slide forces both
-        // horizontal movement and a one-pixel descent instead of behaving like
-        // normal ground. Jump input is checked before this method, so Sid can
-        // still jump while standing on the slope.
-        const movedHorizontally = this.moveHorizontallyWhenDue(direction, map, collisionProbe);
-        const movedVertically = this.moveDownWhenDue(map);
+        if (!this.shouldMoveOnSlideThisFrame()) {
+            return;
+        }
 
-        if (movedHorizontally || movedVertically) {
+        // Slides apply one diagonal step as a single environment decision. Using
+        // the normal horizontal and falling timers independently made the slope
+        // cadence drift away from the rest of the temporary movement prototype.
+        this.moveHorizontallyByOnePixel(slideDirection, map, collisionProbe);
+        this.moveDownByOnePixel(map);
+
+        if (requestedDirection) {
+            // Standing on a slide without input should keep Sid's current frame;
+            // pressing left/right animates exactly like normal walking.
             this.advanceWalkingFrameWhenDue();
         }
     }
@@ -606,6 +626,21 @@ export class Player
         }
 
         this.verticalMovementAccumulator -= 1;
+        return true;
+    }
+
+    private shouldMoveOnSlideThisFrame(): boolean
+    {
+        // Use one shared timer for the forced diagonal slope movement. The two
+        // axes should move together instead of competing through separate walking
+        // and falling accumulators.
+        this.slideMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+
+        if (this.slideMovementAccumulator < 1) {
+            return false;
+        }
+
+        this.slideMovementAccumulator -= 1;
         return true;
     }
 
