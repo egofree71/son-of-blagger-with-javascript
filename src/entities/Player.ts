@@ -14,8 +14,8 @@ type FacingDirection = "left" | "right";
  * This class owns the real Blagger sprite and a small movement test. It is still
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
  * a first jump-path prototype, a small slide prototype, vanishing-platform
- * support, and a first automatic-ladder prototype have been ported. Conveyors
- * and interaction handling are still absent. The current goal is to validate
+ * support, conveyors, and a first automatic-ladder prototype have been ported.
+ * Interaction handling is still absent. The current goal is to validate
  * the most sensitive manual movement probes before
  * the full Phaser 2 movement rules are moved over.
  */
@@ -128,6 +128,9 @@ export class Player
         const slideDirection = this.readSlideDirectionBelow(collisionProbe);
         const onLadder = this.isOnLadder(collisionProbe);
         const hasStandingSurface = this.hasStandingSurfaceBelow(collisionProbe, vanishingPlatforms);
+        const conveyorDirection = hasStandingSurface
+            ? this.readConveyorDirectionBelow(collisionProbe)
+            : null;
         const requestedDirection = this.readHorizontalDirection(cursors);
 
         if (hasStandingSurface || slideDirection || onLadder) {
@@ -162,6 +165,11 @@ export class Player
         if (!hasStandingSurface) {
             this.stopPrototypeWalk(false);
             this.moveDownWhenDue(map);
+            return;
+        }
+
+        if (conveyorDirection) {
+            this.moveOnConveyorWhenDue(conveyorDirection, requestedDirection, map, collisionProbe);
             return;
         }
 
@@ -391,6 +399,37 @@ export class Player
         }
     }
 
+    private moveOnConveyorWhenDue(
+        conveyorDirection: FacingDirection,
+        requestedDirection: FacingDirection | null,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe
+    ): void
+    {
+        if (requestedDirection) {
+            this.applyDirectionChange(requestedDirection);
+        }
+
+        if (!this.shouldMoveHorizontallyThisFrame()) {
+            return;
+        }
+
+        // Conveyor belts choose the actual movement direction. Holding the
+        // opposite arrow cancels the belt movement, just like the Phaser 2 code.
+        const conveyorCancelledByInput = requestedDirection !== null && requestedDirection !== conveyorDirection;
+
+        if (!conveyorCancelledByInput) {
+            this.moveHorizontallyByOnePixel(conveyorDirection, map, collisionProbe);
+        }
+
+        if (requestedDirection) {
+            // Automatic belt movement alone does not animate Sid. Left/right
+            // input still shows the normal walking animation, even when the belt
+            // cancels the resulting horizontal move for that frame.
+            this.advanceWalkingFrameWhenDue();
+        }
+    }
+
     private moveOnLadderWhenDue(
         requestedDirection: FacingDirection | null,
         map: Tilemaps.Tilemap,
@@ -584,6 +623,25 @@ export class Player
 
         if (collisionProbe.hasRightSlideOnHorizontalLine(xStart, xEnd, y)) {
             return "right";
+        }
+
+        return null;
+    }
+
+    private readConveyorDirectionBelow(collisionProbe: TileCollisionProbe): FacingDirection | null
+    {
+        const xStart = this.sprite.x + Player.FOOT_LEFT_OFFSET;
+        const xEnd = this.sprite.x + Player.FOOT_RIGHT_OFFSET;
+        const y = this.sprite.y + this.sprite.displayHeight;
+
+        // Conveyors are detected exactly on the foot line in Phaser 2. Unlike
+        // slides, they do not use the lower slope probe offset.
+        if (collisionProbe.hasRightConveyorOnHorizontalLine(xStart, xEnd, y)) {
+            return "right";
+        }
+
+        if (collisionProbe.hasLeftConveyorOnHorizontalLine(xStart, xEnd, y)) {
+            return "left";
         }
 
         return null;

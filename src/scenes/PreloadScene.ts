@@ -68,6 +68,16 @@ export class PreloadScene extends Scene
             frameWidth: 16,
             frameHeight: 16
         });
+
+        this.load.spritesheet("conveyor-left", "assets/sprites/conveyor left.png", {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+
+        this.load.spritesheet("conveyor-right", "assets/sprites/conveyor right.png", {
+            frameWidth: 16,
+            frameHeight: 16
+        });
     }
 
     create(): void

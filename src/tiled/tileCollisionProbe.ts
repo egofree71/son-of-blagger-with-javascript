@@ -16,6 +16,8 @@ export class TileCollisionProbe
     private static readonly TILE_NAME_LEFT_SLIDE = "left slide";
     private static readonly TILE_NAME_RIGHT_SLIDE = "right slide";
     private static readonly TILE_NAME_LADDER = "ladder";
+    private static readonly TILE_NAME_CONVEYOR_RIGHT = "conveyor right";
+    private static readonly TILE_NAME_CONVEYOR_LEFT = "conveyor left";
     private static readonly TILE_TYPE_SOLID = "solid";
     private static readonly TILE_TYPE_SLIDE = "slide";
 
@@ -157,6 +159,34 @@ export class TileCollisionProbe
             yEnd,
             TileCollisionProbe.TILED_PROPERTY_NAME,
             TileCollisionProbe.TILE_NAME_LADDER
+        );
+    }
+
+    /**
+     * Checks whether the foot probe touches a right-moving conveyor tile.
+     */
+    hasRightConveyorOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_CONVEYOR_RIGHT
+        );
+    }
+
+    /**
+     * Checks whether the foot probe touches a left-moving conveyor tile.
+     */
+    hasLeftConveyorOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_NAME,
+            TileCollisionProbe.TILE_NAME_CONVEYOR_LEFT
         );
     }
 
