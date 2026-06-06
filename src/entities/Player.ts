@@ -172,6 +172,23 @@ export class Player
     }
 
     /**
+     * Cancels temporary gameplay movement before debug free-move takes over.
+     *
+     * Without this reset, releasing a debug key during a jump or fall could
+     * resume an old in-progress movement state from the new debug position.
+     */
+    cancelPrototypeMovementForDebug(): void
+    {
+        this.horizontalMovementAccumulator = 1;
+        this.verticalMovementAccumulator = 1;
+        this.jumpStepAccumulator = 1;
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
+        this.stopPrototypeWalk(false);
+    }
+
+    /**
      * Returns the visual center of the sprite for camera placement.
      */
     getCenter(): { x: number; y: number }

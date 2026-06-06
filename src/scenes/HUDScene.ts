@@ -1,5 +1,10 @@
 import { Scene } from "phaser";
 
+interface HUDSceneData
+{
+    debugModeEnabled?: boolean;
+}
+
 /**
  * Temporary HUD overlay for the Phaser 4 prototype.
  *
@@ -14,7 +19,7 @@ export class HUDScene extends Scene
         super("HUDScene");
     }
 
-    create(): void
+    create(data: HUDSceneData = {}): void
     {
         this.add.rectangle(320, 384, 640, 32, 0x000000)
             .setOrigin(0.5);
@@ -35,6 +40,18 @@ export class HUDScene extends Scene
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
+        });
+
+        if (!data.debugModeEnabled) {
+            return;
+        }
+
+        // Keep the hint short: the fake HUD is temporary and should not crowd
+        // the gameplay viewport while testing movement details.
+        this.add.text(500, 390, "DBG 8/2/4/6", {
+            fontFamily: "Arial",
+            fontSize: "10px",
+            color: "#aaaaaa"
         });
     }
 }

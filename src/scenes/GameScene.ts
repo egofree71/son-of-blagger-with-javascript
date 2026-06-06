@@ -4,6 +4,7 @@ import { findObjectByLevel } from "../tiled/tiledObjects";
 import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import { VanishingPlatforms } from "../entities/VanishingPlatforms";
 import { AnimatedLadders } from "../entities/AnimatedLadders";
+import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -27,6 +28,7 @@ export class GameScene extends Scene
     private collisionProbe?: TileCollisionProbe;
     private vanishingPlatforms?: VanishingPlatforms;
     private animatedLadders?: AnimatedLadders;
+    private debugPlayerControls?: DebugPlayerControls;
     private cursors?: Types.Input.Keyboard.CursorKeys;
 
     constructor()
@@ -66,7 +68,19 @@ export class GameScene extends Scene
         this.addPrototypeOverlayText();
 
         this.cursors = this.input.keyboard?.createCursorKeys();
-        this.scene.launch("HUDScene");
+
+        if (DebugPlayerControls.isEnabled()) {
+            this.debugPlayerControls = new DebugPlayerControls();
+
+            // The helper attaches browser key listeners, so remove them if the
+            // scene is ever restarted during later prototype work.
+            this.events.once("shutdown", () => this.debugPlayerControls?.destroy());
+            this.events.once("destroy", () => this.debugPlayerControls?.destroy());
+        }
+
+        this.scene.launch("HUDScene", {
+            debugModeEnabled: this.debugPlayerControls !== undefined
+        });
     }
 
     update(_time: number, delta: number): void
@@ -77,6 +91,13 @@ export class GameScene extends Scene
 
         this.vanishingPlatforms.update(delta);
         this.animatedLadders.update(delta);
+
+        const debugFreeMoveActive = this.debugPlayerControls?.update(this.player, this.map, delta) ?? false;
+
+        if (debugFreeMoveActive) {
+            return;
+        }
+
         this.player.updatePrototypeMovement(
             this.cursors,
             this.map,
