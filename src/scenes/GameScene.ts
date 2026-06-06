@@ -10,8 +10,9 @@ import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 import { KeyCollector } from "../entities/KeyCollector";
 import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
+import { ExitDetector } from "../entities/ExitDetector";
 import { Data } from "../js/data";
-import { PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
+import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -23,7 +24,7 @@ import { PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./H
  *
  * The real movement rules should still be ported separately from the Phaser 2
  * implementation. In particular, this scene does not yet perform lives, monster
- * collisions or exit checks.
+ * collisions or level transitions.
  */
 export class GameScene extends Scene
 {
@@ -40,10 +41,12 @@ export class GameScene extends Scene
     private keyCollector?: KeyCollector;
     private deadlyTileDetector?: DeadlyTileDetector;
     private playerDeathSequence?: PlayerDeathSequence;
+    private exitDetector?: ExitDetector;
     private debugPlayerControls?: DebugPlayerControls;
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
     private temporaryDeathCount = 0;
+    private temporaryExitReached = false;
 
     constructor()
     {
@@ -83,6 +86,12 @@ export class GameScene extends Scene
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
+        this.exitDetector = this.createExitDetectorForLevel(GameScene.CURRENT_LEVEL_NUMBER);
+
+        if (!this.exitDetector) {
+            return;
+        }
+
         this.addPrototypeOverlayText();
 
         this.cursors = this.input.keyboard?.createCursorKeys();
@@ -100,13 +109,15 @@ export class GameScene extends Scene
             debugModeEnabled: this.debugPlayerControls !== undefined,
             keysCollected: this.keyCollector?.collectedKeys ?? 0,
             keysNeeded: this.keysNeededForCurrentLevel(),
-            deaths: this.temporaryDeathCount
+            deaths: this.temporaryDeathCount,
+            exitReady: this.hasCollectedAllKeys(),
+            exitReached: this.temporaryExitReached
         });
     }
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.cursors) {
             return;
         }
 
@@ -142,6 +153,7 @@ export class GameScene extends Scene
         }
 
         this.collectKeyIfNeeded();
+        this.checkExitIfNeeded();
     }
 
     private killPlayerIfNeeded(): boolean
@@ -174,6 +186,7 @@ export class GameScene extends Scene
         }
 
         this.temporaryDeathCount += 1;
+        this.temporaryExitReached = false;
 
         // This is still a prototype consequence of death: lives and game-over are
         // not implemented yet, so the level is simply reset after the animation.
@@ -187,6 +200,7 @@ export class GameScene extends Scene
             keysCollected: this.keyCollector.collectedKeys,
             keysNeeded: this.keysNeededForCurrentLevel()
         });
+        this.emitTemporaryExitState();
     }
 
     private collectKeyIfNeeded(): void
@@ -205,6 +219,36 @@ export class GameScene extends Scene
             keysCollected: this.keyCollector.collectedKeys,
             keysNeeded: this.keysNeededForCurrentLevel()
         });
+        this.emitTemporaryExitState();
+    }
+
+    private checkExitIfNeeded(): void
+    {
+        if (!this.player || !this.exitDetector || this.temporaryExitReached || !this.hasCollectedAllKeys()) {
+            return;
+        }
+
+        if (!this.exitDetector.touchesPlayer(this.player.getBodyCollisionBounds())) {
+            return;
+        }
+
+        // The real end-level transition is not ported yet. For now, mark the
+        // exit as reached once and keep the prototype playable for further tests.
+        this.temporaryExitReached = true;
+        this.emitTemporaryExitState();
+    }
+
+    private emitTemporaryExitState(): void
+    {
+        this.game.events.emit(PROTOTYPE_EXIT_CHANGED_EVENT, {
+            exitReady: this.hasCollectedAllKeys(),
+            exitReached: this.temporaryExitReached
+        });
+    }
+
+    private hasCollectedAllKeys(): boolean
+    {
+        return (this.keyCollector?.collectedKeys ?? 0) >= this.keysNeededForCurrentLevel();
     }
 
     private keysNeededForCurrentLevel(): number
@@ -232,6 +276,22 @@ export class GameScene extends Scene
         this.player.resetToTiledStart(playerStart);
 
         this.followPlayer(this.player);
+    }
+
+    private createExitDetectorForLevel(levelNumber: number): ExitDetector | undefined
+    {
+        if (!this.map) {
+            return undefined;
+        }
+
+        const exitObject = findObjectByLevel(this.map, "end level", levelNumber);
+
+        if (!exitObject) {
+            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} exit object in the Tiled map.`);
+            return undefined;
+        }
+
+        return new ExitDetector(exitObject);
     }
 
     private followPlayer(player: Player): void

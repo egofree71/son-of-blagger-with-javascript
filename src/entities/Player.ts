@@ -34,8 +34,8 @@ export interface PlayerPrototypeMovementResult
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
  * a first jump-path prototype, a small slide prototype, vanishing-platform
  * support, conveyors, and a first automatic-ladder prototype have been ported.
- * Key collection, deadly-tile detection and the first visual death sequence have
- * temporary prototypes, while exits and monsters are still absent. The current
+ * Key collection, deadly-tile detection, exit detection and the first visual
+ * death sequence have temporary prototypes, while monsters are still absent. The current
  * goal is to validate the most sensitive manual movement probes before the full
  * Phaser 2 movement rules are moved over.
  */
@@ -65,6 +65,12 @@ export class Player
     private static readonly DEADLY_RIGHT_OFFSET = 27;
     private static readonly DEADLY_TOP_OFFSET = 0;
     private static readonly DEADLY_BOTTOM_OFFSET = -1;
+
+    // Exit and future monster checks use the body rectangle from PlayerInteractions.
+    private static readonly BODY_LEFT_OFFSET = 4;
+    private static readonly BODY_RIGHT_OFFSET = 28;
+    private static readonly BODY_TOP_OFFSET = 0;
+    private static readonly BODY_BOTTOM_OFFSET = 0;
 
     // Slides are detected below the feet, like the Phaser 2 movement controller.
     private static readonly SLIDE_PROBE_Y_OFFSET = 14;
@@ -348,6 +354,19 @@ export class Player
             yStart: this.sprite.y + Player.DEADLY_TOP_OFFSET,
             xEnd: this.sprite.x + Player.DEADLY_RIGHT_OFFSET,
             yEnd: this.sprite.y + this.sprite.displayHeight + Player.DEADLY_BOTTOM_OFFSET
+        };
+    }
+
+    /**
+     * Returns the body rectangle used by Phaser 2 exit and monster checks.
+     */
+    getBodyCollisionBounds(): PlayerProbeRectangle
+    {
+        return {
+            xStart: this.sprite.x + Player.BODY_LEFT_OFFSET,
+            yStart: this.sprite.y + Player.BODY_TOP_OFFSET,
+            xEnd: this.sprite.x + Player.BODY_RIGHT_OFFSET,
+            yEnd: this.sprite.y + this.sprite.displayHeight + Player.BODY_BOTTOM_OFFSET
         };
     }
 

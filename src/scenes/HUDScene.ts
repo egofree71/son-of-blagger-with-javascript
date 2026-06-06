@@ -2,6 +2,7 @@ import { GameObjects, Scene } from "phaser";
 
 export const PROTOTYPE_KEYS_CHANGED_EVENT = "prototype-keys-changed";
 export const PROTOTYPE_PLAYER_KILLED_EVENT = "prototype-player-killed";
+export const PROTOTYPE_EXIT_CHANGED_EVENT = "prototype-exit-changed";
 
 interface HUDSceneData
 {
@@ -9,6 +10,8 @@ interface HUDSceneData
     keysCollected?: number;
     keysNeeded?: number;
     deaths?: number;
+    exitReady?: boolean;
+    exitReached?: boolean;
 }
 
 interface PrototypeKeysChangedEvent
@@ -22,6 +25,12 @@ interface PrototypePlayerKilledEvent
     deaths: number;
 }
 
+interface PrototypeExitChangedEvent
+{
+    exitReady: boolean;
+    exitReached: boolean;
+}
+
 /**
  * Temporary HUD overlay for the Phaser 4 prototype.
  *
@@ -33,6 +42,7 @@ export class HUDScene extends Scene
 {
     private keysText?: GameObjects.Text;
     private deathsText?: GameObjects.Text;
+    private exitText?: GameObjects.Text;
 
     constructor()
     {
@@ -50,25 +60,31 @@ export class HUDScene extends Scene
             color: "#ffffff"
         });
 
-        this.add.text(180, 374, "SPACE JUMP", {
+        this.add.text(155, 374, "SPACE JUMP", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.keysText = this.add.text(315, 374, "", {
+        this.keysText = this.add.text(285, 374, "", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.deathsText = this.add.text(430, 374, "", {
+        this.deathsText = this.add.text(390, 374, "", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
 
-        this.add.text(540, 374, "LEVEL 1", {
+        this.exitText = this.add.text(500, 374, "", {
+            fontFamily: "Arial",
+            fontSize: "14px",
+            color: "#ffffff"
+        });
+
+        this.add.text(590, 374, "L1", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
@@ -79,20 +95,19 @@ export class HUDScene extends Scene
             keysNeeded: data.keysNeeded ?? 0
         });
         this.updateDeathsText({ deaths: data.deaths ?? 0 });
+        this.updateExitText({
+            exitReady: data.exitReady ?? false,
+            exitReached: data.exitReached ?? false
+        });
 
         this.game.events.on(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
         this.game.events.on(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
+        this.game.events.on(PROTOTYPE_EXIT_CHANGED_EVENT, this.updateExitText, this);
 
         // Game-wide events survive scene restarts, so the temporary HUD removes
-        // its listener when the scene is stopped or destroyed.
-        this.events.once("shutdown", () => {
-            this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
-            this.game.events.off(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
-        });
-        this.events.once("destroy", () => {
-            this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
-            this.game.events.off(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
-        });
+        // its listeners when the scene is stopped or destroyed.
+        this.events.once("shutdown", () => this.removeGameEventListeners());
+        this.events.once("destroy", () => this.removeGameEventListeners());
 
         if (!data.debugModeEnabled) {
             return;
@@ -114,6 +129,23 @@ export class HUDScene extends Scene
 
     private updateDeathsText(data: PrototypePlayerKilledEvent): void
     {
-        this.deathsText?.setText(`DEATHS ${data.deaths}`);
+        this.deathsText?.setText(`D ${data.deaths}`);
+    }
+
+    private updateExitText(data: PrototypeExitChangedEvent): void
+    {
+        if (data.exitReached) {
+            this.exitText?.setText("EXIT DONE");
+            return;
+        }
+
+        this.exitText?.setText(data.exitReady ? "EXIT OPEN" : "EXIT --");
+    }
+
+    private removeGameEventListeners(): void
+    {
+        this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
+        this.game.events.off(PROTOTYPE_PLAYER_KILLED_EVENT, this.updateDeathsText, this);
+        this.game.events.off(PROTOTYPE_EXIT_CHANGED_EVENT, this.updateExitText, this);
     }
 }
