@@ -9,15 +9,27 @@ import type { VanishingPlatforms } from "./VanishingPlatforms";
 type FacingDirection = "left" | "right";
 
 /**
+ * Rectangle used by the first Phaser 4 interaction probes.
+ */
+export interface PlayerProbeRectangle
+{
+    xStart: number;
+    yStart: number;
+    xEnd: number;
+    yEnd: number;
+}
+
+
+/**
  * Minimal Phaser 4 player entity used by the modernization prototype.
  *
  * This class owns the real Blagger sprite and a small movement test. It is still
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
  * a first jump-path prototype, a small slide prototype, vanishing-platform
  * support, conveyors, and a first automatic-ladder prototype have been ported.
- * Interaction handling is still absent. The current goal is to validate
- * the most sensitive manual movement probes before
- * the full Phaser 2 movement rules are moved over.
+ * Key collection has a first prototype, while deadly tiles, exits and monsters
+ * are still absent. The current goal is to validate the most sensitive manual
+ * movement probes before the full Phaser 2 movement rules are moved over.
  */
 export class Player
 {
@@ -33,6 +45,12 @@ export class Player
     // Horizontal foot probes copied from the Phaser 2 movement controller.
     private static readonly FOOT_LEFT_OFFSET = 7;
     private static readonly FOOT_RIGHT_OFFSET = 23;
+
+    // Key collection uses its own narrow rectangle from PlayerInteractions.
+    private static readonly KEY_LEFT_OFFSET = 7;
+    private static readonly KEY_RIGHT_OFFSET = 23;
+    private static readonly KEY_TOP_OFFSET = 0;
+    private static readonly KEY_BOTTOM_OFFSET = 0;
 
     // Slides are detected below the feet, like the Phaser 2 movement controller.
     private static readonly SLIDE_PROBE_Y_OFFSET = 14;
@@ -224,6 +242,19 @@ export class Player
     getSprite(): GameObjects.Sprite
     {
         return this.sprite;
+    }
+
+    /**
+     * Returns the narrow rectangle used by the Phaser 2 key collection check.
+     */
+    getKeyCollectionBounds(): PlayerProbeRectangle
+    {
+        return {
+            xStart: this.sprite.x + Player.KEY_LEFT_OFFSET,
+            yStart: this.sprite.y + Player.KEY_TOP_OFFSET,
+            xEnd: this.sprite.x + Player.KEY_RIGHT_OFFSET,
+            yEnd: this.sprite.y + this.sprite.displayHeight + Player.KEY_BOTTOM_OFFSET
+        };
     }
 
     private readHorizontalDirection(cursors: Types.Input.Keyboard.CursorKeys): FacingDirection | null

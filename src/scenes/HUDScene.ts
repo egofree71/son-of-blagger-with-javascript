@@ -1,8 +1,18 @@
-import { Scene } from "phaser";
+import { GameObjects, Scene } from "phaser";
+
+export const PROTOTYPE_KEYS_CHANGED_EVENT = "prototype-keys-changed";
 
 interface HUDSceneData
 {
     debugModeEnabled?: boolean;
+    keysCollected?: number;
+    keysNeeded?: number;
+}
+
+interface PrototypeKeysChangedEvent
+{
+    keysCollected: number;
+    keysNeeded: number;
 }
 
 /**
@@ -14,6 +24,8 @@ interface HUDSceneData
  */
 export class HUDScene extends Scene
 {
+    private keysText?: GameObjects.Text;
+
     constructor()
     {
         super("HUDScene");
@@ -36,11 +48,29 @@ export class HUDScene extends Scene
             color: "#ffffff"
         });
 
-        this.add.text(410, 374, "LEVEL 1", {
+        this.keysText = this.add.text(360, 374, "", {
             fontFamily: "Arial",
             fontSize: "14px",
             color: "#ffffff"
         });
+
+        this.add.text(500, 374, "LEVEL 1", {
+            fontFamily: "Arial",
+            fontSize: "14px",
+            color: "#ffffff"
+        });
+
+        this.updateKeysText({
+            keysCollected: data.keysCollected ?? 0,
+            keysNeeded: data.keysNeeded ?? 0
+        });
+
+        this.game.events.on(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this);
+
+        // Game-wide events survive scene restarts, so the temporary HUD removes
+        // its listener when the scene is stopped or destroyed.
+        this.events.once("shutdown", () => this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this));
+        this.events.once("destroy", () => this.game.events.off(PROTOTYPE_KEYS_CHANGED_EVENT, this.updateKeysText, this));
 
         if (!data.debugModeEnabled) {
             return;
@@ -53,5 +83,10 @@ export class HUDScene extends Scene
             fontSize: "10px",
             color: "#aaaaaa"
         });
+    }
+
+    private updateKeysText(data: PrototypeKeysChangedEvent): void
+    {
+        this.keysText?.setText(`KEYS ${data.keysCollected}/${data.keysNeeded}`);
     }
 }
