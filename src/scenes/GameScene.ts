@@ -7,6 +7,8 @@ import { VanishingPlatforms } from "../entities/VanishingPlatforms";
 import { AnimatedLadders } from "../entities/AnimatedLadders";
 import { AnimatedConveyors } from "../entities/AnimatedConveyors";
 import { DebugPlayerControls } from "../debug/DebugPlayerControls";
+import { DebugConsole } from "../debug/DebugConsole";
+import type { PrototypeDebugStatus } from "../debug/DebugConsole";
 import { KeyCollector } from "../entities/KeyCollector";
 import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
@@ -43,6 +45,7 @@ export class GameScene extends Scene
     private playerDeathSequence?: PlayerDeathSequence;
     private exitDetector?: ExitDetector;
     private debugPlayerControls?: DebugPlayerControls;
+    private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
     private temporaryDeathCount = 0;
@@ -98,11 +101,13 @@ export class GameScene extends Scene
 
         if (DebugPlayerControls.isEnabled()) {
             this.debugPlayerControls = new DebugPlayerControls();
+            this.debugConsole = new DebugConsole(this);
+            this.debugConsole.install();
 
-            // The helper attaches browser key listeners, so remove them if the
-            // scene is ever restarted during later prototype work.
-            this.events.once("shutdown", () => this.debugPlayerControls?.destroy());
-            this.events.once("destroy", () => this.debugPlayerControls?.destroy());
+            // Debug helpers attach browser-level state, so remove everything if
+            // the scene is restarted during later prototype work.
+            this.events.once("shutdown", () => this.destroyDebugHelpers());
+            this.events.once("destroy", () => this.destroyDebugHelpers());
         }
 
         this.scene.launch("HUDScene", {
@@ -154,6 +159,80 @@ export class GameScene extends Scene
 
         this.collectKeyIfNeeded();
         this.checkExitIfNeeded();
+    }
+
+    /**
+     * Collects all keys from the browser console when `?debug=1` is enabled.
+     */
+    collectAllKeysForDebug(): void
+    {
+        if (!this.keyCollector) {
+            return;
+        }
+
+        this.keyCollector.collectAllForDebug(this.keysNeededForCurrentLevel());
+        this.temporaryExitReached = false;
+
+        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
+            keysCollected: this.keyCollector.collectedKeys,
+            keysNeeded: this.keysNeededForCurrentLevel()
+        });
+        this.emitTemporaryExitState();
+    }
+
+    /**
+     * Marks the temporary level exit as reached from the browser console.
+     */
+    finishLevelForDebug(): void
+    {
+        this.collectAllKeysForDebug();
+        this.temporaryExitReached = true;
+        this.emitTemporaryExitState();
+    }
+
+    /**
+     * Resets the current prototype level state from the browser console.
+     */
+    resetLevelForDebug(): void
+    {
+        if (!this.player || !this.keyCollector || !this.currentPlayerStart) {
+            return;
+        }
+
+        this.player.resetToTiledStart(this.currentPlayerStart);
+        this.keyCollector.reset();
+        this.temporaryExitReached = false;
+
+        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
+            keysCollected: this.keyCollector.collectedKeys,
+            keysNeeded: this.keysNeededForCurrentLevel()
+        });
+        this.emitTemporaryExitState();
+    }
+
+    /**
+     * Returns compact debug state for browser-console inspection.
+     */
+    getPrototypeDebugStatus(): PrototypeDebugStatus
+    {
+        const sprite = this.player?.getSprite();
+
+        return {
+            debugMode: this.debugPlayerControls !== undefined,
+            level: GameScene.CURRENT_LEVEL_NUMBER,
+            keysCollected: this.keyCollector?.collectedKeys ?? 0,
+            keysNeeded: this.keysNeededForCurrentLevel(),
+            exitReady: this.hasCollectedAllKeys(),
+            exitReached: this.temporaryExitReached,
+            deaths: this.temporaryDeathCount,
+            deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
+            player: sprite
+                ? {
+                    x: Math.round(sprite.x),
+                    y: Math.round(sprite.y)
+                }
+                : null
+        };
     }
 
     private killPlayerIfNeeded(): boolean
@@ -320,6 +399,14 @@ export class GameScene extends Scene
             color: "#ffffff",
             backgroundColor: "#000000"
         }).setScrollFactor(0);
+    }
+
+    private destroyDebugHelpers(): void
+    {
+        this.debugPlayerControls?.destroy();
+        this.debugConsole?.destroy();
+        this.debugPlayerControls = undefined;
+        this.debugConsole = undefined;
     }
 
     private showFatalPrototypeMessage(message: string): void

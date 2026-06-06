@@ -55,6 +55,24 @@ export class KeyCollector
         return true;
     }
 
+    /**
+     * Collects every key tile for debug-only fast testing.
+     */
+    collectAllForDebug(keysNeeded: number): void
+    {
+        this.layer.forEachTile((tile) => {
+            if (!this.isKeyTile(tile)) {
+                return;
+            }
+
+            this.hideCollectedKey(tile);
+        });
+
+        // The reference level data owns the expected key count. Use it here so
+        // the temporary exit opens even if a hidden key tile was already taken.
+        this.collectedCount = keysNeeded;
+    }
+
     private showAllKeyTiles(): void
     {
         this.layer.forEachTile((tile) => {
