@@ -2,6 +2,7 @@ import { Scene, Tilemaps, Types } from "phaser";
 import { Player } from "../entities/Player";
 import { findObjectByLevel } from "../tiled/tiledObjects";
 import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
+import { VanishingPlatforms } from "../entities/VanishingPlatforms";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -9,11 +10,11 @@ import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling and jumping test.
+ * run a small walking, wall-blocking, falling, jumping and vanishing-platform test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform jumping,
- * ladders, deadly falls, slides, conveyors, key collection or exit checks.
+ * implementation. In particular, this scene does not yet perform ladders,
+ * deadly falls, conveyors, key collection or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -23,6 +24,7 @@ export class GameScene extends Scene
     private map?: Tilemaps.Tilemap;
     private player?: Player;
     private collisionProbe?: TileCollisionProbe;
+    private vanishingPlatforms?: VanishingPlatforms;
     private cursors?: Types.Input.Keyboard.CursorKeys;
 
     constructor()
@@ -54,6 +56,7 @@ export class GameScene extends Scene
         }
 
         this.collisionProbe = new TileCollisionProbe(backgroundLayer);
+        this.vanishingPlatforms = new VanishingPlatforms(this, backgroundLayer, "vanishing-platform");
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(1);
@@ -65,11 +68,17 @@ export class GameScene extends Scene
 
     update(): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.cursors) {
             return;
         }
 
-        this.player.updatePrototypeMovement(this.cursors, this.map, this.collisionProbe);
+        this.vanishingPlatforms.update();
+        this.player.updatePrototypeMovement(
+            this.cursors,
+            this.map,
+            this.collisionProbe,
+            this.vanishingPlatforms
+        );
     }
 
     private createPlayerAtLevelStart(levelNumber: number): void

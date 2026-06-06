@@ -3,6 +3,7 @@ import { Data } from "../js/data";
 import type { JumpStep } from "../js/data";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
+import type { VanishingPlatforms } from "./VanishingPlatforms";
 
 // Local direction names for the temporary Phaser 4 movement slice.
 type FacingDirection = "left" | "right";
@@ -12,8 +13,9 @@ type FacingDirection = "left" | "right";
  *
  * This class owns the real Blagger sprite and a small movement test. It is still
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
- * a first jump-path prototype and a small slide prototype have been ported.
- * Ladder logic, conveyors and interaction handling are still absent. The
+ * a first jump-path prototype, a small slide prototype and vanishing-platform
+ * support have been ported. Ladder logic, conveyors and interaction handling
+ * are still absent. The
  * current goal is to validate the most sensitive manual movement probes before
  * the full Phaser 2 movement rules are moved over.
  */
@@ -102,17 +104,18 @@ export class Player
     updatePrototypeMovement(
         cursors: Types.Input.Keyboard.CursorKeys,
         map: Tilemaps.Tilemap,
-        collisionProbe: TileCollisionProbe
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
     ): void
     {
         if (this.jumping) {
-            this.updateJumpWhenDue(map, collisionProbe);
+            this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
             return;
         }
 
         const slideDirection = this.readSlideDirectionBelow(collisionProbe);
 
-        if (!slideDirection && !this.hasSolidGroundBelow(collisionProbe)) {
+        if (!slideDirection && !this.hasStandingSurfaceBelow(collisionProbe, vanishingPlatforms)) {
             this.stopPrototypeWalk(false);
             this.moveDownWhenDue(map);
             return;
@@ -126,7 +129,7 @@ export class Player
 
         if (this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
-            this.updateJumpWhenDue(map, collisionProbe);
+            this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
             return;
         }
 
@@ -203,7 +206,11 @@ export class Player
         this.jumpStepAccumulator = 1;
     }
 
-    private updateJumpWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): void
+    private updateJumpWhenDue(
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
+    ): void
     {
         if (!this.shouldAdvanceJumpThisFrame()) {
             return;
@@ -216,7 +223,7 @@ export class Player
             return;
         }
 
-        this.applyJumpStep(jumpStep, map, collisionProbe);
+        this.applyJumpStep(jumpStep, map, collisionProbe, vanishingPlatforms);
 
         this.jumpIndex += 1;
 
@@ -225,7 +232,12 @@ export class Player
         }
     }
 
-    private applyJumpStep(jumpStep: JumpStep, map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): void
+    private applyJumpStep(
+        jumpStep: JumpStep,
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
+    ): void
     {
         const [allowHorizontalMovement, verticalDirection] = jumpStep;
 
@@ -247,13 +259,17 @@ export class Player
         }
 
         if (verticalDirection === "DOWN") {
-            this.moveDownDuringJump(map, collisionProbe);
+            this.moveDownDuringJump(map, collisionProbe, vanishingPlatforms);
         }
     }
 
-    private moveDownDuringJump(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    private moveDownDuringJump(
+        map: Tilemaps.Tilemap,
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
+    ): boolean
     {
-        if (this.hasLandingSurfaceBelow(collisionProbe)) {
+        if (this.hasLandingSurfaceBelow(collisionProbe, vanishingPlatforms)) {
             this.finishJump();
             return false;
         }
@@ -425,17 +441,39 @@ export class Player
         );
     }
 
-    private hasLandingSurfaceBelow(collisionProbe: TileCollisionProbe): boolean
+    private hasStandingSurfaceBelow(
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
+    ): boolean
     {
-        // The Phaser 2 reference lets a jump land on both solid tiles and slide
-        // tiles. Without the slide check, pressing jump on a toboggan immediately
-        // falls instead of starting the jump path.
+        return this.hasSolidGroundBelow(collisionProbe) ||
+            this.hasVanishingPlatformBelow(vanishingPlatforms);
+    }
+
+    private hasLandingSurfaceBelow(
+        collisionProbe: TileCollisionProbe,
+        vanishingPlatforms: VanishingPlatforms
+    ): boolean
+    {
+        // The Phaser 2 reference lets a jump land on solid tiles, slide tiles and
+        // visible vanishing platforms. Without the extra checks, several classic
+        // level-1 jumps turn into immediate falls.
         return this.hasSolidGroundBelow(collisionProbe) ||
             collisionProbe.hasSlideOnHorizontalLine(
                 this.sprite.x + Player.FOOT_LEFT_OFFSET,
                 this.sprite.x + Player.FOOT_RIGHT_OFFSET,
                 this.sprite.y + this.sprite.displayHeight
-            );
+            ) ||
+            this.hasVanishingPlatformBelow(vanishingPlatforms);
+    }
+
+    private hasVanishingPlatformBelow(vanishingPlatforms: VanishingPlatforms): boolean
+    {
+        return vanishingPlatforms.hasCollisionOnHorizontalLine(
+            this.sprite.x + Player.FOOT_LEFT_OFFSET,
+            this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+            this.sprite.y + this.sprite.displayHeight
+        );
     }
 
     private readSlideDirectionBelow(collisionProbe: TileCollisionProbe): FacingDirection | null
