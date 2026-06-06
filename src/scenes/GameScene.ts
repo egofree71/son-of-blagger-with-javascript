@@ -66,13 +66,13 @@ export class GameScene extends Scene
         this.scene.launch("HUDScene");
     }
 
-    update(): void
+    update(_time: number, delta: number): void
     {
         if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.cursors) {
             return;
         }
 
-        this.vanishingPlatforms.update();
+        this.vanishingPlatforms.update(delta);
         this.player.updatePrototypeMovement(
             this.cursors,
             this.map,

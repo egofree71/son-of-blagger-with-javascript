@@ -24,6 +24,9 @@ export class Player
     // Tiled stores the player start at the bottom of the original 42px sprite.
     private static readonly TILED_Y_OFFSET = 42;
 
+    // Keep Sid above animated tile overlays such as vanishing platforms.
+    private static readonly SPRITE_DEPTH = 10;
+
     // Advance the walking frame only after a few accepted pixel moves.
     private static readonly WALK_ANIMATION_FRAME_INTERVAL = 5;
 
@@ -68,6 +71,7 @@ export class Player
     {
         this.sprite = scene.add.sprite(0, 0, textureKey, this.firstFrameFor("right"))
             .setOrigin(0, 0)
+            .setDepth(Player.SPRITE_DEPTH)
             .setVisible(false);
     }
 
@@ -242,15 +246,16 @@ export class Player
         const [allowHorizontalMovement, verticalDirection] = jumpStep;
 
         if (allowHorizontalMovement && this.jumpHorizontalDirection) {
-            const movedHorizontally = this.moveHorizontallyByOnePixel(
+            this.moveHorizontallyByOnePixel(
                 this.jumpHorizontalDirection,
                 map,
                 collisionProbe
             );
 
-            if (movedHorizontally) {
-                this.advanceWalkingFrameWhenDue();
-            }
+            // During a jump the original animation keeps running even when a
+            // wall blocks horizontal movement. The blocked wall changes position,
+            // not the remembered jump effort or the leg animation.
+            this.advanceWalkingFrameWhenDue();
         }
 
         if (verticalDirection === "UP") {
@@ -458,8 +463,12 @@ export class Player
         // The Phaser 2 reference lets a jump land on solid tiles, slide tiles and
         // visible vanishing platforms. Without the extra checks, several classic
         // level-1 jumps turn into immediate falls.
-        return this.hasSolidGroundBelow(collisionProbe) ||
-            collisionProbe.hasSlideOnHorizontalLine(
+        return collisionProbe.hasSolidTopOnHorizontalLine(
+            this.sprite.x + Player.FOOT_LEFT_OFFSET,
+            this.sprite.x + Player.FOOT_RIGHT_OFFSET,
+            this.sprite.y + this.sprite.displayHeight
+        ) ||
+            collisionProbe.hasSlideTopOnHorizontalLine(
                 this.sprite.x + Player.FOOT_LEFT_OFFSET,
                 this.sprite.x + Player.FOOT_RIGHT_OFFSET,
                 this.sprite.y + this.sprite.displayHeight

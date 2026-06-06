@@ -73,6 +73,21 @@ export class TileCollisionProbe
     }
 
     /**
+     * Checks whether the foot probe is exactly on top of a solid tile.
+     */
+    hasSolidTopOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_TYPE,
+            TileCollisionProbe.TILE_TYPE_SOLID,
+            true
+        );
+    }
+
+    /**
      * Checks whether a horizontal foot probe touches any slide tile.
      */
     hasSlideOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
@@ -83,6 +98,21 @@ export class TileCollisionProbe
             y,
             TileCollisionProbe.TILED_PROPERTY_TYPE,
             TileCollisionProbe.TILE_TYPE_SLIDE
+        );
+    }
+
+    /**
+     * Checks whether the foot probe is exactly on top of a slide tile.
+     */
+    hasSlideTopOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
+    {
+        return this.horizontalLineHasProperty(
+            xStart,
+            xEnd,
+            y,
+            TileCollisionProbe.TILED_PROPERTY_TYPE,
+            TileCollisionProbe.TILE_TYPE_SLIDE,
+            true
         );
     }
 
@@ -146,7 +176,8 @@ export class TileCollisionProbe
         xEnd: number,
         y: number,
         propertyName: string,
-        propertyValue: unknown
+        propertyValue: unknown,
+        requireTileTop = false
     ): boolean
     {
         // Use integer pixel positions for the foot probe so edge comparisons stay
@@ -160,12 +191,30 @@ export class TileCollisionProbe
         for (let x = start; x <= end; x += 1) {
             const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
 
-            if (this.tileHasProperty(tile, propertyName, propertyValue)) {
-                return true;
+            if (!this.tileHasProperty(tile, propertyName, propertyValue)) {
+                continue;
             }
+
+            // Jump landings use the Phaser 2 "onTop" rule: touching a tile is
+            // not enough; Sid must have reached the tile's upper edge. This
+            // prevents catching the side or underside of thin metal platforms.
+            if (requireTileTop && !this.isProbeOnTileTop(tile, worldY)) {
+                continue;
+            }
+
+            return true;
         }
 
         return false;
+    }
+
+    private isProbeOnTileTop(tile: Tilemaps.Tile | null, worldY: number): boolean
+    {
+        if (!tile) {
+            return false;
+        }
+
+        return worldY === tile.y * this.layer.tilemap.tileHeight;
     }
 
     private tileHasProperty(tile: Tilemaps.Tile | null, propertyName: string, propertyValue: unknown): boolean

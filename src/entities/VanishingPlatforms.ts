@@ -15,12 +15,14 @@ export class VanishingPlatforms
     private static readonly BLANK_TILE_INDEX = 30;
     private static readonly FRAME_COUNT = 8;
     private static readonly NON_COLLIDING_FRAME = 4;
-    private static readonly FRAME_INTERVAL = 30;
+    // Phaser 2 played this group at two animation frames per second. Using
+    // elapsed milliseconds keeps that speed stable on 60 Hz, 120 Hz or 144 Hz screens.
+    private static readonly FRAME_DURATION_MS = 500;
 
     private readonly tileCoordinates = new Set<string>();
     private readonly sprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
-    private frameCounter = VanishingPlatforms.FRAME_INTERVAL;
+    private elapsedFrameTimeMs = 0;
 
     constructor(
         private readonly scene: Scene,
@@ -32,21 +34,23 @@ export class VanishingPlatforms
     }
 
     /**
-     * Advances the shared vanishing-platform animation by one prototype frame.
+     * Advances the shared vanishing-platform animation by elapsed time.
      */
-    update(): void
+    update(deltaMs: number): void
     {
         if (this.sprites.length === 0) {
             return;
         }
 
-        this.frameCounter -= 1;
+        this.elapsedFrameTimeMs += deltaMs;
 
-        if (this.frameCounter > 0) {
+        if (this.elapsedFrameTimeMs < VanishingPlatforms.FRAME_DURATION_MS) {
             return;
         }
 
-        this.frameCounter = VanishingPlatforms.FRAME_INTERVAL;
+        // Preserve any extra elapsed time so the animation does not drift when
+        // the browser delivers an occasional long frame.
+        this.elapsedFrameTimeMs %= VanishingPlatforms.FRAME_DURATION_MS;
         this.frameIndex = (this.frameIndex + 1) % VanishingPlatforms.FRAME_COUNT;
 
         for (const sprite of this.sprites) {
