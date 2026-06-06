@@ -9,6 +9,7 @@ import { AnimatedConveyors } from "../entities/AnimatedConveyors";
 import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 import { KeyCollector } from "../entities/KeyCollector";
 import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
+import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { Data } from "../js/data";
 import { PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
@@ -21,8 +22,8 @@ import { PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./H
  * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, vanishing-platform, key-collection and deadly-tile test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform lives, the
- * death animation, monster collisions or exit checks.
+ * implementation. In particular, this scene does not yet perform lives, monster
+ * collisions or exit checks.
  */
 export class GameScene extends Scene
 {
@@ -38,6 +39,7 @@ export class GameScene extends Scene
     private animatedConveyors?: AnimatedConveyors;
     private keyCollector?: KeyCollector;
     private deadlyTileDetector?: DeadlyTileDetector;
+    private playerDeathSequence?: PlayerDeathSequence;
     private debugPlayerControls?: DebugPlayerControls;
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
@@ -77,6 +79,7 @@ export class GameScene extends Scene
         this.animatedConveyors = new AnimatedConveyors(this, backgroundLayer, "conveyor-left", "conveyor-right");
         this.keyCollector = new KeyCollector(backgroundLayer);
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
+        this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying");
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
@@ -103,13 +106,18 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.cursors) {
             return;
         }
 
         this.vanishingPlatforms.update(delta);
         this.animatedLadders.update(delta);
         this.animatedConveyors.update(delta);
+        this.playerDeathSequence.update(delta);
+
+        if (this.playerDeathSequence.isPlaying()) {
+            return;
+        }
 
         const debugFreeMoveActive = this.debugPlayerControls?.update(this.player, this.map, delta) ?? false;
 
@@ -133,7 +141,7 @@ export class GameScene extends Scene
 
     private killPlayerIfNeeded(): boolean
     {
-        if (!this.player || !this.deadlyTileDetector || !this.keyCollector || !this.currentPlayerStart) {
+        if (!this.player || !this.deadlyTileDetector || !this.playerDeathSequence) {
             return false;
         }
 
@@ -141,10 +149,20 @@ export class GameScene extends Scene
             return false;
         }
 
+        this.playerDeathSequence.start(this.player, () => this.finishTemporaryPlayerDeath());
+        return true;
+    }
+
+    private finishTemporaryPlayerDeath(): void
+    {
+        if (!this.player || !this.keyCollector || !this.currentPlayerStart) {
+            return;
+        }
+
         this.temporaryDeathCount += 1;
 
-        // This is only the first trap-collision slice. The real Phaser 2 flow
-        // will later play the death animation, update lives and reload the level.
+        // This is still a prototype consequence of death: lives and game-over are
+        // not implemented yet, so the level is simply reset after the animation.
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
 
@@ -155,8 +173,6 @@ export class GameScene extends Scene
             keysCollected: this.keyCollector.collectedKeys,
             keysNeeded: this.keysNeededForCurrentLevel()
         });
-
-        return true;
     }
 
     private collectKeyIfNeeded(): void

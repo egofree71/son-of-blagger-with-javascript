@@ -6,8 +6,8 @@ import { Scene } from "phaser";
  * This is the modern replacement for the old Phaser 2 AssetLoader entry point,
  * but only a small subset is loaded for now: the Tiled map, the background
  * tileset used by the main tile layer, the player spritesheet used by the
- * first movement test, and the first animated tile sprites. Gameplay assets
- * will be added as the port grows.
+ * first movement test, the first death animation sprite, and the first animated
+ * tile sprites. Gameplay assets will be added as the port grows.
  */
 export class PreloadScene extends Scene
 {
@@ -51,6 +51,11 @@ export class PreloadScene extends Scene
         this.load.image("background-tiles", "assets/tileset/background.png");
         this.load.spritesheet("blagger", "assets/sprites/blagger.png", {
             frameWidth: 48,
+            frameHeight: 42
+        });
+
+        this.load.spritesheet("blagger-dying", "assets/sprites/blagger dying.png", {
+            frameWidth: 36,
             frameHeight: 42
         });
 

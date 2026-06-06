@@ -27,9 +27,10 @@ export interface PlayerProbeRectangle
  * not final gameplay: horizontal walking, side wall blocking, simple falling,
  * a first jump-path prototype, a small slide prototype, vanishing-platform
  * support, conveyors, and a first automatic-ladder prototype have been ported.
- * Key collection and deadly-tile detection have first prototypes, while exits
- * and monsters are still absent. The current goal is to validate the most sensitive manual
- * movement probes before the full Phaser 2 movement rules are moved over.
+ * Key collection, deadly-tile detection and the first visual death sequence have
+ * temporary prototypes, while exits and monsters are still absent. The current
+ * goal is to validate the most sensitive manual movement probes before the full
+ * Phaser 2 movement rules are moved over.
  */
 export class Player
 {
@@ -248,6 +249,28 @@ export class Player
     getSprite(): GameObjects.Sprite
     {
         return this.sprite;
+    }
+
+    /**
+     * Returns the top-left position used by the temporary death sprite.
+     */
+    getDeathAnimationOrigin(): { x: number; y: number }
+    {
+        return {
+            x: this.sprite.x,
+            y: this.sprite.y
+        };
+    }
+
+    /**
+     * Hides the normal sprite before the separate death animation sprite plays.
+     */
+    hideForDeathAnimation(): void
+    {
+        // Death interrupts any temporary movement state. Resetting the counters
+        // prevents an old jump, slide or fall from resuming after the respawn.
+        this.cancelPrototypeMovementForDebug();
+        this.sprite.setVisible(false);
     }
 
     /**
