@@ -25,7 +25,9 @@ export class RetroHudText
         y: number,
         private readonly charWidth: number,
         private readonly charHeight: number,
-        private tint: number
+        private tint: number,
+        private readonly characterSpacing = 0,
+        private readonly lineSpacing = 0
     )
     {
         ensureRetroFontFrames(scene, textureKey, charWidth, charHeight);
@@ -58,7 +60,12 @@ export class RetroHudText
             }
 
             const frameName = frameNameForCharacter(character);
-            const letter = this.scene.add.image(column * this.charWidth, row * this.charHeight, this.textureKey, frameName)
+            const letter = this.scene.add.image(
+                column * (this.charWidth + this.characterSpacing),
+                row * (this.charHeight + this.lineSpacing),
+                this.textureKey,
+                frameName
+            )
                 .setOrigin(0)
                 .setTint(this.tint);
 

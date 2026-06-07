@@ -13,6 +13,8 @@ export const HudConstants = {
     CHAR_WIDTH: 16,
     FONT_CHAR_WIDTH: 16,
     FONT_CHAR_HEIGHT: 16,
+    REFERENCE_FPS: 60,
+    LOGICAL_FRAME_MS: 1000 / 60,
 
     COLOR_BLACK: 0x000000,
     COLOR_WHITE: 0xffffff,

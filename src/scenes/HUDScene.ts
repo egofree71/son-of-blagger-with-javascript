@@ -38,6 +38,7 @@ export class HUDScene extends Scene
     private colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
     private colorIndex = HudConstants.BONUS_MAN_MIN_COLOR_INDEX;
     private increaseColorIndex = true;
+    private bonusManFrameAccumulatorMs = 0;
 
     constructor()
     {
@@ -70,9 +71,9 @@ export class HUDScene extends Scene
         }
     }
 
-    update(): void
+    update(_time: number, deltaMs: number): void
     {
-        this.updateBonusManColor();
+        this.updateBonusManColor(deltaMs);
     }
 
     private createBackground(): void
@@ -192,38 +193,55 @@ export class HUDScene extends Scene
         );
     }
 
-    private updateBonusManColor(): void
+    private updateBonusManColor(deltaMs: number): void
     {
         if (!this.state.hasBonusMan || !this.bonusManSprite) {
+            this.bonusManFrameAccumulatorMs = 0;
             return;
         }
 
-        this.colorCounter -= 1;
+        this.bonusManFrameAccumulatorMs += deltaMs;
 
-        if (this.colorCounter === 0) {
-            this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
-
-            if (this.increaseColorIndex) {
-                this.colorIndex += 1;
-            }
-            else {
-                this.colorIndex -= 1;
-            }
-
-            if (this.colorIndex === HudConstants.BONUS_MAN_MAX_COLOR_INDEX) {
-                this.increaseColorIndex = false;
-            }
-
-            if (this.colorIndex === HudConstants.BONUS_MAN_MIN_COLOR_INDEX) {
-                this.increaseColorIndex = true;
-            }
+        while (this.bonusManFrameAccumulatorMs >= HudConstants.LOGICAL_FRAME_MS) {
+            this.bonusManFrameAccumulatorMs -= HudConstants.LOGICAL_FRAME_MS;
+            this.advanceBonusManOneFrame();
         }
 
         this.bonusManSprite.setTint(Data.bonusManColors[this.colorIndex]);
     }
 
+    private advanceBonusManOneFrame(): void
+    {
+        this.colorCounter -= 1;
+
+        if (this.colorCounter !== 0) {
+            return;
+        }
+
+        this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+
+        if (this.increaseColorIndex) {
+            this.colorIndex += 1;
+        }
+        else {
+            this.colorIndex -= 1;
+        }
+
+        if (this.colorIndex === HudConstants.BONUS_MAN_MAX_COLOR_INDEX) {
+            this.increaseColorIndex = false;
+        }
+
+        if (this.colorIndex === HudConstants.BONUS_MAN_MIN_COLOR_INDEX) {
+            this.increaseColorIndex = true;
+        }
+    }
+
     private hideBonusMan(): void
     {
+        this.bonusManFrameAccumulatorMs = 0;
+        this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+        this.colorIndex = HudConstants.BONUS_MAN_MIN_COLOR_INDEX;
+        this.increaseColorIndex = true;
         this.bonusManSprite?.setTint(HudConstants.COLOR_BLACK);
     }
 
