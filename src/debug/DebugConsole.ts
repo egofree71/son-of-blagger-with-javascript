@@ -89,6 +89,10 @@ export interface PrototypeDebugStatus
     exitReady: boolean;
     exitReached: boolean;
     deaths: number;
+    lives: number;
+    score: number;
+    hiScore: number;
+    airLevel: number;
     monstersLoaded: number;
     deathSequencePlaying: boolean;
     player: {

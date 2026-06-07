@@ -16,7 +16,7 @@ import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { ExitDetector } from "../entities/ExitDetector";
 import { MonsterManager } from "../entities/MonsterManager";
 import { Data } from "../js/data";
-import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
+import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
 /**
  * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
@@ -32,9 +32,12 @@ import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_P
  */
 export class GameScene extends Scene
 {
-    private static readonly GAMEPLAY_VIEW_HEIGHT = 368;
+    private static readonly GAMEPLAY_VIEW_HEIGHT = 200;
     private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
     private static readonly CURRENT_LEVEL_NUMBER = 1;
+    private static readonly INITIAL_LIVES = 3;
+    private static readonly DEFAULT_AIR_LEVEL = 480;
+    private static readonly KEY_SCORE_INCREMENT = 200;
 
     private map?: Tilemaps.Tilemap;
     private player?: Player;
@@ -54,6 +57,10 @@ export class GameScene extends Scene
     private currentPlayerStart?: TiledObjectLike;
     private temporaryDeathCount = 0;
     private temporaryExitReached = false;
+    private temporaryScore = 0;
+    private readonly temporaryLives = GameScene.INITIAL_LIVES;
+    private readonly temporaryHiScore = GameScene.loadStoredHiScore();
+    private temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
 
     constructor()
     {
@@ -118,11 +125,12 @@ export class GameScene extends Scene
 
         this.scene.launch("HUDScene", {
             debugModeEnabled: this.debugPlayerControls !== undefined,
-            keysCollected: this.keyCollector?.collectedKeys ?? 0,
-            keysNeeded: this.keysNeededForCurrentLevel(),
-            deaths: this.temporaryDeathCount,
-            exitReady: this.hasCollectedAllKeys(),
-            exitReached: this.temporaryExitReached
+            lives: this.temporaryLives,
+            score: this.temporaryScore,
+            hiScore: this.temporaryHiScore,
+            levelNumber: GameScene.CURRENT_LEVEL_NUMBER,
+            airLevel: this.temporaryAirLevel,
+            hasBonusMan: false
         });
     }
 
@@ -214,6 +222,9 @@ export class GameScene extends Scene
         this.monsterManager?.reset();
         this.keyCollector.reset();
         this.temporaryExitReached = false;
+        this.temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
+
+        this.emitHUDState();
 
         this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
             keysCollected: this.keyCollector.collectedKeys,
@@ -237,6 +248,10 @@ export class GameScene extends Scene
             exitReady: this.hasCollectedAllKeys(),
             exitReached: this.temporaryExitReached,
             deaths: this.temporaryDeathCount,
+            lives: this.temporaryLives,
+            score: this.temporaryScore,
+            hiScore: this.temporaryHiScore,
+            airLevel: this.temporaryAirLevel,
             monstersLoaded: this.monsterManager?.count ?? 0,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
@@ -282,12 +297,15 @@ export class GameScene extends Scene
 
         this.temporaryDeathCount += 1;
         this.temporaryExitReached = false;
+        this.temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
 
         // This is still a prototype consequence of death: lives and game-over are
         // not implemented yet, so the level is simply reset after the animation.
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.monsterManager?.reset();
         this.keyCollector.reset();
+
+        this.emitHUDState();
 
         this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
             deaths: this.temporaryDeathCount
@@ -309,8 +327,11 @@ export class GameScene extends Scene
             return;
         }
 
-        // For now only the temporary HUD is notified. Score and level-exit flow
-        // will come later when GameController responsibilities move to Phaser 4.
+        // Score is still temporary, but key collection already uses the original
+        // 200-point increment so the new HUD can be tested with real values.
+        this.temporaryScore += GameScene.KEY_SCORE_INCREMENT;
+        this.emitHUDState();
+
         this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
             keysCollected: this.keyCollector.collectedKeys,
             keysNeeded: this.keysNeededForCurrentLevel()
@@ -340,6 +361,25 @@ export class GameScene extends Scene
             exitReady: this.hasCollectedAllKeys(),
             exitReached: this.temporaryExitReached
         });
+    }
+
+
+    private emitHUDState(): void
+    {
+        this.game.events.emit(HUD_STATE_CHANGED_EVENT, {
+            lives: this.temporaryLives,
+            score: this.temporaryScore,
+            hiScore: this.temporaryHiScore,
+            levelNumber: GameScene.CURRENT_LEVEL_NUMBER,
+            airLevel: this.temporaryAirLevel,
+            hasBonusMan: false
+        });
+    }
+
+    private static loadStoredHiScore(): number
+    {
+        const storedHiScore = window.localStorage.getItem("hiScore");
+        return storedHiScore ? Number(storedHiScore) : 0;
     }
 
     private hasCollectedAllKeys(): boolean

@@ -69,6 +69,13 @@ export class PreloadScene extends Scene
             frameHeight: 42
         });
 
+        this.load.image("blagger-font", "assets/tileset/fonts.png");
+
+        this.load.spritesheet("bonus-man", "assets/sprites/bonus man.png", {
+            frameWidth: 112,
+            frameHeight: 14
+        });
+
         this.load.spritesheet("vanishing-platform", "assets/sprites/vanishing platform.png", {
             frameWidth: 16,
             frameHeight: 16

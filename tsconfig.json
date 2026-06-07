@@ -16,6 +16,7 @@
     "src/main.ts",
     "src/scenes/**/*.ts",
     "src/entities/**/*.ts",
-    "src/tiled/**/*.ts"
+    "src/tiled/**/*.ts",
+    "src/ui/**/*.ts"
   ]
 }
