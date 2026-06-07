@@ -17,6 +17,7 @@
     "src/scenes/**/*.ts",
     "src/entities/**/*.ts",
     "src/tiled/**/*.ts",
+    "src/state/**/*.ts",
     "src/ui/**/*.ts"
   ]
 }

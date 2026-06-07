@@ -15,30 +15,24 @@ import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { ExitDetector } from "../entities/ExitDetector";
 import { MonsterManager } from "../entities/MonsterManager";
-import { Data } from "../js/data";
+import { GameSessionState } from "../state/GameSessionState";
 import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
 /**
- * Displays the imported Tiled map and a minimal animated Player entity in Phaser 4.
+ * Main gameplay scene for the Phaser 4 prototype.
  *
- * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
- * load the existing Son of Blagger map, render the main background layer, place
- * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, animated-wave-platform, vanishing-platform, key-collection, deadly-tile and monster test.
- *
- * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform lives or
- * level transitions.
+ * This scene still orchestrates more responsibilities than the final port
+ * should. It creates the Tiled map, animated decorations, player, keys,
+ * monsters and temporary death/reset flow. Session values such as score, lives,
+ * air and level number now live in GameSessionState so the next steps can move
+ * toward real level transitions without adding more temporary fields here.
  */
 export class GameScene extends Scene
 {
     private static readonly GAMEPLAY_VIEW_HEIGHT = 200;
     private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
-    private static readonly CURRENT_LEVEL_NUMBER = 1;
-    private static readonly INITIAL_LIVES = 3;
-    private static readonly DEFAULT_AIR_LEVEL = 480;
-    private static readonly KEY_SCORE_INCREMENT = 200;
 
+    private readonly sessionState = new GameSessionState();
     private map?: Tilemaps.Tilemap;
     private player?: Player;
     private collisionProbe?: TileCollisionProbe;
@@ -56,11 +50,6 @@ export class GameScene extends Scene
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
     private temporaryDeathCount = 0;
-    private temporaryExitReached = false;
-    private temporaryScore = 0;
-    private readonly temporaryLives = GameScene.INITIAL_LIVES;
-    private readonly temporaryHiScore = GameScene.loadStoredHiScore();
-    private temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
 
     constructor()
     {
@@ -90,6 +79,8 @@ export class GameScene extends Scene
             return;
         }
 
+        const levelNumber = this.sessionState.currentLevel.levelNumber;
+
         this.collisionProbe = new TileCollisionProbe(backgroundLayer);
         this.vanishingPlatforms = new VanishingPlatforms(this, backgroundLayer, "vanishing-platform");
         this.animatedLadders = new AnimatedLadders(this, backgroundLayer, "ladder-left", "ladder-right");
@@ -98,11 +89,11 @@ export class GameScene extends Scene
         this.keyCollector = new KeyCollector(backgroundLayer);
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
         this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
-        this.monsterManager = new MonsterManager(this, this.map, GameScene.CURRENT_LEVEL_NUMBER);
+        this.monsterManager = new MonsterManager(this, this.map, levelNumber);
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-        this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
-        this.exitDetector = this.createExitDetectorForLevel(GameScene.CURRENT_LEVEL_NUMBER);
+        this.createPlayerAtLevelStart(levelNumber);
+        this.exitDetector = this.createExitDetectorForLevel(levelNumber);
 
         if (!this.exitDetector) {
             return;
@@ -125,12 +116,7 @@ export class GameScene extends Scene
 
         this.scene.launch("HUDScene", {
             debugModeEnabled: this.debugPlayerControls !== undefined,
-            lives: this.temporaryLives,
-            score: this.temporaryScore,
-            hiScore: this.temporaryHiScore,
-            levelNumber: GameScene.CURRENT_LEVEL_NUMBER,
-            airLevel: this.temporaryAirLevel,
-            hasBonusMan: false
+            ...this.sessionState.toHUDState()
         });
     }
 
@@ -150,15 +136,19 @@ export class GameScene extends Scene
             return;
         }
 
-        // Match the Phaser 2 update order: monsters move before the player
-        // resolves this frame's interaction checks.
-        this.monsterManager.update();
-
         const debugFreeMoveActive = this.debugPlayerControls?.update(this.player, this.map, delta) ?? false;
 
         if (debugFreeMoveActive) {
             return;
         }
+
+        if (this.consumeAirIfNeeded(delta)) {
+            return;
+        }
+
+        // Match the Phaser 2 update order after air consumption: monsters move
+        // before the player resolves this frame's interaction checks.
+        this.monsterManager.update();
 
         const movementResult = this.player.updatePrototypeMovement(
             this.cursors,
@@ -189,13 +179,10 @@ export class GameScene extends Scene
             return;
         }
 
-        this.keyCollector.collectAllForDebug(this.keysNeededForCurrentLevel());
-        this.temporaryExitReached = false;
-
-        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
-            keysCollected: this.keyCollector.collectedKeys,
-            keysNeeded: this.keysNeededForCurrentLevel()
-        });
+        this.keyCollector.collectAllForDebug(this.sessionState.currentLevel.keysNeeded);
+        this.sessionState.currentLevel.collectAllKeysForDebug();
+        this.emitHUDState();
+        this.emitKeyState();
         this.emitTemporaryExitState();
     }
 
@@ -205,7 +192,7 @@ export class GameScene extends Scene
     finishLevelForDebug(): void
     {
         this.collectAllKeysForDebug();
-        this.temporaryExitReached = true;
+        this.sessionState.currentLevel.markExitReached();
         this.emitTemporaryExitState();
     }
 
@@ -221,15 +208,10 @@ export class GameScene extends Scene
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.monsterManager?.reset();
         this.keyCollector.reset();
-        this.temporaryExitReached = false;
-        this.temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
+        this.sessionState.currentLevel.resetRun();
 
         this.emitHUDState();
-
-        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
-            keysCollected: this.keyCollector.collectedKeys,
-            keysNeeded: this.keysNeededForCurrentLevel()
-        });
+        this.emitKeyState();
         this.emitTemporaryExitState();
     }
 
@@ -239,19 +221,20 @@ export class GameScene extends Scene
     getPrototypeDebugStatus(): PrototypeDebugStatus
     {
         const sprite = this.player?.getSprite();
+        const levelState = this.sessionState.currentLevel;
 
         return {
             debugMode: this.debugPlayerControls !== undefined,
-            level: GameScene.CURRENT_LEVEL_NUMBER,
-            keysCollected: this.keyCollector?.collectedKeys ?? 0,
-            keysNeeded: this.keysNeededForCurrentLevel(),
-            exitReady: this.hasCollectedAllKeys(),
-            exitReached: this.temporaryExitReached,
+            level: levelState.levelNumber,
+            keysCollected: levelState.keysCollected,
+            keysNeeded: levelState.keysNeeded,
+            exitReady: levelState.hasCollectedAllKeys(),
+            exitReached: levelState.exitReached,
             deaths: this.temporaryDeathCount,
-            lives: this.temporaryLives,
-            score: this.temporaryScore,
-            hiScore: this.temporaryHiScore,
-            airLevel: this.temporaryAirLevel,
+            lives: this.sessionState.lives,
+            score: this.sessionState.score,
+            hiScore: this.sessionState.hiScore,
+            airLevel: levelState.airLevel,
             monstersLoaded: this.monsterManager?.count ?? 0,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
@@ -261,6 +244,23 @@ export class GameScene extends Scene
                 }
                 : null
         };
+    }
+
+    private consumeAirIfNeeded(deltaMs: number): boolean
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        if (!levelState.consumeAirWhenDue(deltaMs)) {
+            return false;
+        }
+
+        this.emitHUDState();
+
+        if (levelState.airLevel > 0) {
+            return false;
+        }
+
+        return this.startTemporaryPlayerDeath();
     }
 
     private killPlayerIfNeeded(): boolean
@@ -296,11 +296,12 @@ export class GameScene extends Scene
         }
 
         this.temporaryDeathCount += 1;
-        this.temporaryExitReached = false;
-        this.temporaryAirLevel = GameScene.DEFAULT_AIR_LEVEL;
+        this.sessionState.consumeBonusManOrLife();
+        this.sessionState.updateHiScoreIfNeeded();
+        this.sessionState.currentLevel.resetRun();
 
-        // This is still a prototype consequence of death: lives and game-over are
-        // not implemented yet, so the level is simply reset after the animation.
+        // This remains a prototype consequence of death: the game-over screen is
+        // not ported yet, so even at zero lives the level is reset for testing.
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.monsterManager?.reset();
         this.keyCollector.reset();
@@ -310,10 +311,7 @@ export class GameScene extends Scene
         this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
             deaths: this.temporaryDeathCount
         });
-        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
-            keysCollected: this.keyCollector.collectedKeys,
-            keysNeeded: this.keysNeededForCurrentLevel()
-        });
+        this.emitKeyState();
         this.emitTemporaryExitState();
     }
 
@@ -327,21 +325,18 @@ export class GameScene extends Scene
             return;
         }
 
-        // Score is still temporary, but key collection already uses the original
-        // 200-point increment so the new HUD can be tested with real values.
-        this.temporaryScore += GameScene.KEY_SCORE_INCREMENT;
+        this.sessionState.currentLevel.collectKey();
+        this.sessionState.addKeyScore();
         this.emitHUDState();
-
-        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
-            keysCollected: this.keyCollector.collectedKeys,
-            keysNeeded: this.keysNeededForCurrentLevel()
-        });
+        this.emitKeyState();
         this.emitTemporaryExitState();
     }
 
     private checkExitIfNeeded(): void
     {
-        if (!this.player || !this.exitDetector || this.temporaryExitReached || !this.hasCollectedAllKeys()) {
+        const levelState = this.sessionState.currentLevel;
+
+        if (!this.player || !this.exitDetector || levelState.exitReached || !levelState.hasCollectedAllKeys()) {
             return;
         }
 
@@ -351,47 +346,33 @@ export class GameScene extends Scene
 
         // The real end-level transition is not ported yet. For now, mark the
         // exit as reached once and keep the prototype playable for further tests.
-        this.temporaryExitReached = true;
+        levelState.markExitReached();
         this.emitTemporaryExitState();
+    }
+
+    private emitKeyState(): void
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
+            keysCollected: levelState.keysCollected,
+            keysNeeded: levelState.keysNeeded
+        });
     }
 
     private emitTemporaryExitState(): void
     {
+        const levelState = this.sessionState.currentLevel;
+
         this.game.events.emit(PROTOTYPE_EXIT_CHANGED_EVENT, {
-            exitReady: this.hasCollectedAllKeys(),
-            exitReached: this.temporaryExitReached
+            exitReady: levelState.hasCollectedAllKeys(),
+            exitReached: levelState.exitReached
         });
     }
-
 
     private emitHUDState(): void
     {
-        this.game.events.emit(HUD_STATE_CHANGED_EVENT, {
-            lives: this.temporaryLives,
-            score: this.temporaryScore,
-            hiScore: this.temporaryHiScore,
-            levelNumber: GameScene.CURRENT_LEVEL_NUMBER,
-            airLevel: this.temporaryAirLevel,
-            hasBonusMan: false
-        });
-    }
-
-    private static loadStoredHiScore(): number
-    {
-        const storedHiScore = window.localStorage.getItem("hiScore");
-        return storedHiScore ? Number(storedHiScore) : 0;
-    }
-
-    private hasCollectedAllKeys(): boolean
-    {
-        return (this.keyCollector?.collectedKeys ?? 0) >= this.keysNeededForCurrentLevel();
-    }
-
-    private keysNeededForCurrentLevel(): number
-    {
-        const levelDefinition = Data.levels[GameScene.CURRENT_LEVEL_NUMBER - 1];
-
-        return levelDefinition?.[0] ?? 0;
+        this.game.events.emit(HUD_STATE_CHANGED_EVENT, this.sessionState.toHUDState());
     }
 
     private createPlayerAtLevelStart(levelNumber: number): void
