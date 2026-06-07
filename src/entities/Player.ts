@@ -115,6 +115,7 @@ export class Player
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
     private slideMovementAccumulator = 1;
+    private ladderMovementAccumulator = 1;
     private jumpStepAccumulator = 1;
     private jumping = false;
     private jumpIndex = 0;
@@ -148,6 +149,7 @@ export class Player
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
+        this.ladderMovementAccumulator = 1;
         this.jumpStepAccumulator = 1;
         this.jumping = false;
         this.jumpIndex = 0;
@@ -191,10 +193,14 @@ export class Player
             : null;
         const requestedDirection = this.readHorizontalDirection(cursors);
 
-        if (hasStandingSurface || slideDirection || onLadder) {
-            // Stable surfaces and ladders should not inherit a delayed fall from
-            // the previous frame. The full Phaser 2 fall-height rule comes later.
+        if (hasStandingSurface || slideDirection) {
+            // Stable ground should not inherit a delayed fall from the previous
+            // frame. Ladders use their own timer below so they do not climb too fast.
             this.verticalMovementAccumulator = 1;
+            this.jumpStepAccumulator = 1;
+            this.fallHeight = 0;
+        }
+        else if (onLadder) {
             this.jumpStepAccumulator = 1;
             this.fallHeight = 0;
         }
@@ -203,6 +209,12 @@ export class Player
             // Entering a slide should start with an immediate diagonal step; do
             // not inherit a half-used slide timer from a previous slope.
             this.slideMovementAccumulator = 1;
+        }
+
+        if (!onLadder) {
+            // Ladder movement is automatic, but it should still keep its own
+            // cadence instead of being forced by the general vertical timer.
+            this.ladderMovementAccumulator = 1;
         }
 
         if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
@@ -263,6 +275,7 @@ export class Player
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
+        this.ladderMovementAccumulator = 1;
         this.jumpStepAccumulator = 1;
         this.jumping = false;
         this.jumpIndex = 0;
@@ -590,7 +603,7 @@ export class Player
         collisionProbe: TileCollisionProbe
     ): void
     {
-        this.moveUpWhenDue(map, collisionProbe);
+        this.moveUpOnLadderWhenDue(map, collisionProbe);
 
         if (!requestedDirection) {
             // Ladders move Sid upward automatically, but the player animation
@@ -674,6 +687,15 @@ export class Player
     private moveUpWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
     {
         if (!this.shouldMoveVerticallyThisFrame()) {
+            return false;
+        }
+
+        return this.moveUpByOnePixel(map, collisionProbe);
+    }
+
+    private moveUpOnLadderWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
+    {
+        if (!this.shouldMoveOnLadderThisFrame()) {
             return false;
         }
 
@@ -917,6 +939,21 @@ export class Player
         }
 
         this.slideMovementAccumulator -= 1;
+        return true;
+    }
+
+    private shouldMoveOnLadderThisFrame(): boolean
+    {
+        // Ladders move Sid automatically, but not every update. Keeping a separate
+        // timer avoids the previous bug where the ladder reset the fall timer and
+        // climbed at full frame speed.
+        this.ladderMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+
+        if (this.ladderMovementAccumulator < 1) {
+            return false;
+        }
+
+        this.ladderMovementAccumulator -= 1;
         return true;
     }
 

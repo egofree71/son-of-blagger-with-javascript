@@ -93,6 +93,16 @@ export class PreloadScene extends Scene
             frameWidth: 16,
             frameHeight: 16
         });
+
+        this.load.spritesheet("wave-left", "assets/sprites/wave left.png", {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+
+        this.load.spritesheet("wave-right", "assets/sprites/wave right.png", {
+            frameWidth: 16,
+            frameHeight: 16
+        });
     }
 
     create(): void

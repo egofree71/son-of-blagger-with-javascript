@@ -6,6 +6,7 @@ import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import { VanishingPlatforms } from "../entities/VanishingPlatforms";
 import { AnimatedLadders } from "../entities/AnimatedLadders";
 import { AnimatedConveyors } from "../entities/AnimatedConveyors";
+import { AnimatedWavePlatforms } from "../entities/AnimatedWavePlatforms";
 import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 import { DebugConsole } from "../debug/DebugConsole";
 import type { PrototypeDebugStatus } from "../debug/DebugConsole";
@@ -22,7 +23,7 @@ import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_P
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, vanishing-platform, key-collection and deadly-tile test.
+ * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, animated-wave-platform, vanishing-platform, key-collection and deadly-tile test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
  * implementation. In particular, this scene does not yet perform lives, monster
@@ -40,6 +41,7 @@ export class GameScene extends Scene
     private vanishingPlatforms?: VanishingPlatforms;
     private animatedLadders?: AnimatedLadders;
     private animatedConveyors?: AnimatedConveyors;
+    private animatedWavePlatforms?: AnimatedWavePlatforms;
     private keyCollector?: KeyCollector;
     private deadlyTileDetector?: DeadlyTileDetector;
     private playerDeathSequence?: PlayerDeathSequence;
@@ -83,6 +85,7 @@ export class GameScene extends Scene
         this.vanishingPlatforms = new VanishingPlatforms(this, backgroundLayer, "vanishing-platform");
         this.animatedLadders = new AnimatedLadders(this, backgroundLayer, "ladder-left", "ladder-right");
         this.animatedConveyors = new AnimatedConveyors(this, backgroundLayer, "conveyor-left", "conveyor-right");
+        this.animatedWavePlatforms = new AnimatedWavePlatforms(this, backgroundLayer, "wave-left", "wave-right");
         this.keyCollector = new KeyCollector(backgroundLayer);
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
         this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
@@ -122,13 +125,14 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.cursors) {
             return;
         }
 
         this.vanishingPlatforms.update(delta);
         this.animatedLadders.update(delta);
         this.animatedConveyors.update(delta);
+        this.animatedWavePlatforms.update(delta);
         this.playerDeathSequence.update(delta);
 
         if (this.playerDeathSequence.isPlaying()) {
