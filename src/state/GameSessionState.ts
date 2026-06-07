@@ -50,6 +50,24 @@ export class GameSessionState
     }
 
     /**
+     * Resets score, lives and level for a fresh run while keeping the hi-score.
+     */
+    resetForNewGame(): void
+    {
+        this.currentScore = 0;
+        this.currentLives = GameSessionConstants.INITIAL_LIVES;
+        this.currentLevelState = new LevelState(GameSessionConstants.INITIAL_LEVEL);
+    }
+
+    /**
+     * Returns whether the current run has no lives left.
+     */
+    hasNoLives(): boolean
+    {
+        return this.currentLives <= 0;
+    }
+
+    /**
      * Adds an arbitrary score delta to the current session.
      */
     addScore(points: number): void

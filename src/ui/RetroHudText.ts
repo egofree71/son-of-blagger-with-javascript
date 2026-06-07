@@ -8,7 +8,9 @@ const UNKNOWN_CHARACTER_INDEX = RETRO_FONT_CHARS.indexOf("?");
  *
  * Phaser 2 exposed `RetroFont`, but Phaser 4 does not provide the same helper.
  * This class keeps the old 16x16 character grid by slicing `fonts.png` into
- * texture frames and composing labels from individual image game objects.
+ * texture frames and composing labels from individual image game objects. It is
+ * also reused by the title, help and ending screens so those screens keep the
+ * same chunky C64-style typography as the HUD.
  */
 export class RetroHudText
 {
@@ -45,14 +47,24 @@ export class RetroHudText
         this.letters.forEach((letter) => letter.destroy());
         this.letters.length = 0;
 
-        for (let index = 0; index < normalizedText.length; index += 1) {
-            const frameName = frameNameForCharacter(normalizedText[index]);
-            const letter = this.scene.add.image(index * this.charWidth, 0, this.textureKey, frameName)
+        let column = 0;
+        let row = 0;
+
+        for (const character of normalizedText) {
+            if (character === "\n") {
+                column = 0;
+                row += 1;
+                continue;
+            }
+
+            const frameName = frameNameForCharacter(character);
+            const letter = this.scene.add.image(column * this.charWidth, row * this.charHeight, this.textureKey, frameName)
                 .setOrigin(0)
                 .setTint(this.tint);
 
             this.container.add(letter);
             this.letters.push(letter);
+            column += 1;
         }
     }
 
@@ -63,6 +75,22 @@ export class RetroHudText
     {
         this.tint = tint;
         this.letters.forEach((letter) => letter.setTint(tint));
+    }
+
+    /**
+     * Scales the composed text block, used by the final congratulations message.
+     */
+    setScale(scale: number): void
+    {
+        this.container.setScale(scale);
+    }
+
+    /**
+     * Places the composed text block above other screen overlays when needed.
+     */
+    setDepth(depth: number): void
+    {
+        this.container.setDepth(depth);
     }
 
     /**

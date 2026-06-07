@@ -2,6 +2,10 @@ import { AUTO, Game, Scale } from "phaser";
 import { PreloadScene } from "./scenes/PreloadScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
+import { TitleScene } from "./scenes/TitleScene";
+import { HelpScene } from "./scenes/HelpScene";
+import { GameOverScene } from "./scenes/GameOverScene";
+import { EndingScene } from "./scenes/EndingScene";
 
 /**
  * Browser entry point for the Phaser 4 prototype.
@@ -36,8 +40,12 @@ const config = {
 
     scene: [
         PreloadScene,
+        TitleScene,
+        HelpScene,
         GameScene,
-        HUDScene
+        HUDScene,
+        GameOverScene,
+        EndingScene
     ]
 };
 

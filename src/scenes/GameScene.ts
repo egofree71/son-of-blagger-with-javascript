@@ -18,8 +18,14 @@ import { MonsterManager } from "../entities/MonsterManager";
 import { MonsterSpawnSequence } from "../entities/MonsterSpawnSequence";
 import { LevelRevealSequence } from "../entities/LevelRevealSequence";
 import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
+import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
+
+interface GameSceneData
+{
+    resetSession?: boolean;
+}
 
 /**
  * Main gameplay scene for the Phaser 4 prototype.
@@ -51,19 +57,30 @@ export class GameScene extends Scene
     private monsterSpawnSequence?: MonsterSpawnSequence;
     private levelRevealSequence?: LevelRevealSequence;
     private levelTransitionSequence?: LevelTransitionSequence;
+    private endGameSequence?: EndGameSequence;
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
     private temporaryDeathCount = 0;
+    private gameOverActive = false;
+    private endingScreenActive = false;
 
     constructor()
     {
         super("GameScene");
     }
 
-    create(): void
+    create(data: GameSceneData = {}): void
     {
+        if (data.resetSession !== false) {
+            this.sessionState.resetForNewGame();
+            this.temporaryDeathCount = 0;
+        }
+
+        this.gameOverActive = false;
+        this.endingScreenActive = false;
+
         // Match the light grey Phaser 2 stage background so empty map areas are
         // not rendered as black during early prototype testing.
         this.cameras.main.setBackgroundColor(GameScene.STAGE_BACKGROUND_COLOR);
@@ -107,6 +124,7 @@ export class GameScene extends Scene
         }
 
         this.levelTransitionSequence = new LevelTransitionSequence(this, this.player, this.monsterManager);
+        this.endGameSequence = new EndGameSequence();
         this.exitDetector = this.createExitDetectorForLevel(levelNumber);
 
         if (!this.exitDetector) {
@@ -147,6 +165,15 @@ export class GameScene extends Scene
         this.playerDeathSequence.update(delta);
 
         if (this.playerDeathSequence.isPlaying()) {
+            return;
+        }
+
+        if (this.gameOverActive || this.endingScreenActive) {
+            return;
+        }
+
+        if (this.endGameSequence?.isPlaying()) {
+            this.updateEndGame(delta);
             return;
         }
 
@@ -226,7 +253,10 @@ export class GameScene extends Scene
 
         if (this.sessionState.hasNextLevel()) {
             this.startLevelTransition();
+            return;
         }
+
+        this.startEndGame();
     }
 
     /**
@@ -241,6 +271,11 @@ export class GameScene extends Scene
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
         this.sessionState.currentLevel.resetRun();
+        this.endGameSequence?.stop();
+        this.gameOverActive = false;
+        this.endingScreenActive = false;
+        this.scene.stop("GameOverScene");
+        this.scene.stop("EndingScene");
         this.startLevelStartSequences();
 
         this.emitHUDState();
@@ -272,6 +307,9 @@ export class GameScene extends Scene
             levelRevealSequencePlaying: this.levelRevealSequence?.isPlaying() ?? false,
             monsterSpawnSequencePlaying: this.monsterSpawnSequence?.isPlaying() ?? false,
             levelTransitionSequencePlaying: this.levelTransitionSequence?.isPlaying() ?? false,
+            endGameSequencePlaying: this.endGameSequence?.isPlaying() ?? false,
+            gameOverActive: this.gameOverActive,
+            endingScreenActive: this.endingScreenActive,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
                 ? {
@@ -334,21 +372,100 @@ export class GameScene extends Scene
         this.temporaryDeathCount += 1;
         this.sessionState.consumeBonusManOrLife();
         this.sessionState.updateHiScoreIfNeeded();
-        this.sessionState.currentLevel.resetRun();
 
-        // This remains a prototype consequence of death: the game-over screen is
-        // not ported yet, so even at zero lives the level is reset for testing.
+        this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
+            deaths: this.temporaryDeathCount
+        });
+
+        if (this.sessionState.hasNoLives()) {
+            this.showGameOverAfterLastLife();
+            return;
+        }
+
+        this.sessionState.currentLevel.resetRun();
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
         this.startLevelStartSequences();
 
         this.emitHUDState();
-
-        this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
-            deaths: this.temporaryDeathCount
-        });
         this.emitKeyState();
         this.emitTemporaryExitState();
+    }
+
+
+    private showGameOverAfterLastLife(): void
+    {
+        if (this.gameOverActive) {
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence?.stop();
+        this.endGameSequence?.stop();
+        this.sessionState.resetForNewGame();
+        this.gameOverActive = true;
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitTemporaryExitState();
+        this.scene.launch("GameOverScene");
+    }
+
+    private startEndGame(): void
+    {
+        if (!this.endGameSequence || this.endingScreenActive) {
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence?.stop();
+        this.endGameSequence.start();
+    }
+
+    private updateEndGame(deltaMs: number): void
+    {
+        if (!this.endGameSequence) {
+            return;
+        }
+
+        const levelState = this.sessionState.currentLevel;
+        const result = this.endGameSequence.update(deltaMs, levelState.airLevel);
+
+        if (result.scoreDelta > 0) {
+            this.sessionState.addScore(result.scoreDelta);
+        }
+
+        if (result.airDelta < 0) {
+            levelState.decreaseAir(Math.abs(result.airDelta));
+        }
+
+        if (result.airCleared) {
+            levelState.decreaseAir(levelState.airLevel);
+        }
+
+        if (result.scoreDelta > 0 || result.airChanged || result.airCleared) {
+            this.emitHUDState();
+        }
+
+        if (result.messageReady) {
+            this.showEndingScreen();
+        }
+    }
+
+    private showEndingScreen(): void
+    {
+        if (this.endingScreenActive) {
+            return;
+        }
+
+        this.endGameSequence?.stop();
+        this.sessionState.currentLevel.resetAirLevel();
+        this.sessionState.updateHiScoreIfNeeded();
+        this.emitHUDState();
+        this.endingScreenActive = true;
+        this.scene.launch("EndingScene");
     }
 
 
@@ -409,8 +526,7 @@ export class GameScene extends Scene
         this.emitTemporaryExitState();
 
         if (!this.sessionState.hasNextLevel()) {
-            // The final congratulations sequence is still not ported. Keep the
-            // last-level exit marked as reached so the prototype remains stable.
+            this.startEndGame();
             return;
         }
 

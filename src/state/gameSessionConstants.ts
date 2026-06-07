@@ -14,5 +14,7 @@ export const GameSessionConstants = {
     AIR_DECREASE_AMOUNT: 1,
     KEY_SCORE_INCREMENT: 200,
     END_LEVEL_AIR_STEP: 6,
-    END_LEVEL_SCORE_STEP: 30
+    END_LEVEL_SCORE_STEP: 30,
+    END_GAME_AIR_STEP: 6,
+    END_GAME_SCORE_STEP: 30
 } as const;

@@ -86,6 +86,9 @@ export class PreloadScene extends Scene
             frameHeight: 14
         });
 
+        this.load.image("title", "assets/sprites/title.png");
+        this.load.image("game-over", "assets/sprites/game over.png");
+
         this.load.spritesheet("vanishing-platform", "assets/sprites/vanishing platform.png", {
             frameWidth: 16,
             frameHeight: 16
@@ -159,6 +162,6 @@ export class PreloadScene extends Scene
 
     create(): void
     {
-        this.scene.start("GameScene");
+        this.scene.start("TitleScene");
     }
 }

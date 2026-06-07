@@ -48,7 +48,7 @@ export class DebugConsole
     {
         return [
             "sobDebug.collectAllKeys() - collect all keys for the current level",
-            "sobDebug.finishLevel()     - collect all keys and start/mark level completion",
+            "sobDebug.finishLevel()     - collect all keys and start level/final completion",
             "sobDebug.resetLevel()      - reset the player, keys and temporary exit state",
             "sobDebug.status()          - show the current Phaser 4 prototype status",
             "sobDebug.runtime()         - return the active GameScene instance",
@@ -97,6 +97,9 @@ export interface PrototypeDebugStatus
     levelRevealSequencePlaying: boolean;
     monsterSpawnSequencePlaying: boolean;
     levelTransitionSequencePlaying: boolean;
+    endGameSequencePlaying: boolean;
+    gameOverActive: boolean;
+    endingScreenActive: boolean;
     deathSequencePlaying: boolean;
     player: {
         x: number;
