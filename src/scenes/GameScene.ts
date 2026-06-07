@@ -1,0 +1,735 @@
+import { Scene, Tilemaps, Types } from "phaser";
+import { Player } from "../entities/Player";
+import type { TiledObjectLike } from "../tiled/tiledObjects";
+import { findObjectByLevel } from "../tiled/tiledObjects";
+import { TileCollisionProbe } from "../tiled/tileCollisionProbe";
+import { VanishingPlatforms } from "../entities/VanishingPlatforms";
+import { AnimatedLadders } from "../entities/AnimatedLadders";
+import { AnimatedConveyors } from "../entities/AnimatedConveyors";
+import { AnimatedWavePlatforms } from "../entities/AnimatedWavePlatforms";
+import { DebugPlayerControls } from "../debug/DebugPlayerControls";
+import { DebugConsole } from "../debug/DebugConsole";
+import type { DebugStatus } from "../debug/DebugConsole";
+import { KeyCollector } from "../entities/KeyCollector";
+import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
+import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
+import { ExitDetector } from "../entities/ExitDetector";
+import { MonsterManager } from "../entities/MonsterManager";
+import { MonsterSpawnSequence } from "../entities/MonsterSpawnSequence";
+import { LevelRevealSequence } from "../entities/LevelRevealSequence";
+import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
+import { EndGameSequence } from "../entities/EndGameSequence";
+import { GameSessionState } from "../state/GameSessionState";
+import { HUD_STATE_CHANGED_EVENT, EXIT_CHANGED_EVENT, KEYS_CHANGED_EVENT, PLAYER_KILLED_EVENT } from "./HUDScene";
+
+interface GameSceneData
+{
+    resetSession?: boolean;
+}
+
+/**
+ * Main gameplay scene.
+ *
+ * GameScene creates the Tiled map, animated decorations, player, keys, monsters
+ * and level flow sequences. Persistent values such as score, lives, air and the
+ * current level number live in GameSessionState; this scene orchestrates the
+ * runtime objects that exist only while a level is being played.
+ */
+export class GameScene extends Scene
+{
+    private static readonly GAMEPLAY_VIEW_HEIGHT = 200;
+    private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
+
+    private readonly sessionState = new GameSessionState();
+    private map?: Tilemaps.Tilemap;
+    private player?: Player;
+    private collisionProbe?: TileCollisionProbe;
+    private vanishingPlatforms?: VanishingPlatforms;
+    private animatedLadders?: AnimatedLadders;
+    private animatedConveyors?: AnimatedConveyors;
+    private animatedWavePlatforms?: AnimatedWavePlatforms;
+    private keyCollector?: KeyCollector;
+    private deadlyTileDetector?: DeadlyTileDetector;
+    private playerDeathSequence?: PlayerDeathSequence;
+    private exitDetector?: ExitDetector;
+    private monsterManager?: MonsterManager;
+    private monsterSpawnSequence?: MonsterSpawnSequence;
+    private levelRevealSequence?: LevelRevealSequence;
+    private levelTransitionSequence?: LevelTransitionSequence;
+    private endGameSequence?: EndGameSequence;
+    private debugPlayerControls?: DebugPlayerControls;
+    private debugConsole?: DebugConsole;
+    private cursors?: Types.Input.Keyboard.CursorKeys;
+    private currentPlayerStart?: TiledObjectLike;
+    private deathCount = 0;
+    private gameOverActive = false;
+    private endingScreenActive = false;
+
+    constructor()
+    {
+        super("GameScene");
+    }
+
+    create(data: GameSceneData = {}): void
+    {
+        if (data.resetSession !== false) {
+            this.sessionState.resetForNewGame();
+            this.deathCount = 0;
+        }
+
+        this.gameOverActive = false;
+        this.endingScreenActive = false;
+
+        // The C64-style playfield uses a light grey stage background behind empty
+        // map areas.
+        this.cameras.main.setBackgroundColor(GameScene.STAGE_BACKGROUND_COLOR);
+        this.cameras.main.setViewport(0, 0, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
+
+        this.map = this.make.tilemap({ key: "son-of-blagger-map" });
+
+        const backgroundTileset = this.map.addTilesetImage("background", "background-tiles");
+
+        if (!backgroundTileset) {
+            this.showFatalMessage("Could not bind the Tiled 'background' tileset.");
+            return;
+        }
+
+        const backgroundLayer = this.map.createLayer("background", backgroundTileset, 0, 0);
+
+        if (!backgroundLayer) {
+            this.showFatalMessage("Could not create the Tiled 'background' tile layer.");
+            return;
+        }
+
+        const levelNumber = this.sessionState.currentLevel.levelNumber;
+
+        this.collisionProbe = new TileCollisionProbe(backgroundLayer);
+        this.vanishingPlatforms = new VanishingPlatforms(this, backgroundLayer, "vanishing-platform");
+        this.animatedLadders = new AnimatedLadders(this, backgroundLayer, "ladder-left", "ladder-right");
+        this.animatedConveyors = new AnimatedConveyors(this, backgroundLayer, "conveyor-left", "conveyor-right");
+        this.animatedWavePlatforms = new AnimatedWavePlatforms(this, backgroundLayer, "wave-left", "wave-right");
+        this.keyCollector = new KeyCollector(backgroundLayer);
+        this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
+        this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
+        this.monsterManager = new MonsterManager(this, this.map, levelNumber);
+        this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
+        this.levelRevealSequence = new LevelRevealSequence(this, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
+
+        this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+        this.createPlayerAtLevelStart(levelNumber);
+
+        if (!this.player) {
+            return;
+        }
+
+        this.levelTransitionSequence = new LevelTransitionSequence(this, this.player, this.monsterManager);
+        this.endGameSequence = new EndGameSequence();
+        this.exitDetector = this.createExitDetectorForLevel(levelNumber);
+
+        if (!this.exitDetector) {
+            return;
+        }
+
+        this.cursors = this.input.keyboard?.createCursorKeys();
+
+        if (DebugPlayerControls.isEnabled()) {
+            this.debugPlayerControls = new DebugPlayerControls();
+            this.debugConsole = new DebugConsole(this);
+            this.debugConsole.install();
+
+            // Debug helpers attach browser-level state, so remove everything if
+            // the scene is restarted.
+            this.events.once("shutdown", () => this.destroyDebugHelpers());
+            this.events.once("destroy", () => this.destroyDebugHelpers());
+        }
+
+        this.scene.launch("HUDScene", {
+            debugModeEnabled: this.debugPlayerControls !== undefined,
+            ...this.sessionState.toHUDState()
+        });
+
+        this.startLevelStartSequences();
+    }
+
+    update(_time: number, delta: number): void
+    {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.levelTransitionSequence || !this.cursors) {
+            return;
+        }
+
+        this.vanishingPlatforms.update(delta);
+        this.animatedLadders.update(delta);
+        this.animatedConveyors.update(delta);
+        this.animatedWavePlatforms.update(delta);
+        this.playerDeathSequence.update(delta);
+
+        if (this.playerDeathSequence.isPlaying()) {
+            return;
+        }
+
+        if (this.gameOverActive || this.endingScreenActive) {
+            return;
+        }
+
+        if (this.endGameSequence?.isPlaying()) {
+            this.updateEndGame(delta);
+            return;
+        }
+
+        if (this.levelRevealSequence.isPlaying()) {
+            this.levelRevealSequence.update(delta);
+            return;
+        }
+
+        if (this.monsterSpawnSequence.isPlaying()) {
+            this.monsterSpawnSequence.update(delta);
+            return;
+        }
+
+        if (this.levelTransitionSequence.isPlaying()) {
+            this.updateLevelTransition(delta);
+            return;
+        }
+
+        const debugFreeMoveActive = this.debugPlayerControls?.update(this.player, this.map, delta) ?? false;
+
+        if (debugFreeMoveActive) {
+            return;
+        }
+
+        if (this.consumeAirIfNeeded(delta)) {
+            return;
+        }
+
+        // Monsters move before Sid resolves this frame's interaction checks, so
+        // collisions are tested against their latest visible positions.
+        this.monsterManager.update();
+
+        const movementResult = this.player.updateMovement(
+            this.cursors,
+            this.map,
+            this.collisionProbe,
+            this.vanishingPlatforms
+        );
+
+        if (movementResult.playerKilledByDeadlyFall) {
+            this.startPlayerDeath();
+            return;
+        }
+
+        if (this.killPlayerIfNeeded()) {
+            return;
+        }
+
+        this.collectKeyIfNeeded();
+        this.checkExitIfNeeded();
+    }
+
+    /**
+     * Collects all keys from the browser console when `?debug=1` is enabled.
+     */
+    collectAllKeysForDebug(): void
+    {
+        if (!this.keyCollector) {
+            return;
+        }
+
+        this.keyCollector.collectAllForDebug(this.sessionState.currentLevel.keysNeeded);
+        this.sessionState.currentLevel.collectAllKeysForDebug();
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+    }
+
+    /**
+     * Marks the current level exit as reached from the browser console.
+     */
+    finishLevelForDebug(): void
+    {
+        this.collectAllKeysForDebug();
+        this.sessionState.currentLevel.markExitReached();
+        this.emitExitState();
+
+        if (this.sessionState.hasNextLevel()) {
+            this.startLevelTransition();
+            return;
+        }
+
+        this.startEndGame();
+    }
+
+
+    /**
+     * Starts the final end-game sequence from the browser console.
+     *
+     * This is deliberately available from any level so the ending screen can be
+     * tuned visually without playing through the full map every time.
+     */
+    finishGameForDebug(): void
+    {
+        this.collectAllKeysForDebug();
+        this.sessionState.currentLevel.markExitReached();
+        this.gameOverActive = false;
+        this.scene.stop("GameOverScene");
+        this.emitExitState();
+        this.startEndGame();
+    }
+
+    /**
+     * Resets the current level runtime from the browser console.
+     */
+    resetLevelForDebug(): void
+    {
+        if (!this.player || !this.keyCollector || !this.currentPlayerStart) {
+            return;
+        }
+
+        this.player.resetToTiledStart(this.currentPlayerStart);
+        this.keyCollector.reset();
+        this.sessionState.currentLevel.resetRun();
+        this.endGameSequence?.stop();
+        this.gameOverActive = false;
+        this.endingScreenActive = false;
+        this.scene.stop("GameOverScene");
+        this.scene.stop("EndingScene");
+        this.startLevelStartSequences();
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+    }
+
+    /**
+     * Returns compact debug state for browser-console inspection.
+     */
+    getDebugStatus(): DebugStatus
+    {
+        const sprite = this.player?.getSprite();
+        const levelState = this.sessionState.currentLevel;
+
+        return {
+            debugMode: this.debugPlayerControls !== undefined,
+            level: levelState.levelNumber,
+            keysCollected: levelState.keysCollected,
+            keysNeeded: levelState.keysNeeded,
+            exitReady: levelState.hasCollectedAllKeys(),
+            exitReached: levelState.exitReached,
+            deaths: this.deathCount,
+            lives: this.sessionState.lives,
+            score: this.sessionState.score,
+            hiScore: this.sessionState.hiScore,
+            airLevel: levelState.airLevel,
+            monstersLoaded: this.monsterManager?.count ?? 0,
+            levelRevealSequencePlaying: this.levelRevealSequence?.isPlaying() ?? false,
+            monsterSpawnSequencePlaying: this.monsterSpawnSequence?.isPlaying() ?? false,
+            levelTransitionSequencePlaying: this.levelTransitionSequence?.isPlaying() ?? false,
+            endGameSequencePlaying: this.endGameSequence?.isPlaying() ?? false,
+            gameOverActive: this.gameOverActive,
+            endingScreenActive: this.endingScreenActive,
+            deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
+            player: sprite
+                ? {
+                    x: Math.round(sprite.x),
+                    y: Math.round(sprite.y)
+                }
+                : null
+        };
+    }
+
+    private consumeAirIfNeeded(deltaMs: number): boolean
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        if (!levelState.consumeAirWhenDue(deltaMs)) {
+            return false;
+        }
+
+        this.emitHUDState();
+
+        if (levelState.airLevel > 0) {
+            return false;
+        }
+
+        return this.startPlayerDeath();
+    }
+
+    private killPlayerIfNeeded(): boolean
+    {
+        if (!this.player || !this.deadlyTileDetector || !this.monsterManager || !this.playerDeathSequence) {
+            return false;
+        }
+
+        const touchesDeadlyTile = this.deadlyTileDetector.touchesDeadlyTile(this.player.getDeadlyCollisionBounds());
+        const touchesMonster = this.monsterManager.touchesPlayer(this.player.getBodyCollisionBounds());
+
+        if (!touchesDeadlyTile && !touchesMonster) {
+            return false;
+        }
+
+        return this.startPlayerDeath();
+    }
+
+    private startPlayerDeath(): boolean
+    {
+        if (!this.player || !this.playerDeathSequence) {
+            return false;
+        }
+
+        this.playerDeathSequence.start(this.player, () => this.finishPlayerDeath());
+        return true;
+    }
+
+    private finishPlayerDeath(): void
+    {
+        if (!this.player || !this.keyCollector || !this.currentPlayerStart) {
+            return;
+        }
+
+        this.deathCount += 1;
+        this.sessionState.consumeBonusManOrLife();
+        this.sessionState.updateHiScoreIfNeeded();
+
+        this.game.events.emit(PLAYER_KILLED_EVENT, {
+            deaths: this.deathCount
+        });
+
+        if (this.sessionState.hasNoLives()) {
+            this.showGameOverAfterLastLife();
+            return;
+        }
+
+        this.sessionState.currentLevel.resetRun();
+        this.player.resetToTiledStart(this.currentPlayerStart);
+        this.keyCollector.reset();
+        this.startLevelStartSequences();
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+    }
+
+
+    private showGameOverAfterLastLife(): void
+    {
+        if (this.gameOverActive) {
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence?.stop();
+        this.endGameSequence?.stop();
+        this.sessionState.resetForNewGame();
+        this.gameOverActive = true;
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+        this.scene.launch("GameOverScene");
+    }
+
+    private startEndGame(): void
+    {
+        if (!this.endGameSequence || this.endingScreenActive) {
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence?.stop();
+        this.endGameSequence.start();
+    }
+
+    private updateEndGame(deltaMs: number): void
+    {
+        if (!this.endGameSequence) {
+            return;
+        }
+
+        const levelState = this.sessionState.currentLevel;
+        const result = this.endGameSequence.update(deltaMs, levelState.airLevel);
+
+        if (result.scoreDelta > 0) {
+            this.sessionState.addScore(result.scoreDelta);
+        }
+
+        if (result.airDelta < 0) {
+            levelState.decreaseAir(Math.abs(result.airDelta));
+        }
+
+        if (result.airCleared) {
+            levelState.decreaseAir(levelState.airLevel);
+        }
+
+        if (result.scoreDelta > 0 || result.airChanged || result.airCleared) {
+            this.emitHUDState();
+        }
+
+        if (result.messageReady) {
+            this.showEndingScreen();
+        }
+    }
+
+    private showEndingScreen(): void
+    {
+        if (this.endingScreenActive) {
+            return;
+        }
+
+        this.endGameSequence?.stop();
+        this.sessionState.currentLevel.resetAirLevel();
+        this.sessionState.updateHiScoreIfNeeded();
+        this.emitHUDState();
+        this.endingScreenActive = true;
+        this.scene.launch("EndingScene");
+    }
+
+
+    private startLevelStartSequences(): void
+    {
+        if (!this.monsterManager || !this.levelRevealSequence) {
+            return;
+        }
+
+        // Keep monsters hidden while the map opens: level reveal first, then
+        // monster explosion reveal, then gameplay.
+        this.monsterSpawnSequence?.stop();
+        this.monsterManager.prepareForSpawnReveal();
+        this.levelRevealSequence.start(() => this.startMonsterSpawnSequence());
+    }
+
+    private startMonsterSpawnSequence(): void
+    {
+        if (!this.monsterManager || !this.monsterSpawnSequence) {
+            return;
+        }
+
+        this.monsterSpawnSequence.start(() => {
+            this.monsterManager?.activateAfterSpawnReveal();
+        });
+    }
+
+    private collectKeyIfNeeded(): void
+    {
+        if (!this.player || !this.keyCollector) {
+            return;
+        }
+
+        if (!this.keyCollector.collectFromPlayerProbe(this.player.getKeyCollectionBounds())) {
+            return;
+        }
+
+        this.sessionState.currentLevel.collectKey();
+        this.sessionState.addKeyScore();
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+    }
+
+    private checkExitIfNeeded(): void
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        if (!this.player || !this.exitDetector || levelState.exitReached || !levelState.hasCollectedAllKeys()) {
+            return;
+        }
+
+        if (!this.exitDetector.touchesPlayer(this.player.getBodyCollisionBounds())) {
+            return;
+        }
+
+        levelState.markExitReached();
+        this.emitExitState();
+
+        if (!this.sessionState.hasNextLevel()) {
+            this.startEndGame();
+            return;
+        }
+
+        this.startLevelTransition();
+    }
+
+
+    private startLevelTransition(): void
+    {
+        if (!this.map || !this.player || !this.levelTransitionSequence) {
+            return;
+        }
+
+        const nextLevelNumber = this.sessionState.nextLevelNumber;
+        const nextPlayerStart = findObjectByLevel(this.map, "player", nextLevelNumber);
+
+        if (!nextPlayerStart) {
+            this.showFatalMessage(`Could not find the level-${nextLevelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence.start(Player.getTiledStartPosition(nextPlayerStart));
+    }
+
+    private updateLevelTransition(deltaMs: number): void
+    {
+        if (!this.levelTransitionSequence) {
+            return;
+        }
+
+        const levelState = this.sessionState.currentLevel;
+        const transitionResult = this.levelTransitionSequence.update(deltaMs, levelState.airLevel);
+
+        if (transitionResult.scoreDelta > 0) {
+            this.sessionState.addScore(transitionResult.scoreDelta);
+        }
+
+        if (transitionResult.airDelta < 0) {
+            levelState.decreaseAir(Math.abs(transitionResult.airDelta));
+        }
+        else if (transitionResult.airDelta > 0) {
+            levelState.increaseAir(transitionResult.airDelta);
+        }
+
+        if (transitionResult.airCleared) {
+            levelState.decreaseAir(levelState.airLevel);
+        }
+
+        if (transitionResult.scoreDelta > 0 || transitionResult.airChanged || transitionResult.airCleared) {
+            this.emitHUDState();
+        }
+
+        if (transitionResult.nextLevelReady) {
+            this.loadNextLevelAfterTransition();
+        }
+    }
+
+    private loadNextLevelAfterTransition(): void
+    {
+        if (!this.map || !this.player || !this.keyCollector) {
+            return;
+        }
+
+        this.levelTransitionSequence?.stop();
+        this.monsterManager?.destroy();
+        this.sessionState.advanceToNextLevelWithBonusMan();
+
+        const levelNumber = this.sessionState.currentLevel.levelNumber;
+        const playerStart = findObjectByLevel(this.map, "player", levelNumber);
+
+        if (!playerStart) {
+            this.showFatalMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.currentPlayerStart = playerStart;
+        this.player.resetToTiledStart(playerStart);
+        this.followPlayer(this.player);
+        this.keyCollector.reset();
+        this.exitDetector = this.createExitDetectorForLevel(levelNumber);
+        this.monsterManager = new MonsterManager(this, this.map, levelNumber);
+        this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
+        this.levelTransitionSequence?.setMonsterManager(this.monsterManager);
+        this.sessionState.currentLevel.resetAirTimer();
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitExitState();
+        this.startMonsterSpawnSequence();
+    }
+
+    private emitKeyState(): void
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        this.game.events.emit(KEYS_CHANGED_EVENT, {
+            keysCollected: levelState.keysCollected,
+            keysNeeded: levelState.keysNeeded
+        });
+    }
+
+    private emitExitState(): void
+    {
+        const levelState = this.sessionState.currentLevel;
+
+        this.game.events.emit(EXIT_CHANGED_EVENT, {
+            exitReady: levelState.hasCollectedAllKeys(),
+            exitReached: levelState.exitReached
+        });
+    }
+
+    private emitHUDState(): void
+    {
+        this.game.events.emit(HUD_STATE_CHANGED_EVENT, this.sessionState.toHUDState());
+    }
+
+    private createPlayerAtLevelStart(levelNumber: number): void
+    {
+        if (!this.map) {
+            return;
+        }
+
+        const playerStart = findObjectByLevel(this.map, "player", levelNumber);
+
+        if (!playerStart) {
+            this.showFatalMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.currentPlayerStart = playerStart;
+        this.player = new Player(this, "blagger", "blagger-white");
+        this.player.resetToTiledStart(playerStart);
+
+        this.followPlayer(this.player);
+    }
+
+    private createExitDetectorForLevel(levelNumber: number): ExitDetector | undefined
+    {
+        if (!this.map) {
+            return undefined;
+        }
+
+        const exitObject = findObjectByLevel(this.map, "end level", levelNumber);
+
+        if (!exitObject) {
+            this.showFatalMessage(`Could not find the level-${levelNumber} exit object in the Tiled map.`);
+            return undefined;
+        }
+
+        return new ExitDetector(exitObject);
+    }
+
+    private followPlayer(player: Player): void
+    {
+        const camera = this.cameras.main;
+
+        // Keep the camera inside the imported Tiled map. The HUD uses a separate
+        // scene, so this camera only owns the upper gameplay viewport.
+        camera.setBounds(0, 0, this.map?.widthInPixels ?? 0, this.map?.heightInPixels ?? 0);
+
+        // Round camera scrolling to whole pixels while following the player.
+        // Sub-pixel camera scroll makes pixel-art tile edges shimmer.
+        camera.startFollow(player.getSprite(), true, 1, 1);
+
+        const playerCenter = player.getCenter();
+        camera.centerOn(Math.round(playerCenter.x), Math.round(playerCenter.y));
+    }
+
+
+    private destroyDebugHelpers(): void
+    {
+        this.debugPlayerControls?.destroy();
+        this.debugConsole?.destroy();
+        this.debugPlayerControls = undefined;
+        this.debugConsole = undefined;
+    }
+
+    private showFatalMessage(message: string): void
+    {
+        this.add.text(320, 180, message, {
+            fontFamily: "Arial",
+            fontSize: "16px",
+            color: "#ffffff",
+            align: "center",
+            wordWrap: { width: 560 }
+        }).setOrigin(0.5);
+    }
+}

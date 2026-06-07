@@ -2,18 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Son of Blagger</title>
     <link rel="icon" href="data:,">
-    <!-- Phaser 2.3 is kept as a classic global script for now. -->
-    <script src="./js/phaser.min.js"></script>
-    <!-- Vite entry point. The game files are imported from src/main.js. -->
+
+    <!--
+        Phaser 4 is imported from npm by Vite through src/main.ts.
+    -->
     <script type="module" src="/src/main.ts"></script>
-    <style type="text/css">
+
+    <style>
+        html,
         body {
             margin: 0;
+            width: 100%;
+            height: 100%;
+            background: #111;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
     </style>
 </head>
 <body>
+    <div id="game-container"></div>
 </body>
 </html>

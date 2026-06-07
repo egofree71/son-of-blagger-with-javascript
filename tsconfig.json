@@ -4,8 +4,6 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "allowJs": true,
-    "checkJs": false,
     "strict": false,
     "noImplicitAny": false,
     "isolatedModules": true,
@@ -13,6 +11,6 @@
     "allowImportingTsExtensions": true
   },
   "include": [
-    "src"
+    "src/**/*.ts"
   ]
 }

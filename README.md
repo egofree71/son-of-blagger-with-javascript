@@ -1,19 +1,91 @@
-**Project description :**
+# Son of Blagger
 
-Son of blagger is a platform game made in 1983 for the commodore 64. It was written by Anthony Crowther (c.f http://tinyurl.com/p9zmthp)
-Anthony Crowther was a famous programmer at that time, as very often he was writing alone his games (doing programming, graphics and music). He was also a very prolific programmer, as he could write games in a few weeks. I was a fan of Anthony Crowther and i decided to make a remake of 'Son of blagger'.
-As i wanted the remake to look and behave as much as possible as the original game, i spent a lot of time doing reverse engineering of the C64 executable. I updated the graphics by smoothing them and adding light and shadow effects. This is the first trime i tried to program a game.
+Web remake of **Son of Blagger**, the Commodore 64 platform game created by Antony Crowther.
 
-**Gameplay:**
+The player controls Slippery Sid through scrolling maze-like levels. Each level requires collecting all keys, avoiding monsters and deadly tiles, then reaching the exit before the air runs out.
 
-The goal of the player on each level is manipulate Blagger, a burglar, to collect the scattered keys and then reach the safe. The keys must be collected and the safe opened in a set amount of time. Blagger can walk either left or right, or jump left or right. He must avoid monster and deadly objects.
+## Current stack
 
-**Keys :**
+- Phaser 4.1
+- TypeScript
+- Vite
+- Tiled JSON map and bitmap-style assets under `public/assets`
 
-Left and right arrows to move and space to jump.
+## Controls
 
-The player can't make 'double jumps', except if he is on a slide. Beyond a given distance, the falls are deadly, except if he is on a slide. 
+- Left / right arrows: move
+- Space: jump
+- `H` on the title screen: help screen
 
-**Play the game :**
+## Local development
 
-http://egofree71.github.io/son-of-blagger-with-javascript/
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Run TypeScript checks:
+
+```bash
+npm run typecheck
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+Preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Debug mode
+
+Launch the game with `?debug=1` to enable browser-console helpers:
+
+```text
+http://localhost:5173/?debug=1
+```
+
+Useful commands include:
+
+```js
+sobDebug.help();
+sobDebug.status();
+sobDebug.collectAllKeys();
+sobDebug.finishLevel();
+sobDebug.finishGame();
+sobDebug.resetLevel();
+sobDebug.runtime();
+```
+
+Debug free-move controls use the numeric keypad:
+
+- Numpad 8: up
+- Numpad 2: down
+- Numpad 4: left
+- Numpad 6: right
+
+## Documentation
+
+The current implementation is documented in:
+
+```text
+doc/current_implementation.md
+```
+
+## Play online
+
+```text
+https://egofree71.github.io/son-of-blagger-with-javascript/
+```
