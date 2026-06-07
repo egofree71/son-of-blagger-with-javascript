@@ -16,6 +16,7 @@ import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { ExitDetector } from "../entities/ExitDetector";
 import { MonsterManager } from "../entities/MonsterManager";
 import { MonsterSpawnSequence } from "../entities/MonsterSpawnSequence";
+import { LevelRevealSequence } from "../entities/LevelRevealSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
@@ -47,6 +48,7 @@ export class GameScene extends Scene
     private exitDetector?: ExitDetector;
     private monsterManager?: MonsterManager;
     private monsterSpawnSequence?: MonsterSpawnSequence;
+    private levelRevealSequence?: LevelRevealSequence;
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
@@ -93,6 +95,7 @@ export class GameScene extends Scene
         this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
         this.monsterManager = new MonsterManager(this, this.map, levelNumber);
         this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
+        this.levelRevealSequence = new LevelRevealSequence(this, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(levelNumber);
@@ -122,12 +125,12 @@ export class GameScene extends Scene
             ...this.sessionState.toHUDState()
         });
 
-        this.startMonsterSpawnSequence();
+        this.startLevelStartSequences();
     }
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.cursors) {
             return;
         }
 
@@ -138,6 +141,11 @@ export class GameScene extends Scene
         this.playerDeathSequence.update(delta);
 
         if (this.playerDeathSequence.isPlaying()) {
+            return;
+        }
+
+        if (this.levelRevealSequence.isPlaying()) {
+            this.levelRevealSequence.update(delta);
             return;
         }
 
@@ -218,7 +226,7 @@ export class GameScene extends Scene
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
         this.sessionState.currentLevel.resetRun();
-        this.startMonsterSpawnSequence();
+        this.startLevelStartSequences();
 
         this.emitHUDState();
         this.emitKeyState();
@@ -246,6 +254,7 @@ export class GameScene extends Scene
             hiScore: this.sessionState.hiScore,
             airLevel: levelState.airLevel,
             monstersLoaded: this.monsterManager?.count ?? 0,
+            levelRevealSequencePlaying: this.levelRevealSequence?.isPlaying() ?? false,
             monsterSpawnSequencePlaying: this.monsterSpawnSequence?.isPlaying() ?? false,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
@@ -315,7 +324,7 @@ export class GameScene extends Scene
         // not ported yet, so even at zero lives the level is reset for testing.
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
-        this.startMonsterSpawnSequence();
+        this.startLevelStartSequences();
 
         this.emitHUDState();
 
@@ -326,6 +335,19 @@ export class GameScene extends Scene
         this.emitTemporaryExitState();
     }
 
+
+    private startLevelStartSequences(): void
+    {
+        if (!this.monsterManager || !this.levelRevealSequence) {
+            return;
+        }
+
+        // Keep monsters hidden while the map opens, matching the original flow:
+        // level reveal first, then monster explosion reveal, then gameplay.
+        this.monsterSpawnSequence?.stop();
+        this.monsterManager.prepareForSpawnReveal();
+        this.levelRevealSequence.start(() => this.startMonsterSpawnSequence());
+    }
 
     private startMonsterSpawnSequence(): void
     {
