@@ -106,6 +106,35 @@ export class MonsterManager
         return this.monsters.map((monster) => monster.getSpawnPosition());
     }
 
+
+    /**
+     * Returns current positions for the end-of-level reverse explosion effect.
+     */
+    getCurrentPositions(): MonsterSpawnPoint[]
+    {
+        return this.monsters.map((monster) => monster.getCurrentPosition());
+    }
+
+    /**
+     * Hides and disables all monsters from the completed level.
+     */
+    hideForLevelTransition(): void
+    {
+        for (const monster of this.monsters) {
+            monster.hideForLevelTransition();
+        }
+    }
+
+    /**
+     * Destroys old level monsters before GameScene creates the next set.
+     */
+    destroy(): void
+    {
+        for (const monster of this.monsters) {
+            monster.destroy();
+        }
+    }
+
     /**
      * Checks whether the temporary player body rectangle touches any monster.
      */

@@ -150,6 +150,30 @@ export class LevelState
     }
 
     /**
+     * Decreases the air bar by a fixed amount during level transitions.
+     */
+    decreaseAir(amount: number): void
+    {
+        this.air = Math.max(0, this.air - amount);
+    }
+
+    /**
+     * Refills the air bar by a fixed amount during level transitions.
+     */
+    increaseAir(amount: number): void
+    {
+        this.air = Math.min(GameSessionConstants.DEFAULT_AIR_LEVEL, this.air + amount);
+    }
+
+    /**
+     * Clears the air accumulator when gameplay resumes after a transition.
+     */
+    resetAirTimer(): void
+    {
+        this.airDecreaseAccumulatorMs = 0;
+    }
+
+    /**
      * Enables the bonus-man display for future level-transition work.
      */
     enableBonusMan(): void
@@ -170,8 +194,4 @@ export class LevelState
         return true;
     }
 
-    private decreaseAir(amount: number): void
-    {
-        this.air = Math.max(0, this.air - amount);
-    }
 }

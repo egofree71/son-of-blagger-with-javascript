@@ -133,15 +133,26 @@ export class Player
             .setVisible(false);
     }
 
+
+    /**
+     * Converts a Tiled player object into the sprite top-left position.
+     */
+    static getTiledStartPosition(startObject: TiledObjectLike): { x: number; y: number }
+    {
+        return {
+            x: startObject.x,
+            y: startObject.y - Player.TILED_Y_OFFSET
+        };
+    }
+
     /**
      * Places the player sprite on the current level start object.
      */
     resetToTiledStart(startObject: TiledObjectLike): void
     {
-        this.sprite.setPosition(
-            startObject.x,
-            startObject.y - Player.TILED_Y_OFFSET
-        );
+        const startPosition = Player.getTiledStartPosition(startObject);
+
+        this.sprite.setPosition(startPosition.x, startPosition.y);
 
         this.facingDirection = "right";
         this.animationFrameIndex = 0;
@@ -272,18 +283,7 @@ export class Player
      */
     cancelPrototypeMovementForDebug(): void
     {
-        this.horizontalMovementAccumulator = 1;
-        this.verticalMovementAccumulator = 1;
-        this.slideMovementAccumulator = 1;
-        this.ladderMovementAccumulator = 1;
-        this.jumpStepAccumulator = 1;
-        this.jumping = false;
-        this.jumpIndex = 0;
-        this.jumpHorizontalDirection = null;
-        this.fallHeight = 0;
-        this.deadlyFall = false;
-        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
-        this.stopPrototypeWalk(false);
+        this.cancelPrototypeMovement();
     }
 
     /**
@@ -305,6 +305,59 @@ export class Player
     getSprite(): GameObjects.Sprite
     {
         return this.sprite;
+    }
+
+
+    /**
+     * Calculates the horizontal distance from Sid to a transition target.
+     */
+    getHorizontalDistanceFrom(targetX: number): number
+    {
+        return Math.round(this.sprite.x - targetX);
+    }
+
+    /**
+     * Calculates the vertical distance from Sid to a transition target.
+     */
+    getVerticalDistanceFrom(targetY: number): number
+    {
+        return Math.round(this.sprite.y - targetY);
+    }
+
+    /**
+     * Moves Sid horizontally during the automatic end-of-level transition.
+     */
+    moveBodyX(delta: number): void
+    {
+        this.cancelPrototypeMovement();
+        this.sprite.x += delta;
+    }
+
+    /**
+     * Moves Sid vertically during the automatic end-of-level transition.
+     */
+    moveBodyY(delta: number): void
+    {
+        this.cancelPrototypeMovement();
+        this.sprite.y += delta;
+    }
+
+    /**
+     * Snaps Sid to an exact X coordinate during level transitions.
+     */
+    setBodyX(x: number): void
+    {
+        this.cancelPrototypeMovement();
+        this.sprite.x = x;
+    }
+
+    /**
+     * Snaps Sid to an exact Y coordinate during level transitions.
+     */
+    setBodyY(y: number): void
+    {
+        this.cancelPrototypeMovement();
+        this.sprite.y = y;
     }
 
     /**
@@ -381,6 +434,23 @@ export class Player
             xEnd: this.sprite.x + Player.BODY_RIGHT_OFFSET,
             yEnd: this.sprite.y + this.sprite.displayHeight + Player.BODY_BOTTOM_OFFSET
         };
+    }
+
+
+    private cancelPrototypeMovement(): void
+    {
+        this.horizontalMovementAccumulator = 1;
+        this.verticalMovementAccumulator = 1;
+        this.slideMovementAccumulator = 1;
+        this.ladderMovementAccumulator = 1;
+        this.jumpStepAccumulator = 1;
+        this.jumping = false;
+        this.jumpIndex = 0;
+        this.jumpHorizontalDirection = null;
+        this.fallHeight = 0;
+        this.deadlyFall = false;
+        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
+        this.stopPrototypeWalk(false);
     }
 
     private readHorizontalDirection(cursors: Types.Input.Keyboard.CursorKeys): FacingDirection | null

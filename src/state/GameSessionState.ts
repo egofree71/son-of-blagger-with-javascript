@@ -50,11 +50,44 @@ export class GameSessionState
     }
 
     /**
+     * Adds an arbitrary score delta to the current session.
+     */
+    addScore(points: number): void
+    {
+        this.currentScore += points;
+    }
+
+    /**
      * Adds the original key-collection score increment.
      */
     addKeyScore(): void
     {
-        this.currentScore += GameSessionConstants.KEY_SCORE_INCREMENT;
+        this.addScore(GameSessionConstants.KEY_SCORE_INCREMENT);
+    }
+
+    /**
+     * Returns whether another level exists after the current one.
+     */
+    hasNextLevel(): boolean
+    {
+        return this.currentLevel.levelNumber < GameSessionConstants.LEVEL_COUNT;
+    }
+
+    /**
+     * Returns the one-based number of the level following the current one.
+     */
+    get nextLevelNumber(): number
+    {
+        return Math.min(this.currentLevel.levelNumber + 1, GameSessionConstants.LEVEL_COUNT);
+    }
+
+    /**
+     * Creates a fresh state for the next level and grants the transition reward.
+     */
+    advanceToNextLevelWithBonusMan(): void
+    {
+        this.currentLevelState = new LevelState(this.nextLevelNumber);
+        this.currentLevelState.enableBonusMan();
     }
 
     /**

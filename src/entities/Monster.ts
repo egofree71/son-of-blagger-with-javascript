@@ -140,6 +140,35 @@ export class Monster
         };
     }
 
+
+    /**
+     * Returns the current top-left sprite position for reverse explosions.
+     */
+    getCurrentPosition(): { x: number; y: number }
+    {
+        return {
+            x: this.sprite.x,
+            y: this.sprite.y
+        };
+    }
+
+    /**
+     * Hides and disables the monster after the completed-level flash.
+     */
+    hideForLevelTransition(): void
+    {
+        this.active = false;
+        this.sprite.setVisible(false);
+    }
+
+    /**
+     * Destroys the Phaser sprite when the next level replaces its monsters.
+     */
+    destroy(): void
+    {
+        this.sprite.destroy();
+    }
+
     /**
      * Tests the Phaser 2 monster hitbox against the temporary player body box.
      */

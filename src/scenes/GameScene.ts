@@ -17,6 +17,7 @@ import { ExitDetector } from "../entities/ExitDetector";
 import { MonsterManager } from "../entities/MonsterManager";
 import { MonsterSpawnSequence } from "../entities/MonsterSpawnSequence";
 import { LevelRevealSequence } from "../entities/LevelRevealSequence";
+import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
@@ -49,6 +50,7 @@ export class GameScene extends Scene
     private monsterManager?: MonsterManager;
     private monsterSpawnSequence?: MonsterSpawnSequence;
     private levelRevealSequence?: LevelRevealSequence;
+    private levelTransitionSequence?: LevelTransitionSequence;
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
@@ -99,13 +101,17 @@ export class GameScene extends Scene
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(levelNumber);
+
+        if (!this.player) {
+            return;
+        }
+
+        this.levelTransitionSequence = new LevelTransitionSequence(this, this.player, this.monsterManager);
         this.exitDetector = this.createExitDetectorForLevel(levelNumber);
 
         if (!this.exitDetector) {
             return;
         }
-
-        this.addPrototypeOverlayText();
 
         this.cursors = this.input.keyboard?.createCursorKeys();
 
@@ -130,7 +136,7 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.levelTransitionSequence || !this.cursors) {
             return;
         }
 
@@ -151,6 +157,11 @@ export class GameScene extends Scene
 
         if (this.monsterSpawnSequence.isPlaying()) {
             this.monsterSpawnSequence.update(delta);
+            return;
+        }
+
+        if (this.levelTransitionSequence.isPlaying()) {
+            this.updateLevelTransition(delta);
             return;
         }
 
@@ -212,6 +223,10 @@ export class GameScene extends Scene
         this.collectAllKeysForDebug();
         this.sessionState.currentLevel.markExitReached();
         this.emitTemporaryExitState();
+
+        if (this.sessionState.hasNextLevel()) {
+            this.startLevelTransition();
+        }
     }
 
     /**
@@ -256,6 +271,7 @@ export class GameScene extends Scene
             monstersLoaded: this.monsterManager?.count ?? 0,
             levelRevealSequencePlaying: this.levelRevealSequence?.isPlaying() ?? false,
             monsterSpawnSequencePlaying: this.monsterSpawnSequence?.isPlaying() ?? false,
+            levelTransitionSequencePlaying: this.levelTransitionSequence?.isPlaying() ?? false,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
                 ? {
@@ -389,10 +405,103 @@ export class GameScene extends Scene
             return;
         }
 
-        // The real end-level transition is not ported yet. For now, mark the
-        // exit as reached once and keep the prototype playable for further tests.
         levelState.markExitReached();
         this.emitTemporaryExitState();
+
+        if (!this.sessionState.hasNextLevel()) {
+            // The final congratulations sequence is still not ported. Keep the
+            // last-level exit marked as reached so the prototype remains stable.
+            return;
+        }
+
+        this.startLevelTransition();
+    }
+
+
+    private startLevelTransition(): void
+    {
+        if (!this.map || !this.player || !this.levelTransitionSequence) {
+            return;
+        }
+
+        const nextLevelNumber = this.sessionState.nextLevelNumber;
+        const nextPlayerStart = findObjectByLevel(this.map, "player", nextLevelNumber);
+
+        if (!nextPlayerStart) {
+            this.showFatalPrototypeMessage(`Could not find the level-${nextLevelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.monsterSpawnSequence?.stop();
+        this.levelRevealSequence?.stop();
+        this.levelTransitionSequence.start(Player.getTiledStartPosition(nextPlayerStart));
+    }
+
+    private updateLevelTransition(deltaMs: number): void
+    {
+        if (!this.levelTransitionSequence) {
+            return;
+        }
+
+        const levelState = this.sessionState.currentLevel;
+        const transitionResult = this.levelTransitionSequence.update(deltaMs, levelState.airLevel);
+
+        if (transitionResult.scoreDelta > 0) {
+            this.sessionState.addScore(transitionResult.scoreDelta);
+        }
+
+        if (transitionResult.airDelta < 0) {
+            levelState.decreaseAir(Math.abs(transitionResult.airDelta));
+        }
+        else if (transitionResult.airDelta > 0) {
+            levelState.increaseAir(transitionResult.airDelta);
+        }
+
+        if (transitionResult.airCleared) {
+            levelState.decreaseAir(levelState.airLevel);
+        }
+
+        if (transitionResult.scoreDelta > 0 || transitionResult.airChanged || transitionResult.airCleared) {
+            this.emitHUDState();
+        }
+
+        if (transitionResult.nextLevelReady) {
+            this.loadNextLevelAfterTransition();
+        }
+    }
+
+    private loadNextLevelAfterTransition(): void
+    {
+        if (!this.map || !this.player || !this.keyCollector) {
+            return;
+        }
+
+        this.levelTransitionSequence?.stop();
+        this.monsterManager?.destroy();
+        this.sessionState.advanceToNextLevelWithBonusMan();
+
+        const levelNumber = this.sessionState.currentLevel.levelNumber;
+        const playerStart = findObjectByLevel(this.map, "player", levelNumber);
+
+        if (!playerStart) {
+            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            return;
+        }
+
+        this.currentPlayerStart = playerStart;
+        this.player.resetToTiledStart(playerStart);
+        this.followPlayer(this.player);
+        this.keyCollector.reset();
+        this.exitDetector = this.createExitDetectorForLevel(levelNumber);
+        this.monsterManager = new MonsterManager(this, this.map, levelNumber);
+        this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
+        this.levelTransitionSequence?.setMonsterManager(this.monsterManager);
+        this.sessionState.currentLevel.resetAirTimer();
+
+        this.emitHUDState();
+        this.emitKeyState();
+        this.emitTemporaryExitState();
+        this.startMonsterSpawnSequence();
     }
 
     private emitKeyState(): void
@@ -472,17 +581,6 @@ export class GameScene extends Scene
         camera.centerOn(Math.round(playerCenter.x), Math.round(playerCenter.y));
     }
 
-    private addPrototypeOverlayText(): void
-    {
-        // Fixed-camera text makes the current prototype state visible without
-        // changing the map or player scroll position.
-        this.add.text(8, 8, "Player movement prototype — arrows move, space jumps", {
-            fontFamily: "Arial",
-            fontSize: "13px",
-            color: "#ffffff",
-            backgroundColor: "#000000"
-        }).setScrollFactor(0);
-    }
 
     private destroyDebugHelpers(): void
     {

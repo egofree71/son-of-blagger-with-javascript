@@ -47,8 +47,8 @@ export class DebugConsole
     private help(): string[]
     {
         return [
-            "sobDebug.collectAllKeys() - collect all level-1 keys and open the temporary exit",
-            "sobDebug.finishLevel()     - collect all keys and mark the temporary exit as reached",
+            "sobDebug.collectAllKeys() - collect all keys for the current level",
+            "sobDebug.finishLevel()     - collect all keys and start/mark level completion",
             "sobDebug.resetLevel()      - reset the player, keys and temporary exit state",
             "sobDebug.status()          - show the current Phaser 4 prototype status",
             "sobDebug.runtime()         - return the active GameScene instance",
@@ -59,13 +59,13 @@ export class DebugConsole
     private collectAllKeys(): string
     {
         this.scene.collectAllKeysForDebug();
-        return "All level-1 keys collected. The temporary exit is now open.";
+        return "All current-level keys collected. The exit is now open.";
     }
 
     private finishLevel(): string
     {
         this.scene.finishLevelForDebug();
-        return "Temporary exit marked as reached. Full level transitions are not ported yet.";
+        return "Current level completion requested.";
     }
 
     private resetLevel(): string
@@ -96,6 +96,7 @@ export interface PrototypeDebugStatus
     monstersLoaded: number;
     levelRevealSequencePlaying: boolean;
     monsterSpawnSequencePlaying: boolean;
+    levelTransitionSequencePlaying: boolean;
     deathSequencePlaying: boolean;
     player: {
         x: number;
