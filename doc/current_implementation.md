@@ -4,7 +4,7 @@ This document describes the current architecture of the TypeScript / Phaser 4 re
 
 Its purpose is to help someone understand the project as it exists today: the Vite runtime, the Phaser scene graph, the gameplay flow, the responsibilities of each file, the Tiled map conventions, the debug helpers, and the technical points to watch before making further changes.
 
-It is not a changelog. Historical porting steps are intentionally not listed here.
+It is not a changelog. Historical implementation steps are intentionally not listed here.
 
 ---
 
@@ -33,12 +33,11 @@ The engineering goal is to preserve the original gameplay behaviour while using 
 - Physics: Phaser Arcade Physics is not the main collision system; most gameplay collisions are handled manually through tile probes and rectangles.
 - Persistence: the hi-score is stored in `localStorage`.
 
-Phaser 4 is imported through `src/main.ts`. The old Phaser 2 browser script under `public/js/phaser.min.js` is not loaded by `index.html` on this branch.
-
-The previous Phaser 2 source files still exist under `src/js`. They are kept as reference material and for a few shared static values, especially `src/js/data.ts`. The active Phaser 4 runtime lives under:
+The active runtime starts in `src/main.ts` and lives under:
 
 ```text
 src/main.ts
+src/data/
 src/scenes/
 src/entities/
 src/state/
@@ -46,6 +45,8 @@ src/tiled/
 src/ui/
 src/debug/
 ```
+
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`.
 
 ---
 
@@ -69,7 +70,7 @@ Open the local URL printed by Vite, usually:
 http://localhost:5173/
 ```
 
-The old `py -m http.server 8000` workflow is no longer the preferred way to run the project.
+`npm run dev` should be used for local development so the Vite module graph, TypeScript files and Phaser imports are handled correctly.
 
 ---
 
@@ -81,7 +82,7 @@ Run TypeScript type checking with:
 npm run typecheck
 ```
 
-The current TypeScript setup is still deliberately permissive. `strict` and `noImplicitAny` are disabled so the Phaser 4 port can keep moving without turning every legacy data shape into a full type model at once.
+The current TypeScript setup is still deliberately permissive. `strict` and `noImplicitAny` are disabled because several Tiled data shapes and gameplay tables are still represented with lightweight types rather than a fully strict domain model.
 
 ---
 
@@ -162,21 +163,20 @@ src/
   GameSessionState.ts
   LevelState.ts
   gameSessionConstants.ts
+ data/
+  gameData.ts
  ui/
   HUDState.ts
-  HUDScene support constants and RetroHudText.ts
+  hudConstants.ts
+  RetroHudText.ts
  debug/
   DebugConsole.ts
   DebugPlayerControls.ts
- js/
-  legacy Phaser 2 source and shared static data
 public/
  assets/
   maps/
   sprites/
   tileset/
- js/
-  phaser.min.js   # kept for reference, not used by Phaser 4 entry point
 doc/
  current_implementation.md
 ```
@@ -198,7 +198,7 @@ It creates the Phaser game with:
 - `pixelArt: false`;
 - `roundPixels: true`.
 
-The canvas is intentionally allowed to be smoothed by the browser when scaled. This keeps the enlarged browser rendering close to the previous web remake, especially for diagonal tiles at non-integer scale factors.
+The canvas is intentionally allowed to be smoothed by the browser when scaled. This keeps diagonal tiles and enlarged sprites visually stable at non-integer scale factors.
 
 The registered scenes are:
 
@@ -439,8 +439,8 @@ Important public methods include:
 
 ```ts
 resetToTiledStart(...);
-updatePrototypeMovement(...);
-cancelPrototypeMovementForDebug();
+updateMovement(...);
+cancelMovementForDebug();
 getSprite();
 getCenter();
 getBodyCollisionBounds();
@@ -450,7 +450,7 @@ hide();
 show();
 ```
 
-The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/js/data.ts`. This is one of the most gameplay-sensitive pieces of the project.
+The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/data/gameData.ts`. This is one of the most gameplay-sensitive pieces of the project.
 
 ### `TileCollisionProbe`
 
@@ -636,11 +636,11 @@ Player death can be caused by:
 Simplified flow:
 
 ```text
-GameScene.startTemporaryPlayerDeath()
+GameScene.startPlayerDeath()
  -> PlayerDeathSequence.start(...)
     -> hide normal player sprite
     -> play death animation
-    -> callback into GameScene.finishTemporaryPlayerDeath()
+    -> callback into GameScene.finishPlayerDeath()
        -> consume bonus man if present, otherwise lose one life
        -> update hi-score if needed
        -> if no lives: launch GameOverScene
@@ -740,7 +740,7 @@ The Tiled data remains the source of truth for map layout, object placement and 
 
 ### `GameScene` is still the orchestration hub
 
-`GameSessionState` and `LevelState` now hold persistent values, but `GameScene` still creates and coordinates most Phaser objects. That is acceptable for the current port, but future refactoring should be done in small slices.
+`GameSessionState` and `LevelState` hold persistent values, but `GameScene` still creates and coordinates most Phaser objects. Future refactoring should be done in small slices.
 
 Good candidates for later extraction are:
 
@@ -766,14 +766,6 @@ Current systems already using elapsed-time accumulation include:
 - level transition;
 - ending screen.
 
-### Some names still carry temporary wording
-
-A few internal names still contain `Prototype` or `Temporary`, especially around debug events and death counters. These names do not affect gameplay, but they are candidates for cleanup once the merge request is stable.
-
-### The old `src/js` tree is not the active runtime
-
-The old Phaser 2 implementation remains in the repository. It should not be modified when changing Phaser 4 gameplay unless the change is intentionally shared, such as static data in `src/js/data.ts`.
-
 ### Bitmap-font rendering has trade-offs
 
 `RetroHudText` composes text from individual 16x16 glyph images. This keeps the HUD and screens close to the original style, but scaled text can show browser/WebGL artefacts at non-integer scale factors. Avoid large rewrites of text rendering unless they are tested visually on the title, help, HUD and ending screens.
@@ -782,7 +774,7 @@ The old Phaser 2 implementation remains in the repository. It should not be modi
 
 ## Comment conventions
 
-Comments should document the current code, not the porting history.
+Comments should document the current code, not the implementation history.
 
 Use JSDoc-style block comments for:
 

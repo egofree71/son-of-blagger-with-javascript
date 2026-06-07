@@ -213,7 +213,7 @@ export class GameScene extends Scene
         );
 
         if (movementResult.playerKilledByDeadlyFall) {
-            this.startTemporaryPlayerDeath();
+            this.startPlayerDeath();
             return;
         }
 
@@ -238,7 +238,7 @@ export class GameScene extends Scene
         this.sessionState.currentLevel.collectAllKeysForDebug();
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
     }
 
     /**
@@ -248,7 +248,7 @@ export class GameScene extends Scene
     {
         this.collectAllKeysForDebug();
         this.sessionState.currentLevel.markExitReached();
-        this.emitTemporaryExitState();
+        this.emitExitState();
 
         if (this.sessionState.hasNextLevel()) {
             this.startLevelTransition();
@@ -271,7 +271,7 @@ export class GameScene extends Scene
         this.sessionState.currentLevel.markExitReached();
         this.gameOverActive = false;
         this.scene.stop("GameOverScene");
-        this.emitTemporaryExitState();
+        this.emitExitState();
         this.startEndGame();
     }
 
@@ -296,7 +296,7 @@ export class GameScene extends Scene
 
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
     }
 
     /**
@@ -350,7 +350,7 @@ export class GameScene extends Scene
             return false;
         }
 
-        return this.startTemporaryPlayerDeath();
+        return this.startPlayerDeath();
     }
 
     private killPlayerIfNeeded(): boolean
@@ -366,20 +366,20 @@ export class GameScene extends Scene
             return false;
         }
 
-        return this.startTemporaryPlayerDeath();
+        return this.startPlayerDeath();
     }
 
-    private startTemporaryPlayerDeath(): boolean
+    private startPlayerDeath(): boolean
     {
         if (!this.player || !this.playerDeathSequence) {
             return false;
         }
 
-        this.playerDeathSequence.start(this.player, () => this.finishTemporaryPlayerDeath());
+        this.playerDeathSequence.start(this.player, () => this.finishPlayerDeath());
         return true;
     }
 
-    private finishTemporaryPlayerDeath(): void
+    private finishPlayerDeath(): void
     {
         if (!this.player || !this.keyCollector || !this.currentPlayerStart) {
             return;
@@ -405,7 +405,7 @@ export class GameScene extends Scene
 
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
     }
 
 
@@ -424,7 +424,7 @@ export class GameScene extends Scene
 
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
         this.scene.launch("GameOverScene");
     }
 
@@ -523,7 +523,7 @@ export class GameScene extends Scene
         this.sessionState.addKeyScore();
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
     }
 
     private checkExitIfNeeded(): void
@@ -539,7 +539,7 @@ export class GameScene extends Scene
         }
 
         levelState.markExitReached();
-        this.emitTemporaryExitState();
+        this.emitExitState();
 
         if (!this.sessionState.hasNextLevel()) {
             this.startEndGame();
@@ -632,7 +632,7 @@ export class GameScene extends Scene
 
         this.emitHUDState();
         this.emitKeyState();
-        this.emitTemporaryExitState();
+        this.emitExitState();
         this.startMonsterSpawnSequence();
     }
 
@@ -646,7 +646,7 @@ export class GameScene extends Scene
         });
     }
 
-    private emitTemporaryExitState(): void
+    private emitExitState(): void
     {
         const levelState = this.sessionState.currentLevel;
 
