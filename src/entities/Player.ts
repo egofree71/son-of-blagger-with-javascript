@@ -1,6 +1,6 @@
 import type { GameObjects, Scene, Tilemaps, Types } from "phaser";
-import { Data } from "../js/data";
-import type { JumpStep } from "../js/data";
+import { Data } from "../data/gameData";
+import type { JumpStep } from "../data/gameData";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import type { VanishingPlatforms } from "./VanishingPlatforms";

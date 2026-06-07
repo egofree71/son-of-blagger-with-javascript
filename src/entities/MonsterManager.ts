@@ -1,5 +1,5 @@
 import type { Scene, Tilemaps } from "phaser";
-import { Data } from "../js/data";
+import { Data } from "../data/gameData";
 import type { PlayerProbeRectangle } from "./Player";
 import { Monster } from "./Monster";
 import type { MonsterTileProperties } from "./Monster";

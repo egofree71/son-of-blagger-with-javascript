@@ -1,5 +1,5 @@
 import { GameObjects, Scene } from "phaser";
-import { Data } from "../js/data";
+import { Data } from "../data/gameData";
 import { DEFAULT_HUD_STATE, HUDState, HUDStatePatch } from "../ui/HUDState";
 import { HudConstants } from "../ui/hudConstants";
 import { RetroHudText } from "../ui/RetroHudText";

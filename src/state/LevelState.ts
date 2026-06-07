@@ -1,4 +1,4 @@
-import { Data } from "../js/data";
+import { Data } from "../data/gameData";
 import { GameSessionConstants } from "./gameSessionConstants";
 
 /**

@@ -4,8 +4,6 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "allowJs": true,
-    "checkJs": false,
     "strict": false,
     "noImplicitAny": false,
     "isolatedModules": true,
@@ -13,11 +11,6 @@
     "allowImportingTsExtensions": true
   },
   "include": [
-    "src/main.ts",
-    "src/scenes/**/*.ts",
-    "src/entities/**/*.ts",
-    "src/tiled/**/*.ts",
-    "src/state/**/*.ts",
-    "src/ui/**/*.ts"
+    "src/**/*.ts"
   ]
 }

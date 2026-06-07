@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Son of Blagger — Phaser 4 Prototype</title>
+    <title>Son of Blagger</title>
     <link rel="icon" href="data:,">
 
     <!--
         Phaser 4 is imported from npm by Vite through src/main.ts.
-        The old Phaser 2 browser script intentionally stays unused in this prototype branch.
     -->
     <script type="module" src="/src/main.ts"></script>
 
@@ -25,23 +24,11 @@
             overflow: hidden;
         }
 
-        /*
-            Phaser's Scale Manager needs a parent with real bounds before it can
-            fit and center the canvas. Giving the container the full viewport lets
-            the 640x400 logical game grow like the previous Phaser 2 version.
-        */
         #game-container {
             width: 100vw;
             height: 100vh;
             overflow: hidden;
         }
-
-        /*
-            Do not force image-rendering: pixelated on the scaled canvas.
-            The Phaser 2 reference used browser smoothing when SHOW_ALL enlarged
-            the game, which makes diagonal tile edges look steadier at non-integer
-            browser scale factors.
-        */
     </style>
 </head>
 <body>
