@@ -1,12 +1,12 @@
 import type { Tilemaps } from "phaser";
 
 /**
- * Small Phaser 4 collision helper for manual tile probes.
+ * Collision helper for manual tile probes.
  *
- * The original Phaser 2 game does not rely on Arcade Physics for most player
- * movement. It scans short horizontal and vertical pixel lines against tile
- * properties stored in the Tiled map. This prototype helper now ports the first
- * wall and floor checks while keeping that explicit pixel-probe style intact.
+ * Player movement does not use Arcade Physics for tile contacts. Instead it
+ * scans short horizontal and vertical pixel lines against properties stored in
+ * the Tiled map, which gives precise control over walls, floors, slides,
+ * ladders and conveyors.
  */
 export class TileCollisionProbe
 {
@@ -21,6 +21,9 @@ export class TileCollisionProbe
     private static readonly TILE_TYPE_SOLID = "solid";
     private static readonly TILE_TYPE_SLIDE = "slide";
 
+    /**
+     * @param layer Background tile layer queried by all probes.
+     */
     constructor(private readonly layer: Tilemaps.TilemapLayerBase)
     {
     }
@@ -28,9 +31,8 @@ export class TileCollisionProbe
     /**
      * Checks whether a vertical pixel line touches a Tiled tile named "wall".
      *
-     * Player movement uses this for side blocking: the probe line is deliberately
-     * narrower than the full 48px sprite, matching the tolerant wall checks in
-     * the Phaser 2 reference implementation.
+     * Player movement uses this for side blocking. The probe line is deliberately
+     * narrower than the full 48px sprite, so visual padding does not collide.
      */
     hasWallOnVerticalLine(yStart: number, yEnd: number, x: number): boolean
     {
@@ -46,9 +48,9 @@ export class TileCollisionProbe
     /**
      * Checks whether a horizontal pixel line touches a Tiled tile named "wall".
      *
-     * The first jump prototype uses this for ceiling blocking. It mirrors the
-     * Phaser 2 movement rule that tests a narrow line slightly above the sprite
-     * instead of treating the full visual rectangle as collidable.
+     * Jumping uses this for ceiling blocking. The probe tests a narrow line
+     * slightly above the sprite instead of treating the full visual rectangle as
+     * collidable.
      */
     hasWallOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
     {
@@ -199,8 +201,8 @@ export class TileCollisionProbe
         propertyValue: unknown
     ): boolean
     {
-        // Match the Phaser 2 collisionRectangle helper: only the four edges of
-        // the probe rectangle are tested, not the whole filled area.
+        // Only test the four edges, not the whole filled rectangle. This avoids
+        // triggering contacts too early when a probe overlaps a tile corner.
         return this.horizontalLineHasProperty(xStart, xEnd, yStart, propertyName, propertyValue) ||
             this.horizontalLineHasProperty(xStart, xEnd, yEnd, propertyName, propertyValue) ||
             this.verticalLineHasProperty(yStart, yEnd, xStart, propertyName, propertyValue) ||
@@ -215,14 +217,14 @@ export class TileCollisionProbe
         propertyValue: unknown
     ): boolean
     {
-        // Convert probe coordinates to integer pixels before scanning. The old
-        // CollisionDetector tested pixel positions, not fractional world values.
+        // Convert probe coordinates to integer pixels before scanning so tiny
+        // fractional camera or sprite values cannot change collision results.
         const start = Math.floor(Math.min(yStart, yEnd));
         const end = Math.floor(Math.max(yStart, yEnd));
         const worldX = Math.floor(x);
 
-        // Check every pixel along the line, like the Phaser 2 reference. This is
-        // intentionally faithful first; any optimization can wait until parity.
+        // Check every pixel along the line. Tile-step scans would be faster, but
+        // this preserves one-pixel contacts at tile boundaries.
         for (let y = start; y <= end; y += 1) {
             const tile = this.layer.getTileAtWorldXY(worldX, y) as Tilemaps.Tile | null;
 
@@ -249,8 +251,8 @@ export class TileCollisionProbe
         const end = Math.floor(Math.max(xStart, xEnd));
         const worldY = Math.floor(y);
 
-        // The first prototype keeps the original pixel-by-pixel style even
-        // though tile-step scans would be faster.
+        // Keep pixel-by-pixel scanning here too, because jump landings and
+        // platform edges depend on one-pixel contact.
         for (let x = start; x <= end; x += 1) {
             const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
 
@@ -258,9 +260,9 @@ export class TileCollisionProbe
                 continue;
             }
 
-            // Jump landings use the Phaser 2 "onTop" rule: touching a tile is
-            // not enough; Sid must have reached the tile's upper edge. This
-            // prevents catching the side or underside of thin metal platforms.
+            // For top-only checks, touching a tile is not enough: Sid must have
+            // reached the tile's upper edge. This prevents catching the side or
+            // underside of thin platforms.
             if (requireTileTop && !this.isProbeOnTileTop(tile, worldY)) {
                 continue;
             }
@@ -286,8 +288,8 @@ export class TileCollisionProbe
             return false;
         }
 
-        // Phaser 2 ignored invisible tiles during collision checks. Phaser 4 map
-        // tiles normally have alpha 1, but this keeps the old rule explicit.
+        // Hidden tiles should not collide; collected keys and replaced animated
+        // tiles rely on this rule.
         const tileAlpha = (tile as Tilemaps.Tile & { alpha?: number }).alpha;
 
         if (tileAlpha !== undefined && tileAlpha !== 1) {

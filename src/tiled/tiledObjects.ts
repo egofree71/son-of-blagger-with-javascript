@@ -1,12 +1,11 @@
 import type { Tilemaps } from "phaser";
 
 /**
- * Minimal shape used by the Phaser 4 prototype for objects read from Tiled.
+ * Minimal shape used for objects read from Tiled object layers.
  *
- * Phaser 4 exposes Tiled object-layer entries with a loose runtime structure,
- * while the current map still stores custom properties in the older object-like
- * JSON format. This small type keeps GameScene and early prototype entities from
- * depending on broad `any` values while the real map conventions are inspected.
+ * Phaser exposes object-layer entries with a loose runtime structure, and the
+ * current map stores custom properties in object-shaped or array-shaped data.
+ * This type keeps scene and entity code away from broad `any` values.
  */
 export interface TiledObjectLike
 {
@@ -22,9 +21,9 @@ export interface TiledObjectLike
  * Finds the first object in a Tiled object layer whose `level` property matches
  * the requested level number.
  *
- * The current Phaser 2 code uses this convention to find the player start, the
- * level exit and monsters. The Phaser 4 prototype keeps the convention intact so
- * the map can remain the source of truth during the port.
+ * The map uses this convention to find player starts, level exits and monsters.
+ * Keeping the lookup here lets the map remain the source of truth for level
+ * placement data.
  */
 export function findObjectByLevel(map: Tilemaps.Tilemap, layerName: string, levelNumber: number): TiledObjectLike | undefined
 {

@@ -28,12 +28,12 @@ type LevelTransitionPhase =
     | "load-next-level";
 
 /**
- * Plays the original end-of-level bridge before the next level starts.
+ * Runs the bridge between two playable levels.
  *
- * The sequence is deliberately small and update-driven: it hides the completed
- * level's monsters, converts remaining air into score, moves Sid toward the
- * next Tiled player start, refills the air bar, then asks GameScene to load the
- * new level runtime objects. The later final-game sequence can grow separately.
+ * The sequence is deliberately update-driven: it hides the completed level's
+ * monsters, converts remaining air into score, moves Sid toward the next Tiled
+ * player start, refills the air bar, then asks GameScene to create the next
+ * level runtime objects.
  */
 export class LevelTransitionSequence
 {
@@ -61,6 +61,11 @@ export class LevelTransitionSequence
     private reverseExplosionFrameIndex = 0;
     private readonly reverseExplosions: GameObjects.Sprite[] = [];
 
+    /**
+     * @param scene Gameplay scene used for camera color changes and effects.
+     * @param player Sid entity moved automatically during the transition.
+     * @param monsterManager Manager for the monsters currently visible on screen.
+     */
     constructor(scene: Scene, player: Player, monsterManager: MonsterManager)
     {
         this.scene = scene;
@@ -121,7 +126,7 @@ export class LevelTransitionSequence
     }
 
     /**
-     * Stops the transition and clears temporary reverse explosion sprites.
+     * Stops the transition and clears reverse explosion sprites.
      */
     stop(): void
     {
@@ -193,7 +198,8 @@ export class LevelTransitionSequence
         const horizontalDistance = this.player.getHorizontalDistanceFrom(this.nextPlayerPosition.x);
         const verticalDistance = this.player.getVerticalDistanceFrom(this.nextPlayerPosition.y);
 
-        // Keep the odd Phaser 2 rule: continue once either axis has aligned.
+        // The transition only needs one axis to line up before the air bonus
+        // starts. This preserves the deliberate diagonal shortcut in the route.
         if (verticalDistance === 0 || horizontalDistance === 0) {
             this.phase = "convert-air-to-score";
             return;

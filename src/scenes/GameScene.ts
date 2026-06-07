@@ -9,7 +9,7 @@ import { AnimatedConveyors } from "../entities/AnimatedConveyors";
 import { AnimatedWavePlatforms } from "../entities/AnimatedWavePlatforms";
 import { DebugPlayerControls } from "../debug/DebugPlayerControls";
 import { DebugConsole } from "../debug/DebugConsole";
-import type { PrototypeDebugStatus } from "../debug/DebugConsole";
+import type { DebugStatus } from "../debug/DebugConsole";
 import { KeyCollector } from "../entities/KeyCollector";
 import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
@@ -20,7 +20,7 @@ import { LevelRevealSequence } from "../entities/LevelRevealSequence";
 import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
 import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
-import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
+import { HUD_STATE_CHANGED_EVENT, EXIT_CHANGED_EVENT, KEYS_CHANGED_EVENT, PLAYER_KILLED_EVENT } from "./HUDScene";
 
 interface GameSceneData
 {
@@ -28,13 +28,12 @@ interface GameSceneData
 }
 
 /**
- * Main gameplay scene for the Phaser 4 prototype.
+ * Main gameplay scene.
  *
- * This scene still orchestrates more responsibilities than the final port
- * should. It creates the Tiled map, animated decorations, player, keys,
- * monsters and temporary death/reset flow. Session values such as score, lives,
- * air and level number now live in GameSessionState so the next steps can move
- * toward real level transitions without adding more temporary fields here.
+ * GameScene creates the Tiled map, animated decorations, player, keys, monsters
+ * and level flow sequences. Persistent values such as score, lives, air and the
+ * current level number live in GameSessionState; this scene orchestrates the
+ * runtime objects that exist only while a level is being played.
  */
 export class GameScene extends Scene
 {
@@ -62,7 +61,7 @@ export class GameScene extends Scene
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
     private currentPlayerStart?: TiledObjectLike;
-    private temporaryDeathCount = 0;
+    private deathCount = 0;
     private gameOverActive = false;
     private endingScreenActive = false;
 
@@ -75,14 +74,14 @@ export class GameScene extends Scene
     {
         if (data.resetSession !== false) {
             this.sessionState.resetForNewGame();
-            this.temporaryDeathCount = 0;
+            this.deathCount = 0;
         }
 
         this.gameOverActive = false;
         this.endingScreenActive = false;
 
-        // Match the light grey Phaser 2 stage background so empty map areas are
-        // not rendered as black during early prototype testing.
+        // The C64-style playfield uses a light grey stage background behind empty
+        // map areas.
         this.cameras.main.setBackgroundColor(GameScene.STAGE_BACKGROUND_COLOR);
         this.cameras.main.setViewport(0, 0, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
 
@@ -91,14 +90,14 @@ export class GameScene extends Scene
         const backgroundTileset = this.map.addTilesetImage("background", "background-tiles");
 
         if (!backgroundTileset) {
-            this.showFatalPrototypeMessage("Could not bind the Tiled 'background' tileset.");
+            this.showFatalMessage("Could not bind the Tiled 'background' tileset.");
             return;
         }
 
         const backgroundLayer = this.map.createLayer("background", backgroundTileset, 0, 0);
 
         if (!backgroundLayer) {
-            this.showFatalPrototypeMessage("Could not create the Tiled 'background' tile layer.");
+            this.showFatalMessage("Could not create the Tiled 'background' tile layer.");
             return;
         }
 
@@ -139,7 +138,7 @@ export class GameScene extends Scene
             this.debugConsole.install();
 
             // Debug helpers attach browser-level state, so remove everything if
-            // the scene is restarted during later prototype work.
+            // the scene is restarted.
             this.events.once("shutdown", () => this.destroyDebugHelpers());
             this.events.once("destroy", () => this.destroyDebugHelpers());
         }
@@ -202,11 +201,11 @@ export class GameScene extends Scene
             return;
         }
 
-        // Match the Phaser 2 update order after air consumption: monsters move
-        // before the player resolves this frame's interaction checks.
+        // Monsters move before Sid resolves this frame's interaction checks, so
+        // collisions are tested against their latest visible positions.
         this.monsterManager.update();
 
-        const movementResult = this.player.updatePrototypeMovement(
+        const movementResult = this.player.updateMovement(
             this.cursors,
             this.map,
             this.collisionProbe,
@@ -243,7 +242,7 @@ export class GameScene extends Scene
     }
 
     /**
-     * Marks the temporary level exit as reached from the browser console.
+     * Marks the current level exit as reached from the browser console.
      */
     finishLevelForDebug(): void
     {
@@ -277,7 +276,7 @@ export class GameScene extends Scene
     }
 
     /**
-     * Resets the current prototype level state from the browser console.
+     * Resets the current level runtime from the browser console.
      */
     resetLevelForDebug(): void
     {
@@ -303,7 +302,7 @@ export class GameScene extends Scene
     /**
      * Returns compact debug state for browser-console inspection.
      */
-    getPrototypeDebugStatus(): PrototypeDebugStatus
+    getDebugStatus(): DebugStatus
     {
         const sprite = this.player?.getSprite();
         const levelState = this.sessionState.currentLevel;
@@ -315,7 +314,7 @@ export class GameScene extends Scene
             keysNeeded: levelState.keysNeeded,
             exitReady: levelState.hasCollectedAllKeys(),
             exitReached: levelState.exitReached,
-            deaths: this.temporaryDeathCount,
+            deaths: this.deathCount,
             lives: this.sessionState.lives,
             score: this.sessionState.score,
             hiScore: this.sessionState.hiScore,
@@ -386,12 +385,12 @@ export class GameScene extends Scene
             return;
         }
 
-        this.temporaryDeathCount += 1;
+        this.deathCount += 1;
         this.sessionState.consumeBonusManOrLife();
         this.sessionState.updateHiScoreIfNeeded();
 
-        this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
-            deaths: this.temporaryDeathCount
+        this.game.events.emit(PLAYER_KILLED_EVENT, {
+            deaths: this.deathCount
         });
 
         if (this.sessionState.hasNoLives()) {
@@ -492,8 +491,8 @@ export class GameScene extends Scene
             return;
         }
 
-        // Keep monsters hidden while the map opens, matching the original flow:
-        // level reveal first, then monster explosion reveal, then gameplay.
+        // Keep monsters hidden while the map opens: level reveal first, then
+        // monster explosion reveal, then gameplay.
         this.monsterSpawnSequence?.stop();
         this.monsterManager.prepareForSpawnReveal();
         this.levelRevealSequence.start(() => this.startMonsterSpawnSequence());
@@ -561,7 +560,7 @@ export class GameScene extends Scene
         const nextPlayerStart = findObjectByLevel(this.map, "player", nextLevelNumber);
 
         if (!nextPlayerStart) {
-            this.showFatalPrototypeMessage(`Could not find the level-${nextLevelNumber} player object in the Tiled map.`);
+            this.showFatalMessage(`Could not find the level-${nextLevelNumber} player object in the Tiled map.`);
             return;
         }
 
@@ -617,7 +616,7 @@ export class GameScene extends Scene
         const playerStart = findObjectByLevel(this.map, "player", levelNumber);
 
         if (!playerStart) {
-            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            this.showFatalMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
             return;
         }
 
@@ -641,7 +640,7 @@ export class GameScene extends Scene
     {
         const levelState = this.sessionState.currentLevel;
 
-        this.game.events.emit(PROTOTYPE_KEYS_CHANGED_EVENT, {
+        this.game.events.emit(KEYS_CHANGED_EVENT, {
             keysCollected: levelState.keysCollected,
             keysNeeded: levelState.keysNeeded
         });
@@ -651,7 +650,7 @@ export class GameScene extends Scene
     {
         const levelState = this.sessionState.currentLevel;
 
-        this.game.events.emit(PROTOTYPE_EXIT_CHANGED_EVENT, {
+        this.game.events.emit(EXIT_CHANGED_EVENT, {
             exitReady: levelState.hasCollectedAllKeys(),
             exitReached: levelState.exitReached
         });
@@ -671,7 +670,7 @@ export class GameScene extends Scene
         const playerStart = findObjectByLevel(this.map, "player", levelNumber);
 
         if (!playerStart) {
-            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
+            this.showFatalMessage(`Could not find the level-${levelNumber} player object in the Tiled map.`);
             return;
         }
 
@@ -691,7 +690,7 @@ export class GameScene extends Scene
         const exitObject = findObjectByLevel(this.map, "end level", levelNumber);
 
         if (!exitObject) {
-            this.showFatalPrototypeMessage(`Could not find the level-${levelNumber} exit object in the Tiled map.`);
+            this.showFatalMessage(`Could not find the level-${levelNumber} exit object in the Tiled map.`);
             return undefined;
         }
 
@@ -723,7 +722,7 @@ export class GameScene extends Scene
         this.debugConsole = undefined;
     }
 
-    private showFatalPrototypeMessage(message: string): void
+    private showFatalMessage(message: string): void
     {
         this.add.text(320, 180, message, {
             fontFamily: "Arial",

@@ -1,9 +1,8 @@
 /**
- * Coordinates and timings for the Phaser 4 HUD port.
+ * Coordinates and timings for the HUD.
  *
- * The values intentionally mirror the old Phaser 2 HUD constants. Positions are
- * expressed on the same 16x16 character grid, with the HUD occupying the lower
- * half of the original 640x400 canvas.
+ * Positions are expressed on a 16x16 character grid, with the HUD occupying the
+ * lower half of the 640x400 logical canvas.
  */
 export const HudConstants = {
     HUD_TOP: 200,

@@ -17,9 +17,8 @@ type EndingPhase = "scale-message" | "wait-then-title";
 /**
  * Final congratulations screen shown after the last level has been completed.
  *
- * The text is rendered with the same extra character and line spacing used by
- * the Phaser 2 RetroFont call. Without that spacing, the three scaled lines sit
- * too close together and the final message loses the chunky C64 look.
+ * The message uses the same bitmap font as the HUD, with extra character and
+ * line spacing so the three scaled lines remain readable while they grow.
  */
 export class EndingScene extends Scene
 {

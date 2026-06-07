@@ -3,10 +3,9 @@ import { Scene } from "phaser";
 /**
  * Game-over overlay displayed after the last life is lost.
  *
- * Phaser 2 showed only the transparent "game over" logo over the current play
- * area and waited for a key press before returning to the introduction. This
- * scene is launched on top of GameScene/HUDScene so the lower HUD can remain
- * visible until the player leaves the screen.
+ * The scene is launched on top of GameScene and HUDScene. It only draws the
+ * transparent game-over logo and waits for a key press before returning to the
+ * title screen.
  */
 export class GameOverScene extends Scene
 {

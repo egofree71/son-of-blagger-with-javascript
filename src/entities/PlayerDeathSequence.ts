@@ -2,12 +2,11 @@ import type { GameObjects, Scene } from "phaser";
 import type { Player } from "./Player";
 
 /**
- * Plays the temporary Phaser 4 visual death sequence for Slippery Sid.
+ * Plays Sid's short visual death animation.
  *
- * The class owns only the short death sprite animation. GameScene still owns the
- * prototype consequences of death, such as resetting the player, clearing keys
- * and updating the temporary HUD. This mirrors the Phaser 2 split where the
- * death sequence handles visuals and the game flow handles state changes.
+ * This class owns only the sprite animation. GameScene owns the consequences of
+ * death, such as resetting the level runtime, updating lives and refreshing the
+ * HUD.
  */
 export class PlayerDeathSequence
 {
@@ -22,6 +21,11 @@ export class PlayerDeathSequence
     private frameIndex = 0;
     private completeCallback?: () => void;
 
+    /**
+     * @param scene Gameplay scene that owns the death animation sprite.
+     * @param normalTextureKey Spritesheet key for the regular death animation.
+     * @param deadlyFallTextureKey Spritesheet key for the white deadly-fall variant.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly normalTextureKey: string,
@@ -98,8 +102,8 @@ export class PlayerDeathSequence
         const callback = this.completeCallback;
         this.completeCallback = undefined;
 
-        // The callback owns state consequences. Destroy the temporary sprite
-        // first so the normal player can be shown immediately at the start point.
+        // Destroy the death sprite before the callback shows the normal player
+        // again at the level start point.
         callback?.();
     }
 }

@@ -4,10 +4,8 @@ import { GameSessionConstants } from "./gameSessionConstants";
 /**
  * Runtime state for the currently loaded level.
  *
- * The Phaser 4 prototype still creates objects directly in GameScene, but the
- * mutable level values now live here: level number, keys, exit, air and bonus
- * man. Keeping those values together makes the next porting steps easier,
- * especially level transitions and the monster reveal sequence.
+ * The mutable level values live here: level number, keys, exit, air and bonus
+ * man. Phaser objects still live in GameScene and the entity classes.
  */
 export class LevelState
 {
@@ -18,6 +16,9 @@ export class LevelState
     private bonusManEnabled = false;
     private airDecreaseAccumulatorMs = 0;
 
+    /**
+     * @param currentLevelNumber One-based level number used to read level data.
+     */
     constructor(private readonly currentLevelNumber: number)
     {
         this.requiredKeys = Data.levels[currentLevelNumber - 1]?.[0] ?? 0;
@@ -56,7 +57,7 @@ export class LevelState
     }
 
     /**
-     * True when the temporary exit has already been touched.
+     * True when the exit has already been touched.
      */
     get exitReached(): boolean
     {
@@ -88,7 +89,7 @@ export class LevelState
     }
 
     /**
-     * Marks the temporary exit as touched.
+     * Marks the exit as touched.
      */
     markExitReached(): void
     {
@@ -104,12 +105,11 @@ export class LevelState
     }
 
     /**
-     * Advances the original air timer and consumes air when due.
+     * Advances the air timer and consumes air when due.
      *
-     * Phaser 2 used a frame counter, but Phaser 4 can update faster on high
-     * refresh-rate screens. The timer therefore converts the old 36-frame delay
-     * to milliseconds at 60 FPS, preserving the original rhythm independently of
-     * the browser refresh rate.
+     * The air delay is defined in logical 60 FPS frames but applied with elapsed
+     * milliseconds, so the air bar drains at the same speed on high-refresh
+     * displays.
      */
     consumeAirWhenDue(deltaMs: number): boolean
     {
@@ -174,7 +174,7 @@ export class LevelState
     }
 
     /**
-     * Enables the bonus-man display for future level-transition work.
+     * Enables the bonus-man display for the current level.
      */
     enableBonusMan(): void
     {

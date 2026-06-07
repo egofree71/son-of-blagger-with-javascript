@@ -1,12 +1,11 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 
 /**
- * Creates the animated ladder overlays used by the Phaser 4 prototype.
+ * Draws animated ladder rungs above the static Tiled map.
  *
- * The original Phaser 2 startup generated sprites from the two ladder tiles in
- * the Tiled background layer and replaced the static tiles visually. This class
- * keeps the same idea: the map still provides ladder collision data, while the
- * static ladder tiles are hidden and animated sprites draw the moving rungs.
+ * Ladder tiles remain in the background layer so movement probes can still find
+ * them. This class hides the static tile art and places animated sprites at the
+ * same grid positions.
  */
 export class AnimatedLadders
 {
@@ -21,6 +20,12 @@ export class AnimatedLadders
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
+    /**
+     * @param scene Scene that owns the ladder overlay sprites.
+     * @param layer Tiled background layer scanned for ladder tiles.
+     * @param leftTextureKey Spritesheet key used for the left ladder half.
+     * @param rightTextureKey Spritesheet key used for the right ladder half.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly layer: Tilemaps.TilemapLayerBase,
@@ -32,7 +37,7 @@ export class AnimatedLadders
     }
 
     /**
-     * Advances all ladder overlays using the same frame cadence as Phaser 2.
+     * Advances all ladder overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -46,6 +51,8 @@ export class AnimatedLadders
             return;
         }
 
+        // Long browser frames can cover several ladder animation frames. Consume
+        // all complete frames and keep the remainder for the next update.
         const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedLadders.FRAME_DURATION_MS);
         this.elapsedFrameTimeMs %= AnimatedLadders.FRAME_DURATION_MS;
         this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedLadders.FRAME_COUNT;
@@ -79,10 +86,8 @@ export class AnimatedLadders
 
             this.sprites.push(sprite);
 
-            // Phaser 2's createFromTiles replaced the static ladder tile after
-            // creating the animated sprite. Here we hide the original tile
-            // instead, so the visual duplication disappears while the ladder
-            // properties remain available to the movement probes.
+            // Hide only the static artwork. The tile stays present so the ladder
+            // probes can still detect it during player movement.
             tile.setVisible(false);
         });
     }
@@ -94,8 +99,7 @@ export class AnimatedLadders
 
     private getTextureKeyForTile(tile: Tilemaps.Tile): string | null
     {
-        // The C64 ladder is made from two 16px Tiled cells. Phaser 2 used tile
-        // indices 28 and 29 to choose the left and right animated spritesheets.
+        // The imported map stores the two visual ladder halves as two tile ids.
         if (tile.index === AnimatedLadders.LEFT_LADDER_TILE_INDEX) {
             return this.leftTextureKey;
         }

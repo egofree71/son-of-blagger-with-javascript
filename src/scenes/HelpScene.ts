@@ -24,8 +24,8 @@ const HELP_TEXT = "Players control Slippery Sid, who is an\n" +
 /**
  * Help screen shown from the title screen when the player presses H.
  *
- * This intentionally keeps the original short instruction text. Pressing any
- * key returns to the title screen, matching the Phaser 2 screen manager flow.
+ * The page uses the retro bitmap font for the short instruction text. Pressing
+ * any key returns to the title screen.
  */
 export class HelpScene extends Scene
 {
@@ -40,8 +40,8 @@ export class HelpScene extends Scene
         this.usePixelatedCanvasWhileActive();
         this.add.rectangle(0, 0, 640, 400, 0x000000).setOrigin(0);
 
-        // Phaser 2 used `font.setText(..., true, 0, 6)` here. The extra
-        // six pixels are important, otherwise the help text looks crushed.
+        // Extra line spacing is important here; without it the large bitmap
+        // letters overlap and the help page looks crushed.
         const helpText = new RetroHudText(this, FONT_TEXTURE_KEY, 10, 10, 16, 16, 0xc0c0c0, 0, 6);
         helpText.setText(HELP_TEXT);
 

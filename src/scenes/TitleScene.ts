@@ -5,11 +5,10 @@ import { RetroHudText } from "../ui/RetroHudText";
 const FONT_TEXTURE_KEY = "blagger-font";
 
 /**
- * Introduction/title screen for the Phaser 4 port.
+ * Introduction/title screen.
  *
- * The original Phaser 2 flow keeps the lower HUD visible under the title logo.
- * This scene therefore owns only the upper gameplay viewport and launches the
- * HUD overlay with a fresh session state until the player starts a real game.
+ * The title scene owns the upper gameplay viewport and launches the HUD overlay
+ * with a fresh session state until the player starts a real game.
  */
 export class TitleScene extends Scene
 {

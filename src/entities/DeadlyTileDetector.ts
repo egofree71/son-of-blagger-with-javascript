@@ -2,18 +2,20 @@ import type { Tilemaps } from "phaser";
 import type { PlayerProbeRectangle } from "./Player";
 
 /**
- * Detects deadly background tiles touched by the player in the Phaser 4 prototype.
+ * Detects deadly background tiles touched by the player.
  *
- * The original Phaser 2 interaction code checks a narrow player rectangle against
- * Tiled tiles whose `type` property is `deadly`. This helper ports that rule for
- * the modernization prototype without adding Arcade Physics or the final death
- * sequence yet.
+ * The map marks traps with the Tiled property `type = deadly`. Collision is a
+ * manual rectangle-edge probe so traps are triggered by the same narrow player
+ * area as keys, exits and monsters.
  */
 export class DeadlyTileDetector
 {
     private static readonly TILED_PROPERTY_TYPE = "type";
     private static readonly TILE_TYPE_DEADLY = "deadly";
 
+    /**
+     * @param layer Background tile layer that contains trap metadata.
+     */
     constructor(private readonly layer: Tilemaps.TilemapLayerBase)
     {
     }
@@ -28,8 +30,8 @@ export class DeadlyTileDetector
 
     private rectangleHasDeadlyTile(bounds: PlayerProbeRectangle): boolean
     {
-        // Match the Phaser 2 collisionRectangle helper: only the four edges of
-        // the probe rectangle are scanned, not the filled interior.
+        // Only scan the rectangle edges. A filled-area scan would make traps
+        // trigger earlier when the probe overlaps a tile corner.
         return this.lineHasDeadlyTile(bounds.xStart, bounds.xEnd, bounds.yStart, "horizontal") ||
             this.lineHasDeadlyTile(bounds.xStart, bounds.xEnd, bounds.yEnd, "horizontal") ||
             this.lineHasDeadlyTile(bounds.yStart, bounds.yEnd, bounds.xStart, "vertical") ||
@@ -42,8 +44,8 @@ export class DeadlyTileDetector
         const end = Math.floor(Math.max(startPosition, endPosition));
         const fixed = Math.floor(fixedPosition);
 
-        // Keep the pixel-by-pixel scan used by PlayerInteractions.ts so trap
-        // timing can be compared before optimizing the Phaser 4 version.
+        // Scan each pixel along the edge because trap timing depends on exact
+        // contact with narrow decorative tiles.
         for (let position = start; position <= end; position += 1) {
             const tile = orientation === "horizontal"
                 ? this.layer.getTileAtWorldXY(position, fixed)

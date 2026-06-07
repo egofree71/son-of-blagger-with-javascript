@@ -2,13 +2,11 @@ import type { Tilemaps } from "phaser";
 import type { PlayerProbeRectangle } from "./Player";
 
 /**
- * Collects key tiles touched by the player in the Phaser 4 prototype.
+ * Collects key tiles touched by the player.
  *
- * The current port keeps the original Phaser 2 idea: key collection is a manual
- * rectangle probe against Tiled tile properties, not an Arcade Physics overlap.
- * Only the local tile mutation and collected-key count live here; score, level
- * transitions and the real HUD can be added later once the full game flow moves
- * into the modern version.
+ * Keys are regular Tiled tiles with `name = key`. This class owns the tile
+ * visibility changes and the collected count; score, HUD refresh and level
+ * completion stay in the game/session state.
  */
 export class KeyCollector
 {
@@ -17,6 +15,9 @@ export class KeyCollector
 
     private collectedCount = 0;
 
+    /**
+     * @param layer Background tile layer that contains key tiles.
+     */
     constructor(private readonly layer: Tilemaps.TilemapLayerBase)
     {
         this.showAllKeyTiles();
@@ -31,7 +32,7 @@ export class KeyCollector
     }
 
     /**
-     * Restores all key tiles and resets the temporary collected-key counter.
+     * Restores all key tiles and resets the collected-key counter.
      */
     reset(): void
     {
@@ -68,8 +69,8 @@ export class KeyCollector
             this.hideCollectedKey(tile);
         });
 
-        // The reference level data owns the expected key count. Use it here so
-        // the temporary exit opens even if a hidden key tile was already taken.
+        // The level state owns the expected key count. Use it here so the exit
+        // opens even if one or more key tiles were already hidden during testing.
         this.collectedCount = keysNeeded;
     }
 
@@ -80,9 +81,8 @@ export class KeyCollector
                 return;
             }
 
-            // Phaser 2 restores key alpha during the level reveal. The Phaser 4
-            // prototype has no level reload yet, but restoring here keeps the
-            // collector safe if GameScene is restarted while testing.
+            // A reset must restore both rendering flags because collected keys
+            // are hidden with `visible = false` and `alpha = 0`.
             tile.visible = true;
             tile.alpha = 1;
         });
@@ -90,8 +90,8 @@ export class KeyCollector
 
     private findFirstKeyTileOnRectangle(bounds: PlayerProbeRectangle): Tilemaps.Tile | null
     {
-        // Match the old collisionRectangle helper: only the rectangle edges are
-        // scanned. This keeps key pickup timing close to PlayerInteractions.ts.
+        // Only scan the rectangle edges. This gives a precise pickup moment while
+        // avoiding a broad filled-area overlap.
         return this.findFirstKeyTileOnHorizontalLine(bounds.xStart, bounds.xEnd, bounds.yStart) ??
             this.findFirstKeyTileOnHorizontalLine(bounds.xStart, bounds.xEnd, bounds.yEnd) ??
             this.findFirstKeyTileOnVerticalLine(bounds.yStart, bounds.yEnd, bounds.xStart) ??
@@ -104,7 +104,8 @@ export class KeyCollector
         const end = Math.floor(Math.max(xStart, xEnd));
         const worldY = Math.floor(y);
 
-        // Keep the pixel-by-pixel probe for parity with the old key collision.
+        // Scan each pixel along the probe edge so a key can be collected from a
+        // one-pixel contact at tile boundaries.
         for (let x = start; x <= end; x += 1) {
             const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
 
@@ -136,8 +137,8 @@ export class KeyCollector
 
     private hideCollectedKey(tile: Tilemaps.Tile): void
     {
-        // Phaser 2 hid collected keys by setting alpha to 0. Do the same and
-        // also mark the tile invisible so Phaser 4 rendering and probes agree.
+        // Hide the tile for rendering and for future probe checks. Both flags are
+        // restored by showAllKeyTiles() during a reset.
         tile.alpha = 0;
         tile.visible = false;
     }

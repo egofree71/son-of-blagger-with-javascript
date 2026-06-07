@@ -14,10 +14,9 @@ type EndGameSequencePhase = "convert-air-to-score" | "show-message";
 /**
  * Converts the final level's remaining air into score before the ending screen.
  *
- * The Phaser 2 implementation performed this frame by frame, using the same
- * 6-air / 30-score rhythm as the normal level transition. This Phaser 4 helper
- * keeps that timing refresh-rate independent and lets GameScene apply the state
- * changes so the HUD remains the single display layer for score and air.
+ * The sequence emits small score and air deltas instead of mutating state
+ * directly. GameScene applies those deltas so the session state and HUD remain
+ * the single source of truth for score and air.
  */
 export class EndGameSequence
 {

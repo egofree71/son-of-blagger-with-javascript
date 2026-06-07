@@ -1,8 +1,8 @@
 /**
  * Runtime values displayed by HUDScene.
  *
- * This is deliberately small for now: it gives the Phaser 4 prototype a real HUD
- * contract without pulling the whole Phaser 2 GameController across too early.
+ * The HUD receives this shape from GameSessionState and never reads gameplay
+ * objects directly.
  */
 export interface HUDState
 {

@@ -18,27 +18,31 @@ export interface MonsterSpawnPoint
 }
 
 /**
- * Loads and updates the level monsters for the Phaser 4 prototype.
+ * Loads and updates the monsters for one level.
  *
- * This is still a compact prototype version of the old Level + Monster pair. It
- * reads monster objects from the existing Tiled map, creates the corresponding
- * Phaser sprites, advances their predefined paths, and exposes one collision
- * check for GameScene.
+ * The manager reads monster objects from the Tiled map, creates the corresponding
+ * sprites, advances their predefined paths and exposes the collision query used
+ * by GameScene.
  */
 export class MonsterManager
 {
     private static readonly OBJECT_LAYER_NAME = "monsters";
     private static readonly TILESET_NAME = "monsters";
 
-    // Pace monster frame changes separately from movement. The Phaser 4 update
-    // loop made the first animation port feel too fast compared with Phaser 2.
-    private static readonly PROTOTYPE_ANIMATION_FRAME_INTERVAL = 2;
+    // Pace animation changes separately from movement so monsters do not flicker
+    // too quickly on high-refresh displays.
+    private static readonly ANIMATION_FRAME_INTERVAL = 2;
 
     private readonly monsters: Monster[];
     private readonly animationCounterMax: number;
     private animationCounter: number;
     private animationFrameAccumulator = 1;
 
+    /**
+     * @param scene Gameplay scene that owns the monster sprites.
+     * @param map Tiled map containing the `monsters` object layer and tileset metadata.
+     * @param levelNumber Level whose monsters should be loaded.
+     */
     constructor(scene: Scene, map: Tilemaps.Tilemap, levelNumber: number)
     {
         this.monsters = this.loadMonsters(scene, map, levelNumber);
@@ -47,16 +51,15 @@ export class MonsterManager
     }
 
     /**
-     * Moves all active monsters using the shared Phaser 2 animation cadence.
+     * Moves all active monsters and advances their animation when needed.
      */
     update(): void
     {
         const canAdvanceAnimationThisFrame = this.shouldProcessAnimationThisFrame();
 
         for (const monster of this.monsters) {
-            // Phaser 2 advances the shared animation counter once per monster,
-            // not once per frame for the whole group. Keep that quirk for
-            // desync, but pace the counter down so frame changes are not too fast.
+            // The shared counter is consumed per monster, which keeps identical
+            // monsters from looking perfectly synchronized.
             const advanceAnimation = canAdvanceAnimationThisFrame && this.shouldAdvanceMonsterAnimation();
             monster.update(advanceAnimation);
         }
@@ -106,7 +109,6 @@ export class MonsterManager
         return this.monsters.map((monster) => monster.getSpawnPosition());
     }
 
-
     /**
      * Returns current positions for the end-of-level reverse explosion effect.
      */
@@ -136,7 +138,7 @@ export class MonsterManager
     }
 
     /**
-     * Checks whether the temporary player body rectangle touches any monster.
+     * Checks whether the player's body probe touches any active monster.
      */
     touchesPlayer(playerBounds: PlayerProbeRectangle): boolean
     {
@@ -212,7 +214,7 @@ export class MonsterManager
 
     private shouldProcessAnimationThisFrame(): boolean
     {
-        this.animationFrameAccumulator += 1 / MonsterManager.PROTOTYPE_ANIMATION_FRAME_INTERVAL;
+        this.animationFrameAccumulator += 1 / MonsterManager.ANIMATION_FRAME_INTERVAL;
 
         if (this.animationFrameAccumulator < 1) {
             return false;

@@ -1,11 +1,11 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 
 /**
- * Creates the animated conveyor-belt overlays used by the Phaser 4 prototype.
+ * Draws the animated conveyor belts above the static Tiled map.
  *
- * Phaser 2 generated these sprites from the static Tiled conveyor tiles. The
- * prototype keeps the same split: the Tiled layer remains the movement/collision
- * source of truth, while this class owns only the animated visual belt strips.
+ * Conveyor tiles keep their Tiled properties so the player movement code can
+ * still read their direction. This class only replaces the visible tile art with
+ * animated sprites that share one frame counter.
  */
 export class AnimatedConveyors
 {
@@ -18,6 +18,12 @@ export class AnimatedConveyors
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
+    /**
+     * @param scene Scene that owns the conveyor overlay sprites.
+     * @param layer Tiled background layer scanned for conveyor tiles.
+     * @param leftTextureKey Spritesheet key used for left-moving belts.
+     * @param rightTextureKey Spritesheet key used for right-moving belts.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly layer: Tilemaps.TilemapLayerBase,
@@ -29,7 +35,7 @@ export class AnimatedConveyors
     }
 
     /**
-     * Advances all conveyor overlays using the same frame cadence as Phaser 2.
+     * Advances all conveyor overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -43,8 +49,14 @@ export class AnimatedConveyors
             return;
         }
 
+        // A browser frame can be longer than one animation frame. Advance by the
+        // full number of elapsed conveyor frames and keep the leftover time so
+        // the belt animation stays smooth and does not drift.
         const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedConveyors.FRAME_DURATION_MS);
         this.elapsedFrameTimeMs %= AnimatedConveyors.FRAME_DURATION_MS;
+
+        // Wrap the shared frame index because all conveyor sprites use the same
+        // eight-frame loop.
         this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedConveyors.FRAME_COUNT;
 
         for (const sprite of this.sprites) {
@@ -72,16 +84,15 @@ export class AnimatedConveyors
 
             this.sprites.push(sprite);
 
-            // Hide the static conveyor tile after creating the overlay. Keeping
-            // the tile in the map preserves its Tiled properties for movement.
+            // Hide the static conveyor art, but keep the tile itself in the map:
+            // its properties are still used to push Sid left or right.
             tile.setVisible(false);
         });
     }
 
     private getTextureKeyForTile(tile: Tilemaps.Tile): string | null
     {
-        // Phaser 2's createSpritesFromTiles used tile indices 16 and 17 for the
-        // two belt directions, so keep those map conventions here.
+        // The imported map uses two tile indices to distinguish belt direction.
         if (tile.index === AnimatedConveyors.LEFT_CONVEYOR_TILE_INDEX) {
             return this.leftTextureKey;
         }

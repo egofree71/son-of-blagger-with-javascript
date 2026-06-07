@@ -3,12 +3,11 @@ import { GameSessionConstants } from "./gameSessionConstants";
 import { LevelState } from "./LevelState";
 
 /**
- * Session-wide state for the Phaser 4 prototype.
+ * Session-wide state for one playthrough.
  *
- * This is the first small replacement for the old Phaser 2 GameController data:
- * it owns score, hi-score, lives and the current LevelState, while GameScene
- * still orchestrates actual Phaser objects. Later transitions can grow from
- * this class without keeping temporary counters scattered through GameScene.
+ * The session owns score, hi-score, lives and the current LevelState. GameScene
+ * owns the Phaser objects, while this class owns the values that survive within
+ * a run and are displayed by the HUD.
  */
 export class GameSessionState
 {
@@ -42,7 +41,7 @@ export class GameSessionState
     }
 
     /**
-     * Remaining lives for the current prototype session.
+     * Remaining lives for the current session.
      */
     get lives(): number
     {
@@ -111,8 +110,7 @@ export class GameSessionState
     /**
      * Applies death consequences that affect session-level data.
      *
-     * Bonus-man support is already represented so the later transition port has
-     * a home, even though the current level-1 prototype never grants one yet.
+     * If a bonus man is available it is consumed before a regular life is lost.
      */
     consumeBonusManOrLife(): void
     {

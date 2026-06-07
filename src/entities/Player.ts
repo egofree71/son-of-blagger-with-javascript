@@ -5,11 +5,11 @@ import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import type { VanishingPlatforms } from "./VanishingPlatforms";
 
-// Local direction names for the temporary Phaser 4 movement slice.
+// Local direction names for Sid's horizontal facing and movement.
 type FacingDirection = "left" | "right";
 
 /**
- * Rectangle used by the first Phaser 4 interaction probes.
+ * Axis-aligned rectangle used by manual interaction probes.
  */
 export interface PlayerProbeRectangle
 {
@@ -20,24 +20,20 @@ export interface PlayerProbeRectangle
 }
 
 /**
- * Result returned by the temporary Phaser 4 movement slice.
+ * Result returned by the player movement update.
  */
-export interface PlayerPrototypeMovementResult
+export interface PlayerMovementResult
 {
     playerKilledByDeadlyFall: boolean;
 }
 
 /**
- * Minimal Phaser 4 player entity used by the modernization prototype.
+ * Player entity for Slippery Sid.
  *
- * This class owns the real Blagger sprite and a small movement test. It is still
- * not final gameplay: horizontal walking, side wall blocking, simple falling,
- * a first jump-path prototype, a small slide prototype, vanishing-platform
- * support, conveyors, and a first automatic-ladder prototype have been ported.
- * Key collection, deadly-tile detection, exit detection and the first visual
- * death sequence have temporary prototypes, while monsters are still absent. The current
- * goal is to validate the most sensitive manual movement probes before the full
- * Phaser 2 movement rules are moved over.
+ * The class owns Sid's sprite, manual movement, jump path, falling rules and the
+ * probe rectangles used by keys, traps, exits and monsters. Movement is kept
+ * pixel-step based because the level data relies on very small offsets around
+ * ladders, slides, conveyors and platform edges.
  */
 export class Player
 {
@@ -50,59 +46,60 @@ export class Player
     // Advance the walking frame only after a few accepted pixel moves.
     private static readonly WALK_ANIMATION_FRAME_INTERVAL = 5;
 
-    // Horizontal foot probes copied from the Phaser 2 movement controller.
+    // Horizontal foot probe: narrower than the sprite so edge landings feel fair.
     private static readonly FOOT_LEFT_OFFSET = 7;
     private static readonly FOOT_RIGHT_OFFSET = 23;
 
-    // Key collection uses its own narrow rectangle from PlayerInteractions.
+    // Key pickup uses a narrow body rectangle so keys are not grabbed too early.
     private static readonly KEY_LEFT_OFFSET = 7;
     private static readonly KEY_RIGHT_OFFSET = 23;
     private static readonly KEY_TOP_OFFSET = 0;
     private static readonly KEY_BOTTOM_OFFSET = 0;
 
-    // Deadly tile checks use the slightly wider rectangle from PlayerInteractions.
+    // Trap checks are slightly wider than key pickup to match visible danger zones.
     private static readonly DEADLY_LEFT_OFFSET = 5;
     private static readonly DEADLY_RIGHT_OFFSET = 27;
     private static readonly DEADLY_TOP_OFFSET = 0;
     private static readonly DEADLY_BOTTOM_OFFSET = -1;
 
-    // Exit and future monster checks use the body rectangle from PlayerInteractions.
+    // Exits and monsters use a body rectangle close to Sid's visible torso.
     private static readonly BODY_LEFT_OFFSET = 4;
     private static readonly BODY_RIGHT_OFFSET = 28;
     private static readonly BODY_TOP_OFFSET = 0;
     private static readonly BODY_BOTTOM_OFFSET = 0;
 
-    // Slides are detected below the feet, like the Phaser 2 movement controller.
+    // Slides are detected slightly below the foot line.
     private static readonly SLIDE_PROBE_Y_OFFSET = 14;
 
-    // The ladder probe uses a small lower-body rectangle from the Phaser 2 code.
+    // Ladders use a small lower-body probe to avoid catching them from far away.
     private static readonly LADDER_LEFT_OFFSET = 7;
     private static readonly LADDER_RIGHT_OFFSET = 23;
     private static readonly LADDER_TOP_FROM_BOTTOM_OFFSET = 18;
     private static readonly LADDER_BOTTOM_FROM_BOTTOM_OFFSET = 1;
 
-    // Side wall probes copied from the Phaser 2 movement controller.
+    // Side wall probes ignore the top and bottom of the sprite.
     private static readonly RIGHT_WALL_X_OFFSET = 24;
     private static readonly LEFT_WALL_X_OFFSET = 5;
     private static readonly SIDE_WALL_TOP_OFFSET = 6;
     private static readonly SIDE_WALL_BOTTOM_OFFSET = 1;
 
-    // Ceiling probes copied from the Phaser 2 movement controller.
+    // Ceiling probes use a narrow line just above Sid.
     private static readonly WALL_ABOVE_Y_OFFSET = -2;
 
     // Data.jumpPath starts counting fall height again from this index onward.
     private static readonly JUMP_FALL_START_INDEX = 50;
 
-    // A fall becomes deadly after the same 72-pixel threshold as Phaser 2.
+    // A fall becomes deadly after 72 pixels.
     private static readonly FALL_LIMIT = 72;
 
-    // Temporary prototype speed limiter. The real movement timing will be
-    // revisited when the full Phaser 2 movement controller is ported.
-    private static readonly PROTOTYPE_MOVE_FRAME_INTERVAL = 2;
+    // Most manual movement advances one pixel every other update tick. Separate
+    // accumulators below keep walking, falling, jumping, slides and ladders from
+    // stealing cadence from each other.
+    private static readonly MOVE_FRAME_INTERVAL = 2;
 
     private static readonly LEFT_FRAMES: readonly number[] = [0, 1, 2, 3, 4, 5];
     private static readonly RIGHT_FRAMES: readonly number[] = [6, 7, 8, 9, 10, 11];
-    private static readonly NO_PROTOTYPE_DEATH: PlayerPrototypeMovementResult = {
+    private static readonly NO_MOVEMENT_DEATH: PlayerMovementResult = {
         playerKilledByDeadlyFall: false
     };
 
@@ -123,6 +120,11 @@ export class Player
     private fallHeight = 0;
     private deadlyFall = false;
 
+    /**
+     * @param scene Gameplay scene that owns Sid's sprite.
+     * @param textureKey Spritesheet key for the normal player animation.
+     * @param deadlyFallTextureKey Spritesheet key for the white falling-death variant.
+     */
     constructor(scene: Scene, textureKey: string, deadlyFallTextureKey: string)
     {
         this.normalTextureKey = textureKey;
@@ -132,7 +134,6 @@ export class Player
             .setDepth(Player.SPRITE_DEPTH)
             .setVisible(false);
     }
-
 
     /**
      * Converts a Tiled player object into the sprite top-left position.
@@ -172,18 +173,18 @@ export class Player
     }
 
     /**
-     * Runs the temporary walking/falling/jumping movement slice for one frame.
+     * Runs Sid's walking, falling, jumping and environment movement for one frame.
      *
-     * This method intentionally keeps movement manual instead of using Arcade
-     * Physics. The Phaser 2 reference moves through one-pixel decisions based on
-     * tile probes, and preserving that idea makes later comparison much easier.
+     * Movement stays manual instead of using Arcade Physics. Every step is tested
+     * through tile probes so the same sprite can interact precisely with narrow
+     * walls, ladders, slides and conveyor tiles.
      */
-    updatePrototypeMovement(
+    updateMovement(
         cursors: Types.Input.Keyboard.CursorKeys,
         map: Tilemaps.Tilemap,
         collisionProbe: TileCollisionProbe,
         vanishingPlatforms: VanishingPlatforms
-    ): PlayerPrototypeMovementResult
+    ): PlayerMovementResult
     {
         if (this.deadlyFall) {
             return {
@@ -193,7 +194,7 @@ export class Player
 
         if (this.jumping) {
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         const slideDirection = this.readSlideDirectionBelow(collisionProbe);
@@ -231,37 +232,37 @@ export class Player
         if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         if (slideDirection) {
             this.moveOnSlideWhenDue(slideDirection, requestedDirection, map, collisionProbe);
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         if (onLadder) {
             this.moveOnLadderWhenDue(requestedDirection, map, collisionProbe);
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         if (!hasStandingSurface) {
-            this.stopPrototypeWalk(false);
+            this.stopWalk(false);
 
             if (this.moveDownWhileFallingWhenDue(map)) {
                 this.recordFallPixel();
             }
 
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         if (conveyorDirection) {
             this.moveOnConveyorWhenDue(conveyorDirection, requestedDirection, map, collisionProbe);
-            return Player.NO_PROTOTYPE_DEATH;
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         if (!requestedDirection) {
-            this.stopPrototypeWalk();
-            return Player.NO_PROTOTYPE_DEATH;
+            this.stopWalk();
+            return Player.NO_MOVEMENT_DEATH;
         }
 
         this.applyDirectionChange(requestedDirection);
@@ -272,18 +273,18 @@ export class Player
             this.advanceWalkingFrameWhenDue();
         }
 
-        return Player.NO_PROTOTYPE_DEATH;
+        return Player.NO_MOVEMENT_DEATH;
     }
 
     /**
-     * Cancels temporary gameplay movement before debug free-move takes over.
+     * Cancels gameplay movement before debug free-move takes over.
      *
      * Without this reset, releasing a debug key during a jump or fall could
      * resume an old in-progress movement state from the new debug position.
      */
-    cancelPrototypeMovementForDebug(): void
+    cancelMovementForDebug(): void
     {
-        this.cancelPrototypeMovement();
+        this.cancelMovement();
     }
 
     /**
@@ -307,7 +308,6 @@ export class Player
         return this.sprite;
     }
 
-
     /**
      * Calculates the horizontal distance from Sid to a transition target.
      */
@@ -329,7 +329,7 @@ export class Player
      */
     moveBodyX(delta: number): void
     {
-        this.cancelPrototypeMovement();
+        this.cancelMovement();
         this.sprite.x += delta;
     }
 
@@ -338,7 +338,7 @@ export class Player
      */
     moveBodyY(delta: number): void
     {
-        this.cancelPrototypeMovement();
+        this.cancelMovement();
         this.sprite.y += delta;
     }
 
@@ -347,7 +347,7 @@ export class Player
      */
     setBodyX(x: number): void
     {
-        this.cancelPrototypeMovement();
+        this.cancelMovement();
         this.sprite.x = x;
     }
 
@@ -356,12 +356,12 @@ export class Player
      */
     setBodyY(y: number): void
     {
-        this.cancelPrototypeMovement();
+        this.cancelMovement();
         this.sprite.y = y;
     }
 
     /**
-     * Returns the top-left position used by the temporary death sprite.
+     * Returns the top-left position used by the death animation sprite.
      */
     getDeathAnimationOrigin(): { x: number; y: number }
     {
@@ -376,8 +376,8 @@ export class Player
      */
     hideForDeathAnimation(): void
     {
-        // Death interrupts temporary movement, but preserves deadlyFall so the
-        // death sequence can choose the white falling-death sprite.
+        // Death interrupts movement, but preserves deadlyFall so the death
+        // sequence can choose the white falling-death sprite.
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
@@ -385,7 +385,7 @@ export class Player
         this.jumping = false;
         this.jumpIndex = 0;
         this.jumpHorizontalDirection = null;
-        this.stopPrototypeWalk(false);
+        this.stopWalk(false);
         this.sprite.setVisible(false);
     }
 
@@ -398,7 +398,7 @@ export class Player
     }
 
     /**
-     * Returns the narrow rectangle used by the Phaser 2 key collection check.
+     * Returns the narrow rectangle used for key collection.
      */
     getKeyCollectionBounds(): PlayerProbeRectangle
     {
@@ -411,7 +411,7 @@ export class Player
     }
 
     /**
-     * Returns the narrow rectangle used by the Phaser 2 deadly tile check.
+     * Returns the rectangle used for deadly tile checks.
      */
     getDeadlyCollisionBounds(): PlayerProbeRectangle
     {
@@ -424,7 +424,7 @@ export class Player
     }
 
     /**
-     * Returns the body rectangle used by Phaser 2 exit and monster checks.
+     * Returns the body rectangle used by exit and monster checks.
      */
     getBodyCollisionBounds(): PlayerProbeRectangle
     {
@@ -436,8 +436,7 @@ export class Player
         };
     }
 
-
-    private cancelPrototypeMovement(): void
+    private cancelMovement(): void
     {
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
@@ -450,7 +449,7 @@ export class Player
         this.fallHeight = 0;
         this.deadlyFall = false;
         this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
-        this.stopPrototypeWalk(false);
+        this.stopWalk(false);
     }
 
     private readHorizontalDirection(cursors: Types.Input.Keyboard.CursorKeys): FacingDirection | null
@@ -574,8 +573,8 @@ export class Player
             this.fallHeight = 0;
         }
 
-        // Like Phaser 2's stopAnimation(), landing keeps the current visual frame.
-        this.stopPrototypeWalk(false);
+        // Landing keeps the current visual frame instead of snapping to idle.
+        this.stopWalk(false);
     }
 
     private applyDirectionChange(direction: FacingDirection): void
@@ -584,8 +583,8 @@ export class Player
             return;
         }
 
-        // Restart the frame sequence when the player turns around. The Phaser 2
-        // version used separate left/right animations rather than mirroring.
+        // Restart the frame sequence when the player turns around. Left and right
+        // are separate frame ranges, not a mirrored sprite.
         this.facingDirection = direction;
         this.animationFrameIndex = 0;
         this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
@@ -613,9 +612,9 @@ export class Player
     ): void
     {
         if (requestedDirection) {
-            // Phaser 2 lets the slide force movement while left/right input still
-            // owns the walking animation direction. This can look odd on opposite
-            // input, but it keeps the old input-first, environment-second order.
+            // A slide forces movement while left/right input still owns the
+            // walking animation direction. Opposite input can cancel the feeling
+            // of the slope without changing which way Sid is facing.
             this.applyDirectionChange(requestedDirection);
         }
 
@@ -624,8 +623,7 @@ export class Player
         }
 
         // Slides apply one diagonal step as a single environment decision. Using
-        // the normal horizontal and falling timers independently made the slope
-        // cadence drift away from the rest of the temporary movement prototype.
+        // separate horizontal and vertical timers makes slope cadence drift.
         this.moveHorizontallyByOnePixel(slideDirection, map, collisionProbe);
         this.moveDownByOnePixel(map);
 
@@ -652,7 +650,7 @@ export class Player
         }
 
         // Conveyor belts choose the actual movement direction. Holding the
-        // opposite arrow cancels the belt movement, just like the Phaser 2 code.
+        // opposite arrow cancels the belt movement.
         const conveyorCancelledByInput = requestedDirection !== null && requestedDirection !== conveyorDirection;
 
         if (!conveyorCancelledByInput) {
@@ -685,8 +683,8 @@ export class Player
         const movedHorizontally = this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
 
         if (movedHorizontally) {
-            // Match normal walking cadence while Sid crosses a ladder. The
-            // vertical ladder movement alone must not spin the walking frames.
+            // Match normal walking cadence while Sid crosses a ladder. Vertical
+            // ladder movement alone must not spin the walking frames.
             this.advanceWalkingFrameWhenDue();
         }
     }
@@ -701,12 +699,12 @@ export class Player
             return false;
         }
 
-        // The temporary movement still uses one-pixel steps because the Phaser 2
-        // reference checks walls at pixel precision, not through velocities.
+        // Use one-pixel steps because wall probes are pixel-precise, not velocity
+        // based.
         const deltaX = direction === "right" ? 1 : -1;
 
         // Keep the sprite inside the imported map. Tile probes detect walls, but
-        // the outer map edge is just a viewport boundary for this prototype.
+        // the outer map edge is just a world boundary.
         const maxX = Math.max(0, map.widthInPixels - this.sprite.displayWidth);
         const nextX = this.clamp(this.sprite.x + deltaX, 0, maxX);
 
@@ -729,10 +727,9 @@ export class Player
 
     private updateDeadlyFall(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
     {
-        // Once a fall is deadly, Phaser 2 suspends controls and keeps dropping Sid
-        // until his feet reach the top of the next solid tile. Keep using the
-        // same vertical timer as the normal prototype fall so the white fall does
-        // not suddenly accelerate.
+        // Once a fall is deadly, controls stay suspended and Sid keeps dropping
+        // until his feet reach the top of the next solid tile. Use the normal
+        // falling timer so the white fall does not suddenly accelerate.
         if (this.hasDeadlyFallLandingSurfaceBelow(collisionProbe)) {
             return true;
         }
@@ -774,8 +771,7 @@ export class Player
 
     private moveDownByOnePixel(map: Tilemaps.Tilemap): boolean
     {
-        // The clamp prevents falling outside the map data while movement rules are
-        // still being ported one slice at a time.
+        // The clamp prevents falling outside the map data.
         const maxY = Math.max(0, map.heightInPixels - this.sprite.displayHeight);
         const nextY = this.clamp(this.sprite.y + 1, 0, maxY);
 
@@ -793,8 +789,8 @@ export class Player
             return false;
         }
 
-        // The jump path moves up in one-pixel steps. The map clamp prevents the
-        // prototype from leaving the Tiled world before upper collisions are final.
+        // The jump path moves in one-pixel steps. The map clamp prevents Sid from
+        // leaving the Tiled world at the top edge.
         const nextY = this.clamp(this.sprite.y - 1, 0, map.heightInPixels - this.sprite.displayHeight);
 
         if (nextY === this.sprite.y) {
@@ -811,9 +807,8 @@ export class Player
             ? this.sprite.x + Player.RIGHT_WALL_X_OFFSET
             : this.sprite.x + Player.LEFT_WALL_X_OFFSET;
 
-        // The side probe ignores the very top and bottom of the sprite. That
-        // tolerance comes from the Phaser 2 movement code and avoids treating the
-        // whole visual rectangle as a hard collision box.
+        // The side probe ignores the very top and bottom of the sprite so visual
+        // padding does not behave like a hard collision box.
         return collisionProbe.hasWallOnVerticalLine(
             this.sprite.y + Player.SIDE_WALL_TOP_OFFSET,
             this.sprite.y + this.sprite.displayHeight - Player.SIDE_WALL_BOTTOM_OFFSET,
@@ -823,8 +818,8 @@ export class Player
 
     private isBlockedAbove(collisionProbe: TileCollisionProbe): boolean
     {
-        // Ceiling checks reuse the same narrow foot span as the Phaser 2 code.
-        // Testing the full sprite width would make jumps hit ceilings too early.
+        // Ceiling checks reuse the narrow foot span. Testing the full sprite
+        // width would make jumps hit ceilings too early.
         return collisionProbe.hasWallOnHorizontalLine(
             this.sprite.x + Player.FOOT_LEFT_OFFSET,
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
@@ -834,8 +829,8 @@ export class Player
 
     private hasSolidGroundBelow(collisionProbe: TileCollisionProbe): boolean
     {
-        // The foot probe is deliberately narrower than the visible sprite. The
-        // old movement code used these offsets so Sid can stand close to edges.
+        // The foot probe is deliberately narrower than the visible sprite so Sid
+        // can stand close to platform edges.
         return collisionProbe.hasSolidOnHorizontalLine(
             this.sprite.x + Player.FOOT_LEFT_OFFSET,
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
@@ -857,9 +852,9 @@ export class Player
         vanishingPlatforms: VanishingPlatforms
     ): boolean
     {
-        // The Phaser 2 reference lets a jump land on solid tiles, slide tiles and
-        // visible vanishing platforms. Without the extra checks, several classic
-        // level-1 jumps turn into immediate falls.
+        // A jump can land on solid tiles, slide tiles and visible vanishing
+        // platforms. Without these extra checks, some level jumps become
+        // immediate falls.
         return collisionProbe.hasSolidTopOnHorizontalLine(
             this.sprite.x + Player.FOOT_LEFT_OFFSET,
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
@@ -875,8 +870,8 @@ export class Player
 
     private hasDeadlyFallLandingSurfaceBelow(collisionProbe: TileCollisionProbe): boolean
     {
-        // Deadly falls stop only on solid tile tops in the Phaser 2 reference.
-        // Slides and vanishing platforms are deliberately not death triggers here.
+        // Deadly falls stop only on solid tile tops. Slides and vanishing
+        // platforms deliberately do not end the falling-death sequence.
         return collisionProbe.hasSolidTopOnHorizontalLine(
             this.sprite.x + Player.FOOT_LEFT_OFFSET,
             this.sprite.x + Player.FOOT_RIGHT_OFFSET,
@@ -918,8 +913,8 @@ export class Player
         const xEnd = this.sprite.x + Player.FOOT_RIGHT_OFFSET;
         const y = this.sprite.y + this.sprite.displayHeight;
 
-        // Conveyors are detected exactly on the foot line in Phaser 2. Unlike
-        // slides, they do not use the lower slope probe offset.
+        // Conveyors are detected exactly on the foot line. Unlike slides, they do
+        // not use the lower slope probe offset.
         if (collisionProbe.hasRightConveyorOnHorizontalLine(xStart, xEnd, y)) {
             return "right";
         }
@@ -962,7 +957,7 @@ export class Player
         this.jumping = false;
         this.jumpIndex = 0;
         this.jumpHorizontalDirection = null;
-        this.stopPrototypeWalk(false);
+        this.stopWalk(false);
 
         // The normal sprite turns white during the uncontrollable falling part,
         // then the death sequence switches to the white dying spritesheet.
@@ -971,9 +966,9 @@ export class Player
 
     private shouldMoveHorizontallyThisFrame(): boolean
     {
-        // Keep the temporary walking speed slower than one pixel every update.
-        // Later, this should be replaced by the real Phaser 2 movement timing.
-        this.horizontalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+        // Keep walking slower than one pixel every update. The accumulator also
+        // makes the cadence independent from other movement systems.
+        this.horizontalMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
 
         if (this.horizontalMovementAccumulator < 1) {
             return false;
@@ -985,9 +980,9 @@ export class Player
 
     private shouldMoveVerticallyThisFrame(): boolean
     {
-        // Reuse the same accumulator pattern as horizontal movement so the first
-        // falling prototype stays visually comparable to walking speed.
-        this.verticalMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+        // Use the same accumulator pattern as horizontal movement so falling and
+        // walking stay visually comparable.
+        this.verticalMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
 
         if (this.verticalMovementAccumulator < 1) {
             return false;
@@ -1002,7 +997,7 @@ export class Player
         // Use one shared timer for the forced diagonal slope movement. The two
         // axes should move together instead of competing through separate walking
         // and falling accumulators.
-        this.slideMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+        this.slideMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
 
         if (this.slideMovementAccumulator < 1) {
             return false;
@@ -1017,7 +1012,7 @@ export class Player
         // Ladders move Sid automatically, but not every update. Keeping a separate
         // timer avoids the previous bug where the ladder reset the fall timer and
         // climbed at full frame speed.
-        this.ladderMovementAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+        this.ladderMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
 
         if (this.ladderMovementAccumulator < 1) {
             return false;
@@ -1029,9 +1024,8 @@ export class Player
 
     private shouldAdvanceJumpThisFrame(): boolean
     {
-        // The real jump path is kept, but the whole prototype still runs at the
-        // temporary movement pace chosen during the first walking tests.
-        this.jumpStepAccumulator += 1 / Player.PROTOTYPE_MOVE_FRAME_INTERVAL;
+        // Jump steps use the same movement cadence as walking and falling.
+        this.jumpStepAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
 
         if (this.jumpStepAccumulator < 1) {
             return false;
@@ -1056,14 +1050,14 @@ export class Player
         this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }
 
-    private stopPrototypeWalk(resetHorizontalMovement = true): void
+    private stopWalk(resetHorizontalMovement = true): void
     {
         if (resetHorizontalMovement) {
             this.horizontalMovementAccumulator = 1;
         }
 
-        // Do not reset to an idle frame here. The Phaser 2 version simply stops
-        // the current animation, so the player keeps the last walking frame.
+        // Do not reset to an idle frame here: stopping movement keeps the last
+        // walking frame visible.
     }
 
     private firstFrameFor(direction: FacingDirection): number

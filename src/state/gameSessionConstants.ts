@@ -1,8 +1,8 @@
 /**
- * Gameplay values shared by the Phaser 4 session and level state.
+ * Gameplay values shared by the session and level state.
  *
- * The numbers mirror the Phaser 2 implementation, but they now live outside the
- * HUD because the HUD should display state rather than decide gameplay rules.
+ * These constants live outside the HUD because the HUD should display state
+ * rather than decide gameplay rules.
  */
 export const GameSessionConstants = {
     INITIAL_LEVEL: 1,

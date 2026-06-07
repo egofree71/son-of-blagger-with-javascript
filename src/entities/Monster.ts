@@ -20,12 +20,12 @@ interface TiledMonsterObject extends TiledObjectLike
 }
 
 /**
- * Runtime monster entity used by the Phaser 4 prototype.
+ * Runtime monster entity.
  *
- * The implementation keeps the Phaser 2 movement model: each monster follows a
- * fixed horizontal or vertical path read from the Tiled object properties, and
- * the real collision rectangle comes from the monster tileset metadata rather
- * than from the full 48x42 sprite frame.
+ * Each monster follows a fixed horizontal or vertical path read from its Tiled
+ * object properties. Its collision rectangle comes from the monster tileset
+ * metadata, not from the full sprite frame, so visual padding does not make the
+ * monster unfairly dangerous.
  */
 export class Monster
 {
@@ -34,10 +34,9 @@ export class Monster
     private static readonly ANIMATION_FRAMES: readonly number[] = [0, 1];
     private static readonly SPRITE_DEPTH = 9;
 
-    // Keep the preserved Phaser 2 per-step speed, but do not apply it on every
-    // Phaser 4 update. Without this temporary pacing, monsters move too fast
-    // compared with the current player prototype and the reference game feel.
-    private static readonly PROTOTYPE_MOVEMENT_FRAME_INTERVAL = 2;
+    // Monsters move by half-pixel steps, but not on every update. The interval
+    // keeps their apparent speed close to Sid's current movement speed.
+    private static readonly MOVEMENT_FRAME_INTERVAL = 2;
 
     private readonly sprite: GameObjects.Sprite;
     private readonly firstPositionX: number;
@@ -55,6 +54,11 @@ export class Monster
     private movementAccumulator = 1;
     private active = true;
 
+    /**
+     * @param scene Gameplay scene that owns the monster sprite.
+     * @param monsterObject Tiled object containing position, type and movement data.
+     * @param tileProperties Tileset metadata describing the real collision box.
+     */
     constructor(scene: Scene, monsterObject: TiledMonsterObject, tileProperties: MonsterTileProperties)
     {
         const textureKey = this.requireMonsterType(monsterObject);
@@ -97,7 +101,7 @@ export class Monster
     }
 
     /**
-     * Restores the original Tiled position after the temporary level reset.
+     * Restores the original Tiled position after a level reset.
      */
     reset(): void
     {
@@ -140,7 +144,6 @@ export class Monster
         };
     }
 
-
     /**
      * Returns the current top-left sprite position for reverse explosions.
      */
@@ -170,7 +173,7 @@ export class Monster
     }
 
     /**
-     * Tests the Phaser 2 monster hitbox against the temporary player body box.
+     * Tests the monster's real hitbox against the player's body probe.
      */
     touchesPlayer(playerBounds: PlayerProbeRectangle): boolean
     {
@@ -241,9 +244,9 @@ export class Monster
 
     private shouldMoveThisFrame(): boolean
     {
-        // Reuse the same accumulator style as the temporary player movement:
-        // the monster keeps its 0.5px Phaser 2 step, but the step is paced down.
-        this.movementAccumulator += 1 / Monster.PROTOTYPE_MOVEMENT_FRAME_INTERVAL;
+        // Accumulate fractional movement permission so the monster can keep its
+        // tiny 0.5px step without moving on every browser update.
+        this.movementAccumulator += 1 / Monster.MOVEMENT_FRAME_INTERVAL;
 
         if (this.movementAccumulator < 1) {
             return false;

@@ -4,13 +4,11 @@ const RETRO_FONT_CHARS = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRST
 const UNKNOWN_CHARACTER_INDEX = RETRO_FONT_CHARS.indexOf("?");
 
 /**
- * Small Phaser 4 renderer for the bitmap font used by the original HUD.
+ * Renderer for the bitmap font used by the HUD and text screens.
  *
- * Phaser 2 exposed `RetroFont`, but Phaser 4 does not provide the same helper.
- * This class keeps the old 16x16 character grid by slicing `fonts.png` into
- * texture frames and composing labels from individual image game objects. It is
- * also reused by the title, help and ending screens so those screens keep the
- * same chunky C64-style typography as the HUD.
+ * The class slices `fonts.png` into 16x16 character frames, then composes labels
+ * from individual image objects. It supports multi-line text, tinting and the
+ * large scaled message used by the ending screen.
  */
 export class RetroHudText
 {
@@ -18,6 +16,17 @@ export class RetroHudText
     private readonly letters: GameObjects.Image[] = [];
     private currentText = "";
 
+    /**
+     * @param scene Scene that owns the composed text container.
+     * @param textureKey Bitmap font texture key.
+     * @param x Left position of the text block in logical pixels.
+     * @param y Top position of the text block in logical pixels.
+     * @param charWidth Width of one character cell in the font texture.
+     * @param charHeight Height of one character cell in the font texture.
+     * @param tint Initial color applied to every character.
+     * @param characterSpacing Extra pixels inserted between characters.
+     * @param lineSpacing Extra pixels inserted between text lines.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly textureKey: string,
@@ -112,7 +121,7 @@ export class RetroHudText
 }
 
 /**
- * Adds named frames for each character of the old Phaser 2 RetroFont set.
+ * Adds named frames for each supported character in `fonts.png`.
  */
 function ensureRetroFontFrames(scene: Scene, textureKey: string, charWidth: number, charHeight: number): void
 {

@@ -2,12 +2,12 @@ import type { Tilemaps } from "phaser";
 import type { Player } from "../entities/Player";
 
 /**
- * Debug-only free movement helper for the Phaser 4 prototype.
+ * Debug-only free movement helper.
  *
  * This class is enabled only through `?debug=1`. While a numpad movement key is
  * held, it moves the player directly through the Tiled world without applying
  * collisions, gravity, ladders, slides or jump rules. Releasing the key returns
- * control to the normal temporary gameplay movement.
+ * control to the normal gameplay update.
  */
 export class DebugPlayerControls
 {
@@ -52,8 +52,8 @@ export class DebugPlayerControls
     /**
      * Moves the player freely when a numpad debug key is held.
      *
-     * The return value tells GameScene whether the normal prototype movement
-     * should be skipped for this frame.
+     * The return value tells GameScene whether the normal gameplay update should
+     * be skipped for this frame.
      */
     update(player: Player, map: Tilemaps.Tilemap, deltaMs: number): boolean
     {
@@ -61,7 +61,7 @@ export class DebugPlayerControls
             return false;
         }
 
-        player.cancelPrototypeMovementForDebug();
+        player.cancelMovementForDebug();
 
         const sprite = player.getSprite();
         const xDirection = this.directionValue(DebugPlayerControls.NUMPAD_RIGHT) -

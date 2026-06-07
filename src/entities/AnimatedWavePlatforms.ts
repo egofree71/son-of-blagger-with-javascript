@@ -1,12 +1,10 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 
 /**
- * Creates the animated wave-platform overlays used by the Phaser 4 prototype.
+ * Draws animated wave-platform overlays above solid map tiles.
  *
- * Phaser 2 generated these decorative wave sprites from two solid Tiled tiles.
- * The Phaser 4 prototype keeps the same split: the map tiles still provide the
- * solid platform collision data, while this class hides the static tile art and
- * draws the animated wave sprites on top.
+ * Wave platform tiles remain in the map for collision. This class only hides
+ * their static art and replaces it with the animated left/right wave sprites.
  */
 export class AnimatedWavePlatforms
 {
@@ -19,6 +17,12 @@ export class AnimatedWavePlatforms
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
+    /**
+     * @param scene Scene that owns the wave overlay sprites.
+     * @param layer Tiled background layer scanned for wave-platform tiles.
+     * @param leftTextureKey Spritesheet key used for the left wave tile.
+     * @param rightTextureKey Spritesheet key used for the right wave tile.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly layer: Tilemaps.TilemapLayerBase,
@@ -30,7 +34,7 @@ export class AnimatedWavePlatforms
     }
 
     /**
-     * Advances all wave-platform overlays using the Phaser 2 visual cadence.
+     * Advances all wave overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -44,6 +48,8 @@ export class AnimatedWavePlatforms
             return;
         }
 
+        // Consume every complete animation step since the previous update. This
+        // keeps the visual loop stable when the browser misses a frame.
         const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedWavePlatforms.FRAME_DURATION_MS);
         this.elapsedFrameTimeMs %= AnimatedWavePlatforms.FRAME_DURATION_MS;
         this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedWavePlatforms.FRAME_COUNT;
@@ -73,16 +79,15 @@ export class AnimatedWavePlatforms
 
             this.sprites.push(sprite);
 
-            // Hide the static wave tile after creating the overlay. The tile
-            // stays in the map so its solid property still supports collision.
+            // The hidden tile still provides solid-platform collision; only its
+            // static drawing is replaced by the animated sprite.
             tile.setVisible(false);
         });
     }
 
     private getTextureKeyForTile(tile: Tilemaps.Tile): string | null
     {
-        // Phaser 2's createSpritesFromTiles used tile indices 31 and 32 for the
-        // two halves of this animated platform decoration.
+        // The imported map stores the two wave halves as two tile ids.
         if (tile.index === AnimatedWavePlatforms.LEFT_WAVE_TILE_INDEX) {
             return this.leftTextureKey;
         }

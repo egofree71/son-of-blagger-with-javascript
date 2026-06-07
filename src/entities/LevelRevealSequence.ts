@@ -1,13 +1,11 @@
 import type { GameObjects, Scene } from "phaser";
 
 /**
- * Plays the original level-start reveal over the gameplay viewport.
+ * Opens a level by revealing the gameplay viewport from the center outward.
  *
- * The Phaser 2 version covered the camera with two black rectangles, then
- * shrank them from the center until the level was fully visible. The Phaser 4
- * port keeps that visual as an update-driven sequence owned by GameScene. HUD
- * rendering is intentionally left alone because the HUD lives in its own lower
- * scene and should already be visible before the level opens.
+ * The sequence draws two black masks over the upper play area and shrinks them
+ * until the map is visible. The HUD is not touched because it lives in its own
+ * lower scene and should already be visible while the level opens.
  */
 export class LevelRevealSequence
 {
@@ -28,6 +26,11 @@ export class LevelRevealSequence
     private playing = false;
     private onComplete?: () => void;
 
+    /**
+     * @param scene Scene that owns the reveal masks.
+     * @param viewportWidth Width of the gameplay viewport in logical pixels.
+     * @param viewportHeight Height of the gameplay viewport in logical pixels.
+     */
     constructor(scene: Scene, viewportWidth: number, viewportHeight: number)
     {
         this.scene = scene;

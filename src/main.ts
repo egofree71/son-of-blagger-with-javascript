@@ -8,12 +8,10 @@ import { GameOverScene } from "./scenes/GameOverScene";
 import { EndingScene } from "./scenes/EndingScene";
 
 /**
- * Browser entry point for the Phaser 4 prototype.
+ * Browser entry point for the Phaser 4 game.
  *
- * This file replaces the old Phaser 2 bootstrap only on the prototype branch.
- * The game keeps the original 640x400 logical resolution, while Phaser's Scale
- * Manager enlarges the canvas in the browser so manual comparisons remain close
- * to the previous remake.
+ * The game keeps a 640x400 logical resolution. Phaser's Scale Manager enlarges
+ * the canvas in the browser while preserving the aspect ratio.
  */
 
 const GAME_WIDTH = 640;
@@ -23,13 +21,12 @@ const config = {
     type: AUTO,
     backgroundColor: "#c0c0c0",
 
-    // Let the browser smooth the final scaled canvas, like the Phaser 2 reference.
-    // Forcing pixel-art scaling makes diagonal tiles shimmer at fractional sizes.
+    // Let the browser smooth the final scaled canvas. Forcing pixel-art scaling
+    // makes diagonal tiles shimmer at fractional browser sizes.
     pixelArt: false,
     roundPixels: true,
 
-    // FIT preserves the aspect ratio and fills the browser height as much as the
-    // original Phaser 2 SHOW_ALL-style display did.
+    // FIT preserves the aspect ratio and fills the available browser area.
     scale: {
         parent: "game-container",
         mode: Scale.FIT,

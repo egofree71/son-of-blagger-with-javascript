@@ -3,10 +3,9 @@ import type { SonOfBlaggerDebugTools } from "../js/debugTools.ts";
 declare global {
   const Phaser: any;
 
-  // Phaser 2.3 and a few runtime objects are still mirrored as classic browser
-  // globals through PhaserRuntimeContext and Phaser itself. These loose
-  // declarations keep the TypeScript migration pragmatic: they describe the
-  // current architecture without forcing a full Phaser 2 type model yet.
+  // Legacy runtime objects are still mirrored as classic browser globals by the
+  // old JavaScript files. These loose declarations let TypeScript compile while
+  // that legacy code remains in the repository.
   var game: any;
   var map: any;
   var layer: any;

@@ -1,21 +1,24 @@
 import type { GameScene } from "../scenes/GameScene";
 
 /**
- * Installs browser-console helpers for the Phaser 4 prototype.
+ * Installs browser-console helpers for development and regression testing.
  *
- * These helpers exist only when the game is launched with `?debug=1`. They are
- * intentionally small and delegate real work back to GameScene so the prototype
- * gameplay state still has one owner.
+ * The helpers exist only when the game is launched with `?debug=1`. They stay
+ * deliberately thin: GameScene still owns the gameplay state and performs the
+ * actual actions.
  */
 export class DebugConsole
 {
-    private readonly api: PrototypeDebugApi;
+    private readonly api: DebugApi;
 
+    /**
+     * @param scene Active gameplay scene that receives all debug commands.
+     */
     constructor(private readonly scene: GameScene)
     {
         this.api = {
             help: () => this.help(),
-            status: () => this.scene.getPrototypeDebugStatus(),
+            status: () => this.scene.getDebugStatus(),
             collectAllKeys: () => this.collectAllKeys(),
             finishLevel: () => this.finishLevel(),
             finishGame: () => this.finishGame(),
@@ -51,8 +54,8 @@ export class DebugConsole
             "sobDebug.collectAllKeys() - collect all keys for the current level",
             "sobDebug.finishLevel()     - collect all keys and start level/final completion",
             "sobDebug.finishGame()      - start the final end-game sequence immediately",
-            "sobDebug.resetLevel()      - reset the player, keys and temporary exit state",
-            "sobDebug.status()          - show the current Phaser 4 prototype status",
+            "sobDebug.resetLevel()      - reset the current level runtime",
+            "sobDebug.status()          - show the current runtime status",
             "sobDebug.runtime()         - return the active GameScene instance",
             "Numpad 8/2/4/6             - free-move Sid while ?debug=1 is enabled"
         ];
@@ -79,7 +82,7 @@ export class DebugConsole
     private resetLevel(): string
     {
         this.scene.resetLevelForDebug();
-        return "Prototype level state reset.";
+        return "Current level runtime reset.";
     }
 
     private debugWindow(): WindowWithDebugApi
@@ -88,7 +91,7 @@ export class DebugConsole
     }
 }
 
-export interface PrototypeDebugStatus
+export interface DebugStatus
 {
     debugMode: boolean;
     level: number;
@@ -115,10 +118,10 @@ export interface PrototypeDebugStatus
     } | null;
 }
 
-interface PrototypeDebugApi
+interface DebugApi
 {
     help(): string[];
-    status(): PrototypeDebugStatus;
+    status(): DebugStatus;
     collectAllKeys(): string;
     finishLevel(): string;
     finishGame(): string;
@@ -128,5 +131,5 @@ interface PrototypeDebugApi
 
 interface WindowWithDebugApi extends Window
 {
-    sobDebug?: PrototypeDebugApi;
+    sobDebug?: DebugApi;
 }

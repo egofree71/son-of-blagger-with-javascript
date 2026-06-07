@@ -2,12 +2,11 @@ import type { GameObjects, Scene } from "phaser";
 import { MonsterManager, type MonsterSpawnPoint } from "./MonsterManager";
 
 /**
- * Plays the temporary monster reveal effect before gameplay starts.
+ * Reveals monsters with an explosion effect before gameplay starts.
  *
- * The original game hides each monster, plays an explosion at its spawn
- * position, then makes all monsters visible when the reveal has finished. The
- * Phaser 4 prototype keeps that behaviour as a small update-driven sequence so
- * GameScene can simply block gameplay while the effect is active.
+ * Monsters are hidden and harmless while the effect plays. When the last
+ * explosion frame has been shown, the sequence calls back into GameScene so the
+ * monsters can become visible, active and dangerous.
  */
 export class MonsterSpawnSequence
 {
@@ -25,6 +24,11 @@ export class MonsterSpawnSequence
     private playing = false;
     private onComplete?: () => void;
 
+    /**
+     * @param scene Gameplay scene that owns the explosion sprites.
+     * @param monsterManager Monsters that should be hidden and revealed.
+     * @param explosionTextureKey Spritesheet key for the reveal explosion.
+     */
     constructor(scene: Scene, monsterManager: MonsterManager, explosionTextureKey: string)
     {
         this.scene = scene;

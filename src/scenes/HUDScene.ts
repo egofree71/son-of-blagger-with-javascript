@@ -4,9 +4,9 @@ import { DEFAULT_HUD_STATE, HUDState, HUDStatePatch } from "../ui/HUDState";
 import { HudConstants } from "../ui/hudConstants";
 import { RetroHudText } from "../ui/RetroHudText";
 
-export const PROTOTYPE_KEYS_CHANGED_EVENT = "prototype-keys-changed";
-export const PROTOTYPE_PLAYER_KILLED_EVENT = "prototype-player-killed";
-export const PROTOTYPE_EXIT_CHANGED_EVENT = "prototype-exit-changed";
+export const KEYS_CHANGED_EVENT = "keys-changed";
+export const PLAYER_KILLED_EVENT = "player-killed";
+export const EXIT_CHANGED_EVENT = "exit-changed";
 export const HUD_STATE_CHANGED_EVENT = "hud-state-changed";
 
 const FONT_TEXTURE_KEY = "blagger-font";
@@ -19,12 +19,11 @@ interface HUDSceneData extends Partial<HUDState>
 }
 
 /**
- * Lower status area for the Phaser 4 prototype.
+ * Lower status area shown below the gameplay viewport.
  *
- * The scene ports the visual structure of the Phaser 2 HUD: black lower panel,
- * retro bitmap labels, score, hi-score, lives, level, air bar and bonus-man
- * sprite. The values are still fed by temporary Phaser 4 state until the real
- * GameController / LevelState flow is ported.
+ * The HUD owns the black lower panel, retro bitmap labels, score, hi-score,
+ * lives, level, air bar and bonus-man sprite. It does not calculate gameplay
+ * values; it only renders the state patches emitted by GameScene.
  */
 export class HUDScene extends Scene
 {
@@ -181,8 +180,8 @@ export class HUDScene extends Scene
             return;
         }
 
-        // Preserve the old Phaser 2 drawing rule: the black mask width is the
-        // current air value, so later score-conversion work can reuse it exactly.
+        // The air value is drawn as a black mask over the colored gradient: lower
+        // air means a wider visible black overlay.
         this.airMask.clear();
         this.airMask.fillStyle(HudConstants.COLOR_BLACK, 1);
         this.airMask.fillRect(

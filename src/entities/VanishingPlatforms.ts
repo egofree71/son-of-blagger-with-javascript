@@ -1,12 +1,11 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 
 /**
- * Manages the animated vanishing platforms used by the Phaser 4 prototype.
+ * Manages animated platforms that periodically stop supporting the player.
  *
- * The original Phaser 2 implementation generated animated sprites from special
- * Tiled tiles and kept collision tied to the platform animation frame. This
- * class keeps that behavior local to the modern prototype instead of pushing
- * more special cases into the generic tile-probe helper.
+ * The static Tiled tiles mark where these platforms live. This class replaces
+ * their artwork with animated sprites and answers the collision probe only while
+ * the current animation frame is solid.
  */
 export class VanishingPlatforms
 {
@@ -15,8 +14,8 @@ export class VanishingPlatforms
     private static readonly BLANK_TILE_INDEX = 30;
     private static readonly FRAME_COUNT = 8;
     private static readonly NON_COLLIDING_FRAME = 4;
-    // Phaser 2 played this group at two animation frames per second. Using
-    // elapsed milliseconds keeps that speed stable on 60 Hz, 120 Hz or 144 Hz screens.
+    // Two animation frames per second gives the platform its slow blink. Using
+    // elapsed milliseconds keeps that speed stable on high-refresh displays.
     private static readonly FRAME_DURATION_MS = 500;
 
     private readonly tileCoordinates = new Set<string>();
@@ -24,6 +23,11 @@ export class VanishingPlatforms
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
+    /**
+     * @param scene Scene that owns the replacement platform sprites.
+     * @param layer Tiled background layer scanned for vanishing-platform tiles.
+     * @param textureKey Spritesheet key used for the platform animation.
+     */
     constructor(
         private readonly scene: Scene,
         private readonly layer: Tilemaps.TilemapLayerBase,
@@ -70,8 +74,8 @@ export class VanishingPlatforms
         const tileY = Math.floor(y / this.layer.tilemap.tileHeight);
         const tileTopY = tileY * this.layer.tilemap.tileHeight;
 
-        // Phaser 2 only collides when the foot probe is exactly on the top edge
-        // of the vanishing-platform tile, not when the probe passes through it.
+        // The foot probe must be exactly on the tile top edge. This prevents Sid
+        // from catching the platform while passing through its side or underside.
         if (Math.floor(y) !== tileTopY) {
             return false;
         }
@@ -79,8 +83,8 @@ export class VanishingPlatforms
         const start = Math.floor(Math.min(xStart, xEnd));
         const end = Math.floor(Math.max(xStart, xEnd));
 
-        // Keep the same pixel-scan style as the other movement probes. It is not
-        // the fastest approach, but it keeps this first port easy to compare.
+        // Scan each pixel touched by the foot line so narrow contacts near tile
+        // boundaries behave the same as other movement probes.
         for (let x = start; x <= end; x += 1) {
             const tileX = Math.floor(x / this.layer.tilemap.tileWidth);
 
