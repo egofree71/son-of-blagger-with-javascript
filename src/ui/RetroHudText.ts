@@ -1,4 +1,4 @@
-import { GameObjects, Scene } from "phaser";
+import { GameObjects, Scene, Textures } from "phaser";
 
 const RETRO_FONT_CHARS = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const UNKNOWN_CHARACTER_INDEX = RETRO_FONT_CHARS.indexOf("?");
@@ -31,6 +31,7 @@ export class RetroHudText
     )
     {
         ensureRetroFontFrames(scene, textureKey, charWidth, charHeight);
+        scene.textures.get(textureKey).setFilter(Textures.FilterMode.NEAREST);
         this.container = scene.add.container(x, y);
     }
 

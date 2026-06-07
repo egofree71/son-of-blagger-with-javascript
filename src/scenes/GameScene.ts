@@ -259,6 +259,23 @@ export class GameScene extends Scene
         this.startEndGame();
     }
 
+
+    /**
+     * Starts the final end-game sequence from the browser console.
+     *
+     * This is deliberately available from any level so the ending screen can be
+     * tuned visually without playing through the full map every time.
+     */
+    finishGameForDebug(): void
+    {
+        this.collectAllKeysForDebug();
+        this.sessionState.currentLevel.markExitReached();
+        this.gameOverActive = false;
+        this.scene.stop("GameOverScene");
+        this.emitTemporaryExitState();
+        this.startEndGame();
+    }
+
     /**
      * Resets the current prototype level state from the browser console.
      */

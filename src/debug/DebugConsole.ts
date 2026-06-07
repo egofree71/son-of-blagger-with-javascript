@@ -18,6 +18,7 @@ export class DebugConsole
             status: () => this.scene.getPrototypeDebugStatus(),
             collectAllKeys: () => this.collectAllKeys(),
             finishLevel: () => this.finishLevel(),
+            finishGame: () => this.finishGame(),
             resetLevel: () => this.resetLevel(),
             runtime: () => this.scene
         };
@@ -49,6 +50,7 @@ export class DebugConsole
         return [
             "sobDebug.collectAllKeys() - collect all keys for the current level",
             "sobDebug.finishLevel()     - collect all keys and start level/final completion",
+            "sobDebug.finishGame()      - start the final end-game sequence immediately",
             "sobDebug.resetLevel()      - reset the player, keys and temporary exit state",
             "sobDebug.status()          - show the current Phaser 4 prototype status",
             "sobDebug.runtime()         - return the active GameScene instance",
@@ -66,6 +68,12 @@ export class DebugConsole
     {
         this.scene.finishLevelForDebug();
         return "Current level completion requested.";
+    }
+
+    private finishGame(): string
+    {
+        this.scene.finishGameForDebug();
+        return "Final end-game sequence requested.";
     }
 
     private resetLevel(): string
@@ -113,6 +121,7 @@ interface PrototypeDebugApi
     status(): PrototypeDebugStatus;
     collectAllKeys(): string;
     finishLevel(): string;
+    finishGame(): string;
     resetLevel(): string;
     runtime(): GameScene;
 }

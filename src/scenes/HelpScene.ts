@@ -37,13 +37,30 @@ export class HelpScene extends Scene
     create(): void
     {
         this.cameras.main.setBackgroundColor(0x000000);
+        this.usePixelatedCanvasWhileActive();
         this.add.rectangle(0, 0, 640, 400, 0x000000).setOrigin(0);
 
-        const helpText = new RetroHudText(this, FONT_TEXTURE_KEY, 10, 10, 16, 16, 0xc0c0c0);
+        // Phaser 2 used `font.setText(..., true, 0, 6)` here. The extra
+        // six pixels are important, otherwise the help text looks crushed.
+        const helpText = new RetroHudText(this, FONT_TEXTURE_KEY, 10, 10, 16, 16, 0xc0c0c0, 0, 6);
         helpText.setText(HELP_TEXT);
 
         this.input.keyboard?.once("keydown", () => {
             this.scene.start("TitleScene");
+        });
+    }
+
+    private usePixelatedCanvasWhileActive(): void
+    {
+        const canvasStyle = this.game.canvas.style;
+        const previousImageRendering = canvasStyle.imageRendering;
+
+        // The gameplay canvas stays smoothed, but this full-screen text page is
+        // closer to the C64 reference when the browser does not blur the pixels.
+        canvasStyle.imageRendering = "pixelated";
+
+        this.events.once("shutdown", () => {
+            canvasStyle.imageRendering = previousImageRendering;
         });
     }
 }

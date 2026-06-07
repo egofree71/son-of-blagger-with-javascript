@@ -37,6 +37,7 @@ export class EndingScene extends Scene
     create(): void
     {
         this.cameras.main.setBackgroundColor(0x000000);
+        this.usePixelatedCanvasWhileActive();
         this.add.rectangle(0, 0, 640, 400, 0x000000).setOrigin(0).setDepth(1000);
 
         this.message = new RetroHudText(
@@ -63,6 +64,21 @@ export class EndingScene extends Scene
             this.frameAccumulatorMs -= LOGICAL_FRAME_MS;
             this.updateOneLogicalFrame();
         }
+    }
+
+    private usePixelatedCanvasWhileActive(): void
+    {
+        const canvasStyle = this.game.canvas.style;
+        const previousImageRendering = canvasStyle.imageRendering;
+
+        // The final message is a full-screen bitmap-font effect. Keeping only
+        // this scene pixelated avoids blurring the scaled letters without
+        // changing the smoother in-game rendering used by the map.
+        canvasStyle.imageRendering = "pixelated";
+
+        this.events.once("shutdown", () => {
+            canvasStyle.imageRendering = previousImageRendering;
+        });
     }
 
     private updateOneLogicalFrame(): void
