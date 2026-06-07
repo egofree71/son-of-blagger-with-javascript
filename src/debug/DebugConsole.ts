@@ -94,6 +94,7 @@ export interface PrototypeDebugStatus
     hiScore: number;
     airLevel: number;
     monstersLoaded: number;
+    monsterSpawnSequencePlaying: boolean;
     deathSequencePlaying: boolean;
     player: {
         x: number;

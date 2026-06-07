@@ -69,6 +69,11 @@ export class PreloadScene extends Scene
             frameHeight: 42
         });
 
+        this.load.spritesheet("explosion", "assets/sprites/explosion.png", {
+            frameWidth: 48,
+            frameHeight: 42
+        });
+
         this.load.image("blagger-font", "assets/tileset/fonts.png");
 
         this.load.spritesheet("bonus-man", "assets/sprites/bonus man.png", {

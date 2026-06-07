@@ -53,6 +53,7 @@ export class Monster
     private distanceFromOrigin = 0;
     private animationFrameIndex = 0;
     private movementAccumulator = 1;
+    private active = true;
 
     constructor(scene: Scene, monsterObject: TiledMonsterObject, tileProperties: MonsterTileProperties)
     {
@@ -78,6 +79,10 @@ export class Monster
      */
     update(advanceAnimation: boolean): void
     {
+        if (!this.active) {
+            return;
+        }
+
         if (advanceAnimation) {
             this.advanceAnimationFrame();
         }
@@ -102,7 +107,37 @@ export class Monster
         this.animationFrameIndex = 0;
         this.movementAccumulator = 1;
         this.sprite.setFrame(Monster.ANIMATION_FRAMES[0]);
+        this.sprite.setVisible(this.active);
+    }
+
+    /**
+     * Hides the monster and disables movement/collision during the reveal effect.
+     */
+    prepareForSpawnReveal(): void
+    {
+        this.active = false;
+        this.reset();
+        this.sprite.setVisible(false);
+    }
+
+    /**
+     * Makes the monster visible and dangerous after the reveal effect completes.
+     */
+    activateAfterSpawnReveal(): void
+    {
+        this.active = true;
         this.sprite.setVisible(true);
+    }
+
+    /**
+     * Returns the map position where the spawn explosion should be shown.
+     */
+    getSpawnPosition(): { x: number; y: number }
+    {
+        return {
+            x: this.firstPositionX,
+            y: this.firstPositionY
+        };
     }
 
     /**
@@ -110,6 +145,10 @@ export class Monster
      */
     touchesPlayer(playerBounds: PlayerProbeRectangle): boolean
     {
+        if (!this.active) {
+            return false;
+        }
+
         const monsterLeft = this.sprite.x + this.collisionOffsetX;
         const monsterTop = this.sprite.y + this.collisionOffsetY;
         const monsterRight = monsterLeft + this.realWidth;

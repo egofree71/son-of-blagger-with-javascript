@@ -11,6 +11,12 @@ interface TiledMonsterObject extends TiledObjectLike
     type?: string;
 }
 
+export interface MonsterSpawnPoint
+{
+    x: number;
+    y: number;
+}
+
 /**
  * Loads and updates the level monsters for the Phaser 4 prototype.
  *
@@ -67,6 +73,37 @@ export class MonsterManager
         for (const monster of this.monsters) {
             monster.reset();
         }
+    }
+
+    /**
+     * Resets, hides and disables monsters before their spawn explosions.
+     */
+    prepareForSpawnReveal(): void
+    {
+        this.animationCounter = this.animationCounterMax;
+        this.animationFrameAccumulator = 1;
+
+        for (const monster of this.monsters) {
+            monster.prepareForSpawnReveal();
+        }
+    }
+
+    /**
+     * Makes all monsters visible and active after the reveal has finished.
+     */
+    activateAfterSpawnReveal(): void
+    {
+        for (const monster of this.monsters) {
+            monster.activateAfterSpawnReveal();
+        }
+    }
+
+    /**
+     * Returns the positions used by the spawn explosion sequence.
+     */
+    getSpawnPoints(): MonsterSpawnPoint[]
+    {
+        return this.monsters.map((monster) => monster.getSpawnPosition());
     }
 
     /**

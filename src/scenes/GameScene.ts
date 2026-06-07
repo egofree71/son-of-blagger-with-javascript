@@ -15,6 +15,7 @@ import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { ExitDetector } from "../entities/ExitDetector";
 import { MonsterManager } from "../entities/MonsterManager";
+import { MonsterSpawnSequence } from "../entities/MonsterSpawnSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { HUD_STATE_CHANGED_EVENT, PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
@@ -45,6 +46,7 @@ export class GameScene extends Scene
     private playerDeathSequence?: PlayerDeathSequence;
     private exitDetector?: ExitDetector;
     private monsterManager?: MonsterManager;
+    private monsterSpawnSequence?: MonsterSpawnSequence;
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
@@ -90,6 +92,7 @@ export class GameScene extends Scene
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
         this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
         this.monsterManager = new MonsterManager(this, this.map, levelNumber);
+        this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(levelNumber);
@@ -118,11 +121,13 @@ export class GameScene extends Scene
             debugModeEnabled: this.debugPlayerControls !== undefined,
             ...this.sessionState.toHUDState()
         });
+
+        this.startMonsterSpawnSequence();
     }
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.cursors) {
             return;
         }
 
@@ -133,6 +138,11 @@ export class GameScene extends Scene
         this.playerDeathSequence.update(delta);
 
         if (this.playerDeathSequence.isPlaying()) {
+            return;
+        }
+
+        if (this.monsterSpawnSequence.isPlaying()) {
+            this.monsterSpawnSequence.update(delta);
             return;
         }
 
@@ -206,9 +216,9 @@ export class GameScene extends Scene
         }
 
         this.player.resetToTiledStart(this.currentPlayerStart);
-        this.monsterManager?.reset();
         this.keyCollector.reset();
         this.sessionState.currentLevel.resetRun();
+        this.startMonsterSpawnSequence();
 
         this.emitHUDState();
         this.emitKeyState();
@@ -236,6 +246,7 @@ export class GameScene extends Scene
             hiScore: this.sessionState.hiScore,
             airLevel: levelState.airLevel,
             monstersLoaded: this.monsterManager?.count ?? 0,
+            monsterSpawnSequencePlaying: this.monsterSpawnSequence?.isPlaying() ?? false,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
                 ? {
@@ -303,8 +314,8 @@ export class GameScene extends Scene
         // This remains a prototype consequence of death: the game-over screen is
         // not ported yet, so even at zero lives the level is reset for testing.
         this.player.resetToTiledStart(this.currentPlayerStart);
-        this.monsterManager?.reset();
         this.keyCollector.reset();
+        this.startMonsterSpawnSequence();
 
         this.emitHUDState();
 
@@ -313,6 +324,18 @@ export class GameScene extends Scene
         });
         this.emitKeyState();
         this.emitTemporaryExitState();
+    }
+
+
+    private startMonsterSpawnSequence(): void
+    {
+        if (!this.monsterManager || !this.monsterSpawnSequence) {
+            return;
+        }
+
+        this.monsterSpawnSequence.start(() => {
+            this.monsterManager?.activateAfterSpawnReveal();
+        });
     }
 
     private collectKeyIfNeeded(): void
