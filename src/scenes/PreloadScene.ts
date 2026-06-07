@@ -103,6 +103,41 @@ export class PreloadScene extends Scene
             frameWidth: 16,
             frameHeight: 16
         });
+
+        const monsterTextureKeys = [
+            "shoe",
+            "heart",
+            "mouth",
+            "toothbrush",
+            "scissors",
+            "ghost",
+            "peach",
+            "dial",
+            "candle",
+            "tape",
+            "tribble",
+            "bird",
+            "bus",
+            "cup",
+            "plane",
+            "scare crow",
+            "flag",
+            "skull",
+            "keyboard",
+            "phone",
+            "commodore",
+            "alien_2",
+            "alien_3"
+        ];
+
+        for (const monsterTextureKey of monsterTextureKeys) {
+            // Monster object types in Tiled use these exact keys, including names
+            // with spaces such as "scare crow". Keep them explicit for now.
+            this.load.spritesheet(monsterTextureKey, `assets/sprites/${monsterTextureKey}.png`, {
+                frameWidth: 48,
+                frameHeight: 42
+            });
+        }
     }
 
     create(): void

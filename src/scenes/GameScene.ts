@@ -14,6 +14,7 @@ import { KeyCollector } from "../entities/KeyCollector";
 import { DeadlyTileDetector } from "../entities/DeadlyTileDetector";
 import { PlayerDeathSequence } from "../entities/PlayerDeathSequence";
 import { ExitDetector } from "../entities/ExitDetector";
+import { MonsterManager } from "../entities/MonsterManager";
 import { Data } from "../js/data";
 import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_PLAYER_KILLED_EVENT } from "./HUDScene";
 
@@ -23,11 +24,11 @@ import { PROTOTYPE_EXIT_CHANGED_EVENT, PROTOTYPE_KEYS_CHANGED_EVENT, PROTOTYPE_P
  * This scene is still not real gameplay. Its job is to prove that Phaser 4 can
  * load the existing Son of Blagger map, render the main background layer, place
  * Slippery Sid at the same level-1 start position as the Phaser 2 reference, and
- * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, animated-wave-platform, vanishing-platform, key-collection and deadly-tile test.
+ * run a small walking, wall-blocking, falling, jumping, ladder, animated-ladder, conveyor, animated-wave-platform, vanishing-platform, key-collection, deadly-tile and monster test.
  *
  * The real movement rules should still be ported separately from the Phaser 2
- * implementation. In particular, this scene does not yet perform lives, monster
- * collisions or level transitions.
+ * implementation. In particular, this scene does not yet perform lives or
+ * level transitions.
  */
 export class GameScene extends Scene
 {
@@ -46,6 +47,7 @@ export class GameScene extends Scene
     private deadlyTileDetector?: DeadlyTileDetector;
     private playerDeathSequence?: PlayerDeathSequence;
     private exitDetector?: ExitDetector;
+    private monsterManager?: MonsterManager;
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
@@ -89,6 +91,7 @@ export class GameScene extends Scene
         this.keyCollector = new KeyCollector(backgroundLayer);
         this.deadlyTileDetector = new DeadlyTileDetector(backgroundLayer);
         this.playerDeathSequence = new PlayerDeathSequence(this, "blagger-dying", "blagger-dying-white");
+        this.monsterManager = new MonsterManager(this, this.map, GameScene.CURRENT_LEVEL_NUMBER);
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(GameScene.CURRENT_LEVEL_NUMBER);
@@ -125,7 +128,7 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.cursors) {
             return;
         }
 
@@ -138,6 +141,10 @@ export class GameScene extends Scene
         if (this.playerDeathSequence.isPlaying()) {
             return;
         }
+
+        // Match the Phaser 2 update order: monsters move before the player
+        // resolves this frame's interaction checks.
+        this.monsterManager.update();
 
         const debugFreeMoveActive = this.debugPlayerControls?.update(this.player, this.map, delta) ?? false;
 
@@ -204,6 +211,7 @@ export class GameScene extends Scene
         }
 
         this.player.resetToTiledStart(this.currentPlayerStart);
+        this.monsterManager?.reset();
         this.keyCollector.reset();
         this.temporaryExitReached = false;
 
@@ -229,6 +237,7 @@ export class GameScene extends Scene
             exitReady: this.hasCollectedAllKeys(),
             exitReached: this.temporaryExitReached,
             deaths: this.temporaryDeathCount,
+            monstersLoaded: this.monsterManager?.count ?? 0,
             deathSequencePlaying: this.playerDeathSequence?.isPlaying() ?? false,
             player: sprite
                 ? {
@@ -241,11 +250,14 @@ export class GameScene extends Scene
 
     private killPlayerIfNeeded(): boolean
     {
-        if (!this.player || !this.deadlyTileDetector || !this.playerDeathSequence) {
+        if (!this.player || !this.deadlyTileDetector || !this.monsterManager || !this.playerDeathSequence) {
             return false;
         }
 
-        if (!this.deadlyTileDetector.touchesDeadlyTile(this.player.getDeadlyCollisionBounds())) {
+        const touchesDeadlyTile = this.deadlyTileDetector.touchesDeadlyTile(this.player.getDeadlyCollisionBounds());
+        const touchesMonster = this.monsterManager.touchesPlayer(this.player.getBodyCollisionBounds());
+
+        if (!touchesDeadlyTile && !touchesMonster) {
             return false;
         }
 
@@ -274,6 +286,7 @@ export class GameScene extends Scene
         // This is still a prototype consequence of death: lives and game-over are
         // not implemented yet, so the level is simply reset after the animation.
         this.player.resetToTiledStart(this.currentPlayerStart);
+        this.monsterManager?.reset();
         this.keyCollector.reset();
 
         this.game.events.emit(PROTOTYPE_PLAYER_KILLED_EVENT, {
