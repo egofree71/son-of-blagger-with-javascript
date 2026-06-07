@@ -4,6 +4,10 @@ Web remake of **Son of Blagger**, the Commodore 64 platform game created by Anto
 
 The player controls Slippery Sid through scrolling maze-like levels. Each level requires collecting all keys, avoiding monsters and deadly tiles, then reaching the exit before the air runs out.
 
+## Play online
+
+[Play Son of Blagger on GitHub Pages](https://egofree71.github.io/son-of-blagger-with-javascript/)
+
 ## Current stack
 
 - Phaser 4.1
@@ -49,43 +53,10 @@ Preview the production build locally:
 npm run preview
 ```
 
-## Debug mode
-
-Launch the game with `?debug=1` to enable browser-console helpers:
-
-```text
-http://localhost:5173/?debug=1
-```
-
-Useful commands include:
-
-```js
-sobDebug.help();
-sobDebug.status();
-sobDebug.collectAllKeys();
-sobDebug.finishLevel();
-sobDebug.finishGame();
-sobDebug.resetLevel();
-sobDebug.runtime();
-```
-
-Debug free-move controls use the numeric keypad:
-
-- Numpad 8: up
-- Numpad 2: down
-- Numpad 4: left
-- Numpad 6: right
-
 ## Documentation
 
 The current implementation is documented in:
 
 ```text
 doc/current_implementation.md
-```
-
-## Play online
-
-```text
-https://egofree71.github.io/son-of-blagger-with-javascript/
 ```
