@@ -34,6 +34,12 @@ interface InputEventLike
     stopPropagation?: () => void;
 }
 
+interface LockableOrientation
+{
+    lock?: (orientation: "landscape") => Promise<void>;
+    unlock?: () => void;
+}
+
 /**
  * Lower status area shown below the gameplay viewport.
  *
@@ -63,7 +69,13 @@ export class HUDScene extends Scene
         right: new Set<number>(),
         jump: new Set<number>()
     };
-    private readonly fullscreenChangeHandler = () => this.refreshFullscreenText();
+    private readonly fullscreenChangeHandler = () => {
+        if (!document.fullscreenElement) {
+            this.unlockOrientation();
+        }
+
+        this.refreshFullscreenText();
+    };
 
     constructor()
     {
@@ -276,18 +288,54 @@ export class HUDScene extends Scene
     {
         try {
             if (document.fullscreenElement) {
+                this.unlockOrientation();
                 await document.exitFullscreen();
                 return;
             }
 
             await this.fullscreenTarget.requestFullscreen();
+            await this.lockLandscapeOrientation();
         }
         catch (error) {
-            console.warn("Fullscreen request failed.", error);
+            console.warn("Fullscreen/orientation request failed.", error);
         }
         finally {
             this.refreshFullscreenText();
         }
+    }
+
+    private async lockLandscapeOrientation(): Promise<void>
+    {
+        const orientation = this.screenOrientation;
+
+        // Browsers are free to reject orientation locking. Keeping the failure
+        // non-blocking lets the fullscreen button remain useful on iOS/Safari.
+        if (!this.touchModeEnabled || typeof orientation?.lock !== "function") {
+            return;
+        }
+
+        try {
+            await orientation.lock("landscape");
+        }
+        catch (error) {
+            console.warn("Landscape orientation lock failed.", error);
+        }
+    }
+
+    private unlockOrientation(): void
+    {
+        const orientation = this.screenOrientation;
+
+        if (!this.touchModeEnabled || typeof orientation?.unlock !== "function") {
+            return;
+        }
+
+        orientation.unlock();
+    }
+
+    private get screenOrientation(): LockableOrientation | undefined
+    {
+        return (screen as Screen & { orientation?: LockableOrientation }).orientation;
     }
 
     private get fullscreenTarget(): HTMLElement
