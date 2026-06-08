@@ -43,13 +43,19 @@ export class DeadlyTileDetector
         const start = Math.floor(Math.min(startPosition, endPosition));
         const end = Math.floor(Math.max(startPosition, endPosition));
         const fixed = Math.floor(fixedPosition);
+        const tileSize = orientation === "horizontal"
+            ? this.layer.tilemap.tileWidth
+            : this.layer.tilemap.tileHeight;
+        const startTile = Math.floor(start / tileSize);
+        const endTile = Math.floor(end / tileSize);
 
-        // Scan each pixel along the edge because trap timing depends on exact
-        // contact with narrow decorative tiles.
-        for (let position = start; position <= end; position += 1) {
+        // Deadly metadata belongs to whole tiles. Scanning the tile cells crossed
+        // by the edge preserves one-pixel contacts at boundaries, but avoids one
+        // map lookup per pixel on every gameplay frame.
+        for (let tilePosition = startTile; tilePosition <= endTile; tilePosition += 1) {
             const tile = orientation === "horizontal"
-                ? this.layer.getTileAtWorldXY(position, fixed)
-                : this.layer.getTileAtWorldXY(fixed, position);
+                ? this.layer.getTileAtWorldXY(tilePosition * tileSize, fixed)
+                : this.layer.getTileAtWorldXY(fixed, tilePosition * tileSize);
 
             if (this.isVisibleDeadlyTile(tile as Tilemaps.Tile | null)) {
                 return true;

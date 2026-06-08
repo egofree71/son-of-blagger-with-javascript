@@ -93,12 +93,14 @@ export class VanishingPlatforms
 
         const start = Math.floor(Math.min(xStart, xEnd));
         const end = Math.floor(Math.max(xStart, xEnd));
+        const tileWidth = this.layer.tilemap.tileWidth;
+        const startTileX = Math.floor(start / tileWidth);
+        const endTileX = Math.floor(end / tileWidth);
 
-        // Scan each pixel touched by the foot line so narrow contacts near tile
-        // boundaries behave the same as other movement probes.
-        for (let x = start; x <= end; x += 1) {
-            const tileX = Math.floor(x / this.layer.tilemap.tileWidth);
-
+        // Vanishing platforms occupy whole tile cells, so scanning the tile
+        // columns crossed by the foot line is enough. Boundary contacts are still
+        // preserved because both crossed columns are included.
+        for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
             if (this.activeTileCoordinates.has(this.makeTileKey(tileX, tileY))) {
                 return true;
             }

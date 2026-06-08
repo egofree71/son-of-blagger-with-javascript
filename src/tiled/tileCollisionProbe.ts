@@ -4,9 +4,9 @@ import type { Tilemaps } from "phaser";
  * Collision helper for manual tile probes.
  *
  * Player movement does not use Arcade Physics for tile contacts. Instead it
- * scans short horizontal and vertical pixel lines against properties stored in
- * the Tiled map, which gives precise control over walls, floors, slides,
- * ladders and conveyors.
+ * scans short horizontal and vertical lines against properties stored in the
+ * Tiled map, which gives precise control over walls, floors, slides, ladders
+ * and conveyors.
  */
 export class TileCollisionProbe
 {
@@ -29,7 +29,7 @@ export class TileCollisionProbe
     }
 
     /**
-     * Checks whether a vertical pixel line touches a Tiled tile named "wall".
+     * Checks whether a vertical probe line touches a Tiled tile named "wall".
      *
      * Player movement uses this for side blocking. The probe line is deliberately
      * narrower than the full 48px sprite, so visual padding does not collide.
@@ -46,7 +46,7 @@ export class TileCollisionProbe
     }
 
     /**
-     * Checks whether a horizontal pixel line touches a Tiled tile named "wall".
+     * Checks whether a horizontal probe line touches a Tiled tile named "wall".
      *
      * Jumping uses this for ceiling blocking. The probe tests a narrow line
      * slightly above the sprite instead of treating the full visual rectangle as
@@ -222,11 +222,15 @@ export class TileCollisionProbe
         const start = Math.floor(Math.min(yStart, yEnd));
         const end = Math.floor(Math.max(yStart, yEnd));
         const worldX = Math.floor(x);
+        const tileHeight = this.layer.tilemap.tileHeight;
+        const startTileY = Math.floor(start / tileHeight);
+        const endTileY = Math.floor(end / tileHeight);
 
-        // Check every pixel along the line. Tile-step scans would be faster, but
-        // this preserves one-pixel contacts at tile boundaries.
-        for (let y = start; y <= end; y += 1) {
-            const tile = this.layer.getTileAtWorldXY(worldX, y) as Tilemaps.Tile | null;
+        // Tiles have uniform metadata across their 16x16 area. Scanning each tile
+        // crossed by the line is equivalent to the old pixel-by-pixel scan, but
+        // it avoids dozens of getTileAtWorldXY calls per gameplay frame.
+        for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
+            const tile = this.layer.getTileAtWorldXY(worldX, tileY * tileHeight) as Tilemaps.Tile | null;
 
             if (this.tileHasProperty(tile, propertyName, propertyValue)) {
                 return true;
@@ -250,19 +254,27 @@ export class TileCollisionProbe
         const start = Math.floor(Math.min(xStart, xEnd));
         const end = Math.floor(Math.max(xStart, xEnd));
         const worldY = Math.floor(y);
+        const tileWidth = this.layer.tilemap.tileWidth;
+        const startTileX = Math.floor(start / tileWidth);
+        const endTileX = Math.floor(end / tileWidth);
 
-        // Keep pixel-by-pixel scanning here too, because jump landings and
-        // platform edges depend on one-pixel contact.
-        for (let x = start; x <= end; x += 1) {
-            const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
+        // For top-only checks, touching a tile is not enough: Sid must have
+        // reached the tile's upper edge. This keeps the old side/underside rule
+        // while avoiding one test per pixel.
+        if (requireTileTop && worldY % this.layer.tilemap.tileHeight !== 0) {
+            return false;
+        }
+
+        // Tiles have uniform metadata across their 16x16 area. Scanning each tile
+        // crossed by the line keeps one-pixel boundary contacts because both tile
+        // columns are included when the probe spans a tile edge.
+        for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
+            const tile = this.layer.getTileAtWorldXY(tileX * tileWidth, worldY) as Tilemaps.Tile | null;
 
             if (!this.tileHasProperty(tile, propertyName, propertyValue)) {
                 continue;
             }
 
-            // For top-only checks, touching a tile is not enough: Sid must have
-            // reached the tile's upper edge. This prevents catching the side or
-            // underside of thin platforms.
             if (requireTileTop && !this.isProbeOnTileTop(tile, worldY)) {
                 continue;
             }

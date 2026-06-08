@@ -103,11 +103,14 @@ export class KeyCollector
         const start = Math.floor(Math.min(xStart, xEnd));
         const end = Math.floor(Math.max(xStart, xEnd));
         const worldY = Math.floor(y);
+        const tileWidth = this.layer.tilemap.tileWidth;
+        const startTileX = Math.floor(start / tileWidth);
+        const endTileX = Math.floor(end / tileWidth);
 
-        // Scan each pixel along the probe edge so a key can be collected from a
-        // one-pixel contact at tile boundaries.
-        for (let x = start; x <= end; x += 1) {
-            const tile = this.layer.getTileAtWorldXY(x, worldY) as Tilemaps.Tile | null;
+        // Keys are whole tiles. Scanning the touched tile columns preserves
+        // boundary pickups while avoiding a getTileAtWorldXY call for every pixel.
+        for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
+            const tile = this.layer.getTileAtWorldXY(tileX * tileWidth, worldY) as Tilemaps.Tile | null;
 
             if (this.isKeyTile(tile)) {
                 return tile;
@@ -122,10 +125,14 @@ export class KeyCollector
         const start = Math.floor(Math.min(yStart, yEnd));
         const end = Math.floor(Math.max(yStart, yEnd));
         const worldX = Math.floor(x);
+        const tileHeight = this.layer.tilemap.tileHeight;
+        const startTileY = Math.floor(start / tileHeight);
+        const endTileY = Math.floor(end / tileHeight);
 
         // Vertical edges are needed because keys can be touched from the side.
-        for (let y = start; y <= end; y += 1) {
-            const tile = this.layer.getTileAtWorldXY(worldX, y) as Tilemaps.Tile | null;
+        // Iterate by tile row instead of by pixel for the same contact result.
+        for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
+            const tile = this.layer.getTileAtWorldXY(worldX, tileY * tileHeight) as Tilemaps.Tile | null;
 
             if (this.isKeyTile(tile)) {
                 return tile;
