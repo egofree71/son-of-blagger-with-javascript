@@ -2,12 +2,20 @@ import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
+interface LadderTileEntry
+{
+    worldX: number;
+    worldY: number;
+    textureKey: string;
+    sprite?: GameObjects.Sprite;
+}
+
 /**
  * Draws animated ladder rungs above the static Tiled map.
  *
  * Ladder tiles remain in the background layer so movement probes can still find
- * them. This class hides the static tile art and places animated sprites at the
- * same grid positions.
+ * them. The static tile art is hidden once, while Phaser sprites are created
+ * only for the current active regions.
  */
 export class AnimatedLadders
 {
@@ -18,7 +26,7 @@ export class AnimatedLadders
     private static readonly FRAME_COUNT = 8;
     private static readonly FRAME_DURATION_MS = 1000 / 30;
 
-    private readonly sprites: GameObjects.Sprite[] = [];
+    private readonly entries: LadderTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
@@ -36,11 +44,11 @@ export class AnimatedLadders
         private readonly rightTextureKey: string
     )
     {
-        this.createSpritesFromLayer();
+        this.createEntriesFromLayer();
     }
 
     /**
-     * Advances all ladder overlays using elapsed time rather than update count.
+     * Advances active ladder overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -66,31 +74,32 @@ export class AnimatedLadders
     }
 
     /**
-     * Keeps only the overlays belonging to the current level visible and updated.
+     * Creates sprites only for ladder overlays belonging to the active levels.
      */
     setActiveRegions(activeRegions: readonly ActiveRegion[]): void
     {
         this.activeSprites = [];
 
-        for (const sprite of this.sprites) {
+        for (const entry of this.entries) {
             const active = overlapsActiveRegions(
-                sprite.x,
-                sprite.y,
+                entry.worldX,
+                entry.worldY,
                 this.layer.tilemap.tileWidth,
                 this.layer.tilemap.tileHeight,
                 activeRegions
             );
 
-            sprite.setActive(active);
-            sprite.setVisible(active);
-
-            if (active) {
-                this.activeSprites.push(sprite);
+            if (!active) {
+                this.destroySprite(entry);
+                continue;
             }
+
+            const sprite = this.getOrCreateSprite(entry);
+            this.activeSprites.push(sprite);
         }
     }
 
-    private createSpritesFromLayer(): void
+    private createEntriesFromLayer(): void
     {
         this.layer.forEachTile((tile) => {
             if (!this.isLadderTile(tile)) {
@@ -103,22 +112,40 @@ export class AnimatedLadders
                 return;
             }
 
-            const sprite = this.scene.add.sprite(
-                tile.x * this.layer.tilemap.tileWidth,
-                tile.y * this.layer.tilemap.tileHeight,
-                textureKey,
-                this.frameIndex
-            )
-                .setOrigin(0, 0)
-                .setDepth(this.layer.depth + 1);
-
-            this.sprites.push(sprite);
-            this.activeSprites.push(sprite);
+            this.entries.push({
+                worldX: tile.x * this.layer.tilemap.tileWidth,
+                worldY: tile.y * this.layer.tilemap.tileHeight,
+                textureKey
+            });
 
             // Hide only the static artwork. The tile stays present so the ladder
             // probes can still detect it during player movement.
             tile.setVisible(false);
         });
+    }
+
+    private getOrCreateSprite(entry: LadderTileEntry): GameObjects.Sprite
+    {
+        if (entry.sprite) {
+            return entry.sprite;
+        }
+
+        entry.sprite = this.scene.add.sprite(
+            entry.worldX,
+            entry.worldY,
+            entry.textureKey,
+            this.frameIndex
+        )
+            .setOrigin(0, 0)
+            .setDepth(this.layer.depth + 1);
+
+        return entry.sprite;
+    }
+
+    private destroySprite(entry: LadderTileEntry): void
+    {
+        entry.sprite?.destroy();
+        entry.sprite = undefined;
     }
 
     private isLadderTile(tile: Tilemaps.Tile): boolean

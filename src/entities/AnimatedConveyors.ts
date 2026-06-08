@@ -2,12 +2,20 @@ import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
+interface ConveyorTileEntry
+{
+    worldX: number;
+    worldY: number;
+    textureKey: string;
+    sprite?: GameObjects.Sprite;
+}
+
 /**
  * Draws the animated conveyor belts above the static Tiled map.
  *
  * Conveyor tiles keep their Tiled properties so the player movement code can
- * still read their direction. This class only replaces the visible tile art with
- * animated sprites that share one frame counter.
+ * still read their direction. The class now stores lightweight tile entries for
+ * the whole map, but only creates Phaser sprites for the active level regions.
  */
 export class AnimatedConveyors
 {
@@ -16,7 +24,7 @@ export class AnimatedConveyors
     private static readonly FRAME_COUNT = 8;
     private static readonly FRAME_DURATION_MS = 1000 / 30;
 
-    private readonly sprites: GameObjects.Sprite[] = [];
+    private readonly entries: ConveyorTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
@@ -34,11 +42,11 @@ export class AnimatedConveyors
         private readonly rightTextureKey: string
     )
     {
-        this.createSpritesFromLayer();
+        this.createEntriesFromLayer();
     }
 
     /**
-     * Advances all conveyor overlays using elapsed time rather than update count.
+     * Advances active conveyor overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -68,31 +76,32 @@ export class AnimatedConveyors
     }
 
     /**
-     * Keeps only the overlays belonging to the current level visible and updated.
+     * Creates sprites only for overlays belonging to the currently active levels.
      */
     setActiveRegions(activeRegions: readonly ActiveRegion[]): void
     {
         this.activeSprites = [];
 
-        for (const sprite of this.sprites) {
+        for (const entry of this.entries) {
             const active = overlapsActiveRegions(
-                sprite.x,
-                sprite.y,
+                entry.worldX,
+                entry.worldY,
                 this.layer.tilemap.tileWidth,
                 this.layer.tilemap.tileHeight,
                 activeRegions
             );
 
-            sprite.setActive(active);
-            sprite.setVisible(active);
-
-            if (active) {
-                this.activeSprites.push(sprite);
+            if (!active) {
+                this.destroySprite(entry);
+                continue;
             }
+
+            const sprite = this.getOrCreateSprite(entry);
+            this.activeSprites.push(sprite);
         }
     }
 
-    private createSpritesFromLayer(): void
+    private createEntriesFromLayer(): void
     {
         this.layer.forEachTile((tile) => {
             const textureKey = this.getTextureKeyForTile(tile);
@@ -101,22 +110,40 @@ export class AnimatedConveyors
                 return;
             }
 
-            const sprite = this.scene.add.sprite(
-                tile.x * this.layer.tilemap.tileWidth,
-                tile.y * this.layer.tilemap.tileHeight,
-                textureKey,
-                this.frameIndex
-            )
-                .setOrigin(0, 0)
-                .setDepth(this.layer.depth + 1);
-
-            this.sprites.push(sprite);
-            this.activeSprites.push(sprite);
+            this.entries.push({
+                worldX: tile.x * this.layer.tilemap.tileWidth,
+                worldY: tile.y * this.layer.tilemap.tileHeight,
+                textureKey
+            });
 
             // Hide the static conveyor art, but keep the tile itself in the map:
             // its properties are still used to push Sid left or right.
             tile.setVisible(false);
         });
+    }
+
+    private getOrCreateSprite(entry: ConveyorTileEntry): GameObjects.Sprite
+    {
+        if (entry.sprite) {
+            return entry.sprite;
+        }
+
+        entry.sprite = this.scene.add.sprite(
+            entry.worldX,
+            entry.worldY,
+            entry.textureKey,
+            this.frameIndex
+        )
+            .setOrigin(0, 0)
+            .setDepth(this.layer.depth + 1);
+
+        return entry.sprite;
+    }
+
+    private destroySprite(entry: ConveyorTileEntry): void
+    {
+        entry.sprite?.destroy();
+        entry.sprite = undefined;
     }
 
     private getTextureKeyForTile(tile: Tilemaps.Tile): string | null

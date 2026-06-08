@@ -4,17 +4,19 @@ import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
 interface VanishingPlatformEntry
 {
-    sprite: GameObjects.Sprite;
+    worldX: number;
+    worldY: number;
     tileX: number;
     tileY: number;
+    sprite?: GameObjects.Sprite;
 }
 
 /**
  * Manages animated platforms that periodically stop supporting the player.
  *
- * The static Tiled tiles mark where these platforms live. This class replaces
- * their artwork with animated sprites and answers the collision probe only while
- * the current animation frame is solid.
+ * The static Tiled tiles mark where these platforms live. They are replaced by
+ * transparent map tiles during setup, but Phaser sprites and collision entries
+ * are kept only for the active level regions.
  */
 export class VanishingPlatforms
 {
@@ -28,7 +30,6 @@ export class VanishingPlatforms
     private static readonly FRAME_DURATION_MS = 500;
 
     private readonly activeTileCoordinates = new Set<string>();
-    private readonly sprites: GameObjects.Sprite[] = [];
     private readonly platforms: VanishingPlatformEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
@@ -45,7 +46,7 @@ export class VanishingPlatforms
         private readonly textureKey: string
     )
     {
-        this.createSpritesFromLayer();
+        this.createEntriesFromLayer();
     }
 
     /**
@@ -110,7 +111,7 @@ export class VanishingPlatforms
     }
 
     /**
-     * Keeps only the current level's replacement platforms visible, updated and solid.
+     * Creates sprites and collision entries only for active replacement platforms.
      */
     setActiveRegions(activeRegions: readonly ActiveRegion[]): void
     {
@@ -118,47 +119,35 @@ export class VanishingPlatforms
         this.activeTileCoordinates.clear();
 
         for (const platform of this.platforms) {
-            const sprite = platform.sprite;
             const active = overlapsActiveRegions(
-                sprite.x,
-                sprite.y,
+                platform.worldX,
+                platform.worldY,
                 this.layer.tilemap.tileWidth,
                 this.layer.tilemap.tileHeight,
                 activeRegions
             );
 
-            sprite.setActive(active);
-            sprite.setVisible(active);
-
-            if (active) {
-                this.activeSprites.push(sprite);
-                this.activeTileCoordinates.add(this.makeTileKey(platform.tileX, platform.tileY));
+            if (!active) {
+                this.destroySprite(platform);
+                continue;
             }
+
+            const sprite = this.getOrCreateSprite(platform);
+            this.activeSprites.push(sprite);
+            this.activeTileCoordinates.add(this.makeTileKey(platform.tileX, platform.tileY));
         }
     }
 
-    private createSpritesFromLayer(): void
+    private createEntriesFromLayer(): void
     {
         this.layer.forEachTile((tile) => {
             if (!this.isVanishingPlatformTile(tile)) {
                 return;
             }
 
-            this.activeTileCoordinates.add(this.makeTileKey(tile.x, tile.y));
-
-            const sprite = this.scene.add.sprite(
-                tile.x * this.layer.tilemap.tileWidth,
-                tile.y * this.layer.tilemap.tileHeight,
-                this.textureKey,
-                this.frameIndex
-            )
-                .setOrigin(0, 0)
-                .setDepth(this.layer.depth + 1);
-
-            this.sprites.push(sprite);
-            this.activeSprites.push(sprite);
             this.platforms.push({
-                sprite,
+                worldX: tile.x * this.layer.tilemap.tileWidth,
+                worldY: tile.y * this.layer.tilemap.tileHeight,
                 tileX: tile.x,
                 tileY: tile.y
             });
@@ -167,6 +156,30 @@ export class VanishingPlatforms
             // now owns the visual animation, while this class owns the collision.
             this.layer.putTileAt(VanishingPlatforms.BLANK_TILE_INDEX, tile.x, tile.y);
         });
+    }
+
+    private getOrCreateSprite(platform: VanishingPlatformEntry): GameObjects.Sprite
+    {
+        if (platform.sprite) {
+            return platform.sprite;
+        }
+
+        platform.sprite = this.scene.add.sprite(
+            platform.worldX,
+            platform.worldY,
+            this.textureKey,
+            this.frameIndex
+        )
+            .setOrigin(0, 0)
+            .setDepth(this.layer.depth + 1);
+
+        return platform.sprite;
+    }
+
+    private destroySprite(platform: VanishingPlatformEntry): void
+    {
+        platform.sprite?.destroy();
+        platform.sprite = undefined;
     }
 
     private isVanishingPlatformTile(tile: Tilemaps.Tile): boolean

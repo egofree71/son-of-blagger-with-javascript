@@ -2,11 +2,20 @@ import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
+interface WavePlatformTileEntry
+{
+    worldX: number;
+    worldY: number;
+    textureKey: string;
+    sprite?: GameObjects.Sprite;
+}
+
 /**
  * Draws animated wave-platform overlays above solid map tiles.
  *
- * Wave platform tiles remain in the map for collision. This class only hides
- * their static art and replaces it with the animated left/right wave sprites.
+ * Wave platform tiles remain in the map for collision. This class hides their
+ * static art, records their map positions, and creates visible Phaser sprites
+ * only for active level regions.
  */
 export class AnimatedWavePlatforms
 {
@@ -15,7 +24,7 @@ export class AnimatedWavePlatforms
     private static readonly FRAME_COUNT = 8;
     private static readonly FRAME_DURATION_MS = 1000 / 30;
 
-    private readonly sprites: GameObjects.Sprite[] = [];
+    private readonly entries: WavePlatformTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
@@ -33,11 +42,11 @@ export class AnimatedWavePlatforms
         private readonly rightTextureKey: string
     )
     {
-        this.createSpritesFromLayer();
+        this.createEntriesFromLayer();
     }
 
     /**
-     * Advances all wave overlays using elapsed time rather than update count.
+     * Advances active wave overlays using elapsed time rather than update count.
      */
     update(deltaMs: number): void
     {
@@ -63,31 +72,32 @@ export class AnimatedWavePlatforms
     }
 
     /**
-     * Keeps only the overlays belonging to the current level visible and updated.
+     * Creates sprites only for wave overlays belonging to the active levels.
      */
     setActiveRegions(activeRegions: readonly ActiveRegion[]): void
     {
         this.activeSprites = [];
 
-        for (const sprite of this.sprites) {
+        for (const entry of this.entries) {
             const active = overlapsActiveRegions(
-                sprite.x,
-                sprite.y,
+                entry.worldX,
+                entry.worldY,
                 this.layer.tilemap.tileWidth,
                 this.layer.tilemap.tileHeight,
                 activeRegions
             );
 
-            sprite.setActive(active);
-            sprite.setVisible(active);
-
-            if (active) {
-                this.activeSprites.push(sprite);
+            if (!active) {
+                this.destroySprite(entry);
+                continue;
             }
+
+            const sprite = this.getOrCreateSprite(entry);
+            this.activeSprites.push(sprite);
         }
     }
 
-    private createSpritesFromLayer(): void
+    private createEntriesFromLayer(): void
     {
         this.layer.forEachTile((tile) => {
             const textureKey = this.getTextureKeyForTile(tile);
@@ -96,22 +106,40 @@ export class AnimatedWavePlatforms
                 return;
             }
 
-            const sprite = this.scene.add.sprite(
-                tile.x * this.layer.tilemap.tileWidth,
-                tile.y * this.layer.tilemap.tileHeight,
-                textureKey,
-                this.frameIndex
-            )
-                .setOrigin(0, 0)
-                .setDepth(this.layer.depth + 1);
-
-            this.sprites.push(sprite);
-            this.activeSprites.push(sprite);
+            this.entries.push({
+                worldX: tile.x * this.layer.tilemap.tileWidth,
+                worldY: tile.y * this.layer.tilemap.tileHeight,
+                textureKey
+            });
 
             // The hidden tile still provides solid-platform collision; only its
             // static drawing is replaced by the animated sprite.
             tile.setVisible(false);
         });
+    }
+
+    private getOrCreateSprite(entry: WavePlatformTileEntry): GameObjects.Sprite
+    {
+        if (entry.sprite) {
+            return entry.sprite;
+        }
+
+        entry.sprite = this.scene.add.sprite(
+            entry.worldX,
+            entry.worldY,
+            entry.textureKey,
+            this.frameIndex
+        )
+            .setOrigin(0, 0)
+            .setDepth(this.layer.depth + 1);
+
+        return entry.sprite;
+    }
+
+    private destroySprite(entry: WavePlatformTileEntry): void
+    {
+        entry.sprite?.destroy();
+        entry.sprite = undefined;
     }
 
     private getTextureKeyForTile(tile: Tilemaps.Tile): string | null
