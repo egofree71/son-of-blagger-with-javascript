@@ -32,16 +32,19 @@ The engineering goal is to preserve the original gameplay behaviour while using 
 - Rendering: Phaser sprites, Phaser tilemap layers, manual bitmap-font text built from `fonts.png`.
 - Audio: short OGG gameplay sound effects loaded through Phaser audio; no music is currently enabled.
 - Physics: Phaser Arcade Physics is not the main collision system; most gameplay collisions are handled manually through tile probes and rectangles.
+- Runtime flags: `?debug=1` enables debug helpers; `?touch=1` enables the optional touch HUD and virtual controls.
 - Persistence: the hi-score is stored in `localStorage`.
 
 The active runtime starts in `src/main.ts` and lives under:
 
 ```text
 src/main.ts
+src/config/
 src/data/
 src/scenes/
 src/audio/
 src/entities/
+src/input/
 src/state/
 src/tiled/
 src/ui/
@@ -49,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -71,6 +74,18 @@ Open the local URL printed by Vite, usually:
 
 ```text
 http://localhost:5173/
+```
+
+The touch layout can be forced with:
+
+```text
+http://localhost:5173/?touch=1
+```
+
+Debug and touch mode can be combined when needed:
+
+```text
+http://localhost:5173/?touch=1&debug=1
 ```
 
 `npm run dev` should be used for local development so the Vite module graph, TypeScript files and Phaser imports are handled correctly.
@@ -135,6 +150,8 @@ tsconfig.json
 vite.config.js
 src/
  main.ts
+ config/
+  RuntimeMode.ts
  scenes/
   PreloadScene.ts
   TitleScene.ts
@@ -161,6 +178,8 @@ src/
   AnimatedLadders.ts
   AnimatedWavePlatforms.ts
   VanishingPlatforms.ts
+ input/
+  PlayerInputState.ts
  tiled/
   tileCollisionProbe.ts
   tiledObjects.ts
@@ -189,7 +208,7 @@ doc/
  current_implementation.md
 ```
 
-`public/` is used for files that must be copied unchanged to the production `dist/` folder. This includes the Tiled map, tilesets, sprites, sound effects and bitmap font image.
+`public/` is used for files that must be copied unchanged to the production `dist/` folder. This includes the Tiled map, tilesets, sprites, touch button images, sound effects and bitmap font image.
 
 ---
 
@@ -207,6 +226,8 @@ It creates the Phaser game with:
 - `roundPixels: true`.
 
 The canvas is intentionally allowed to be smoothed by the browser when scaled. This keeps diagonal tiles and enlarged sprites visually stable at non-integer scale factors.
+
+`index.html` also disables page scrolling/selection gestures with `touch-action: none` and `user-select: none`, which prevents the browser from stealing swipe or long-press input while the virtual controls are being used.
 
 The registered scenes are:
 
@@ -238,7 +259,8 @@ Loads all Phaser 4 assets needed by the current implementation:
 - title and game-over images;
 - animated tile sprites;
 - monster sprites;
-- restored one-shot gameplay sound effects.
+- restored one-shot gameplay sound effects;
+- virtual touch button sprites for left, right and jump.
 
 After loading, it starts `TitleScene`.
 
@@ -253,17 +275,25 @@ H       -> HelpScene
 any key -> GameScene with a new session
 ```
 
-The HUD is stopped before leaving the title scene.
+Touch flow when `?touch=1` is enabled:
+
+```text
+tap screen -> GameScene with a new session
+HUD HELP   -> HelpScene
+HUD FULL   -> request fullscreen / exit fullscreen
+```
+
+The touch start prompt is centered and says `TAP SCREEN TO START`. Touch action buttons stop pointer propagation so pressing `HELP` or `FULL` does not also start the game. The HUD is stopped before leaving the title scene.
 
 ### `HelpScene`
 
-Displays the instruction text using the retro bitmap font. Pressing any key returns to `TitleScene`.
+Displays the instruction text using the retro bitmap font. Pressing any key returns to `TitleScene`; in touch mode, tapping the help screen also returns to the title screen.
 
 The canvas is temporarily switched to `image-rendering: pixelated` while this full-screen text page is active, then restored when the scene shuts down.
 
 ### `GameScene`
 
-Main gameplay scene. It owns the Tiled map, the upper gameplay camera, the player, animated tiles, active-region optimisation, keys, deadly tiles, exit detection, monsters, start-of-level reveal, monster spawn reveal, level transition, final sequence, gameplay sound triggers and debug hooks.
+Main gameplay scene. It owns the Tiled map, the upper gameplay camera, the player, animated tiles, active-region optimisation, keys, deadly tiles, exit detection, monsters, start-of-level reveal, monster spawn reveal, level transition, final sequence, gameplay sound triggers, touch input event handling and debug hooks.
 
 `GameScene` is still the main orchestration hub. Persistent session values live in `GameSessionState`, but actual Phaser objects are still created and coordinated by this scene.
 
@@ -275,21 +305,55 @@ Lower status area. It displays:
 - lives;
 - score;
 - level;
-- hi-score;
+- hi-score in desktop mode;
 - bonus man;
 - optional debug hint when `?debug=1` is enabled.
 
-`HUDScene` receives `HUDState` updates through Phaser game events. It displays state; it does not decide gameplay rules such as when the player dies.
+When `?touch=1` is enabled, the HUD switches to a compact layout without hi-score, shows virtual movement buttons during gameplay, and exposes a `FULL` / `EXIT` fullscreen toggle. On the title screen it can also show a `HELP` button.
+
+`HUDScene` receives `HUDState` updates through Phaser game events. It displays state and emits input/UI events; it does not decide gameplay rules such as when the player dies.
 
 ### `GameOverScene`
 
-Overlay shown after the last life is lost. It displays the game-over image over the current play area and waits for a key press. Pressing a key stops `HUDScene` and `GameScene`, then returns to `TitleScene`.
+Overlay shown after the last life is lost. It displays the game-over image over the current play area and waits for a key press. In touch mode, a tap also returns to the title screen. Returning stops `HUDScene` and `GameScene`, then starts `TitleScene`.
 
 ### `EndingScene`
 
 Final congratulations screen shown after the last level has been completed and the end-game air-to-score sequence is finished.
 
 It displays the final message with the retro bitmap font and scales it up over time. After a short wait, it stops the active gameplay scenes and returns to `TitleScene`.
+
+---
+
+## Runtime flags and input modes
+
+### `RuntimeMode`
+
+`src/config/RuntimeMode.ts` reads runtime options from the browser URL. Touch controls are intentionally opt-in for now:
+
+```text
+?touch=1
+```
+
+This avoids unreliable automatic decisions on laptops or desktop machines that expose a touch screen but are still mainly used with a keyboard.
+
+### `PlayerInputState`
+
+`src/input/PlayerInputState.ts` defines the neutral player command shape:
+
+```ts
+interface PlayerInputState {
+    left: boolean;
+    right: boolean;
+    jump: boolean;
+}
+```
+
+Keyboard input and virtual touch buttons are converted to this same shape, then merged before being passed to `Player.updateMovement(...)`. This keeps player movement independent from the physical input source.
+
+The HUD emits `TOUCH_CONTROL_CHANGED_EVENT` when a virtual button is pressed or released. `GameScene` listens to that event and keeps the current touch input state. Each virtual control tracks pointer IDs so multi-touch cases such as holding left while tapping jump can work.
+
+The title HUD also uses `TOUCH_HELP_REQUESTED_EVENT` for its `HELP` button. The fullscreen button stays inside `HUDScene` because browsers require fullscreen requests to happen directly from a user gesture.
 
 ---
 
@@ -379,7 +443,7 @@ index.html
 ### Starting a game
 
 ```text
-TitleScene key press
+TitleScene key press, or title tap when ?touch=1
  -> stop title HUD
  -> start GameScene(resetSession: true)
     -> reset GameSessionState
@@ -461,6 +525,8 @@ show();
 ```
 
 The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/data/gameData.ts`. This is one of the most gameplay-sensitive pieces of the project.
+
+`Player` consumes a merged `PlayerInputState` rather than reading Phaser keyboard objects directly. That input state can contain keyboard commands, touch commands, or both.
 
 ### `TileCollisionProbe`
 
@@ -608,6 +674,8 @@ Draws the lower black HUD panel and updates it from `HUDState` events.
 The air bar is rendered as a red-to-blue gradient image with a black mask over it. The mask width is based on the current air value.
 
 The bonus man is shown when `HUDState.hasBonusMan` is true and is tinted through the color table in `Data.bonusManColors`. The tint animation is driven by elapsed time, not raw browser update count.
+
+In touch mode, the same scene also draws the virtual control layer. Gameplay HUD uses left, right and jump buttons plus a fullscreen toggle. Title HUD uses centered `FULL` and `HELP` action buttons. The fullscreen label changes to `EXIT` while the document is fullscreen, and the browser or operating system can also leave fullscreen through its own gesture or control.
 
 ### `HUDState`
 
@@ -830,6 +898,12 @@ Current systems already using elapsed-time accumulation include:
 
 `RetroHudText` composes text from individual 16x16 glyph images. This keeps the HUD and screens close to the original style, but scaled text can show browser/WebGL artefacts at non-integer scale factors. Avoid large rewrites of text rendering unless they are tested visually on the title, help, HUD and ending screens.
 
+### Touch mode should stay deterministic
+
+The current touch UI is deliberately enabled with `?touch=1` rather than automatic device detection. If automatic detection is added later, keep the URL flag as an override so desktop, mobile and hybrid devices remain easy to test.
+
+Fullscreen should remain tied to a direct pointer/tap action. Browsers normally reject programmatic fullscreen requests that are not caused by a user gesture.
+
 ---
 
 ## Comment conventions
@@ -864,17 +938,24 @@ Before merging significant Phaser 4 changes, test at least:
 - `npm run build`;
 - launch without debug;
 - launch with `?debug=1`;
+- launch with `?touch=1`;
+- launch with `?touch=1&debug=1`;
 - title screen;
 - title HUD display;
-- help screen with `H`;
-- return from help;
-- start a new game;
+- keyboard help screen with `H`;
+- touch title `HELP` button;
+- return from help by key and by tap;
+- title `FULL` / `EXIT` fullscreen toggle in touch mode;
+- start a new game by key and by title tap;
 - level reveal;
 - level reveal sound;
 - monster spawn explosions;
 - monster spawn start sound;
-- left/right movement;
-- jump;
+- left/right keyboard movement;
+- keyboard jump;
+- touch left/right movement;
+- touch jump;
+- touch multi-touch, especially holding a direction while pressing jump;
 - fall;
 - deadly fall;
 - ladders;
@@ -890,10 +971,12 @@ Before merging significant Phaser 4 changes, test at least:
 - losing a life;
 - player death sound;
 - game-over screen after the last life;
+- game-over return by key and by tap;
 - `sobDebug.collectAllKeys()`;
 - `sobDebug.finishLevel()`;
 - transition to the next level;
-- score, lives, level number, hi-score, air bar and bonus man display;
+- desktop score, lives, level number, hi-score, air bar and bonus man display;
+- touch score, lives, level number, air bar, bonus man and virtual buttons display;
 - `sobDebug.finishGame()`;
 - final congratulations screen;
 - no red JavaScript error in the browser console.
