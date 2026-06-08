@@ -279,7 +279,9 @@ export class HUDScene extends Scene
                 onPressed();
             });
 
-        const text = this.drawText(label, characterX + 0.5, HudConstants.TOUCH_ACTION_BUTTON_Y + 0.1, HudConstants.COLOR_WHITE);
+        const textX = characterX + ((HudConstants.TOUCH_ACTION_BUTTON_WIDTH_CHARS - label.length) / 2);
+        const textY = HudConstants.TOUCH_ACTION_BUTTON_Y + HudConstants.TOUCH_ACTION_BUTTON_TEXT_Y_OFFSET;
+        const text = this.drawText(label, textX, textY, HudConstants.COLOR_WHITE);
         text.setDepth(22);
         return text;
     }

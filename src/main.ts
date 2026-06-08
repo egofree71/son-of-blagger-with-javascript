@@ -35,6 +35,13 @@ const config = {
         height: GAME_HEIGHT
     },
 
+    input: {
+        // The touch HUD needs to keep a direction button and jump pressed at
+        // the same time. Reserving a few touch pointers enables real multi-touch
+        // on phones while remaining harmless for desktop keyboard play.
+        activePointers: 4
+    },
+
     scene: [
         PreloadScene,
         TitleScene,
