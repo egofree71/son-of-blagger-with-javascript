@@ -30,6 +30,7 @@ The engineering goal is to preserve the original gameplay behaviour while using 
 - HUD viewport: the lower **640 x 200** area, rendered by a separate scene.
 - Map format: Tiled JSON map loaded by Phaser.
 - Rendering: Phaser sprites, Phaser tilemap layers, manual bitmap-font text built from `fonts.png`.
+- Audio: short OGG gameplay sound effects loaded through Phaser audio; no music is currently enabled.
 - Physics: Phaser Arcade Physics is not the main collision system; most gameplay collisions are handled manually through tile probes and rectangles.
 - Persistence: the hi-score is stored in `localStorage`.
 
@@ -39,14 +40,16 @@ The active runtime starts in `src/main.ts` and lives under:
 src/main.ts
 src/data/
 src/scenes/
+src/audio/
 src/entities/
 src/state/
 src/tiled/
 src/ui/
 src/debug/
+src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -140,6 +143,8 @@ src/
   HUDScene.ts
   GameOverScene.ts
   EndingScene.ts
+ audio/
+  GameAudio.ts
  entities/
   Player.ts
   PlayerDeathSequence.ts
@@ -159,6 +164,8 @@ src/
  tiled/
   tileCollisionProbe.ts
   tiledObjects.ts
+ optimization/
+  LevelActiveRegions.ts
  state/
   GameSessionState.ts
   LevelState.ts
@@ -175,13 +182,14 @@ src/
 public/
  assets/
   maps/
+  sounds/
   sprites/
   tileset/
 doc/
  current_implementation.md
 ```
 
-`public/` is used for files that must be copied unchanged to the production `dist/` folder. This includes the Tiled map, tilesets, sprites and bitmap font image.
+`public/` is used for files that must be copied unchanged to the production `dist/` folder. This includes the Tiled map, tilesets, sprites, sound effects and bitmap font image.
 
 ---
 
@@ -229,7 +237,8 @@ Loads all Phaser 4 assets needed by the current implementation:
 - bonus-man sprite;
 - title and game-over images;
 - animated tile sprites;
-- monster sprites.
+- monster sprites;
+- restored one-shot gameplay sound effects.
 
 After loading, it starts `TitleScene`.
 
@@ -254,7 +263,7 @@ The canvas is temporarily switched to `image-rendering: pixelated` while this fu
 
 ### `GameScene`
 
-Main gameplay scene. It owns the Tiled map, the upper gameplay camera, the player, animated tiles, keys, deadly tiles, exit detection, monsters, start-of-level reveal, monster spawn reveal, level transition, final sequence and debug hooks.
+Main gameplay scene. It owns the Tiled map, the upper gameplay camera, the player, animated tiles, active-region optimisation, keys, deadly tiles, exit detection, monsters, start-of-level reveal, monster spawn reveal, level transition, final sequence, gameplay sound triggers and debug hooks.
 
 `GameScene` is still the main orchestration hub. Persistent session values live in `GameSessionState`, but actual Phaser objects are still created and coordinated by this scene.
 
@@ -376,6 +385,7 @@ TitleScene key press
     -> reset GameSessionState
     -> create Tiled map and background layer
     -> create collision probe and animated decoration systems
+    -> apply active regions for the current level
     -> create player at current level start
     -> create key/deadly/exit systems
     -> create monsters for current level
@@ -403,7 +413,7 @@ While the level reveal or monster spawn sequence is active:
 During normal gameplay, `GameScene.update()` approximately does this:
 
 ```text
-update animated tiles
+update active animated decoration sprites
 update death sequence
 stop if game-over / ending / reveal / spawn / transition is active
 apply debug free-move if enabled
@@ -456,7 +466,7 @@ The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/data/g
 
 Manual collision helper around the Tiled background layer.
 
-It checks short pixel lines against tile properties for:
+It checks short world-space probe lines against tile properties for:
 
 - walls;
 - solid floors;
@@ -465,15 +475,15 @@ It checks short pixel lines against tile properties for:
 - ladders;
 - conveyors.
 
-The player movement logic depends on these probes rather than on a generic physics body collision solver.
+The player movement logic depends on these probes rather than on a generic physics body collision solver. The probes scan the tile cells crossed by each line instead of checking every pixel, which keeps the contact rules tied to the 16x16 Tiled grid while reducing map lookups on slower devices.
 
 ### `KeyCollector`
 
-Scans the player's key-collection rectangle against key tiles, hides collected key tiles, tracks collected tiles, and can collect all keys for debug.
+Scans the edges of the player's key-collection rectangle against key tiles, hides collected key tiles, tracks collected tiles, and can collect all keys for debug. Like the collision probe, it scans tile cells rather than every pixel along each edge.
 
 ### `DeadlyTileDetector`
 
-Scans the player's deadly-collision rectangle against tiles marked as deadly in Tiled.
+Scans the edges of the player's deadly-collision rectangle against tiles marked as deadly in Tiled. It uses tile-cell probes so trap checks do not perform a lookup for every pixel along the probe edge.
 
 ### `ExitDetector`
 
@@ -527,21 +537,65 @@ When a level is completed, `LevelTransitionSequence` asks the monster system to 
 
 ### `AnimatedConveyors`
 
-Creates animated visual overlays for conveyor tiles. The Tiled tiles remain in the map and still provide movement properties; only their static visuals are hidden.
+Stores conveyor tile positions from the Tiled layer and creates animated visual overlays only for the active level regions. The Tiled tiles remain in the map and still provide movement properties; only their static visuals are hidden.
 
 The frame timer uses `deltaMs` and can advance more than one frame if a browser frame is late. The accumulated remainder is kept so animation cadence remains stable.
 
 ### `AnimatedLadders`
 
-Creates animated ladder rung overlays while keeping ladder tiles in the Tiled layer for collision and movement probes.
+Stores ladder tile positions and creates animated ladder rung overlays only for the active level regions. Ladder tiles stay in the Tiled layer for collision and movement probes.
 
 ### `AnimatedWavePlatforms`
 
-Creates animated wave-platform overlays. These platforms are mainly visual; collision still comes from the underlying Tiled tiles.
+Stores wave-platform tile positions and creates animated wave-platform overlays only for the active level regions. These platforms are mainly visual; collision still comes from the underlying Tiled tiles.
 
 ### `VanishingPlatforms`
 
-Creates animated disappearing platform sprites, hides the original static tiles, and exposes visibility state so the player can stand only when the platform is currently visible.
+Stores disappearing-platform tile positions, replaces the original static tiles with transparent tiles, and creates animated platform sprites only for the active level regions.
+
+This class also owns vanishing-platform collision. A platform outside the active regions has no sprite and no collision entry, so it cannot behave like an invisible solid tile.
+
+---
+
+## Gameplay audio
+
+### `GameAudio`
+
+`src/audio/GameAudio.ts` centralizes the restored one-shot sound effects from the old GameMaker project.
+
+Loaded effects:
+
+```text
+snd_key.ogg              -> key pickup, played at 50% volume
+snd_player_dying.ogg     -> player death sequence start
+snd_display_level.ogg    -> level reveal masks opening
+snd_start_level.ogg      -> just before the monster spawn reveal
+```
+
+The old GameMaker archive also contained `snd_black_and_white.ogg`, but that file is the looping music track and is intentionally not used in the Phaser 4 runtime.
+
+`GameAudio.stopGameplaySounds()` is called before the death effect starts so reveal/start sounds do not overlap a blocking state.
+
+---
+
+## Active-region optimisation
+
+The whole Tiled map is still loaded as one continuous world. Active regions are an optimisation layer for animated decoration sprites, not a level-streaming system.
+
+`src/optimization/LevelActiveRegions.ts` stores pixel rectangles ported from the old GameMaker active-region scripts. `GameScene.applyActiveRegionsForLevels()` passes those rectangles to:
+
+```text
+VanishingPlatforms
+AnimatedLadders
+AnimatedConveyors
+AnimatedWavePlatforms
+```
+
+The animated decoration classes keep lightweight tile-entry lists for the whole map, but they create Phaser sprites only when the entry overlaps the current active regions. Sprites outside the active regions are destroyed, so they are removed from Phaser's display list and no longer receive animation frame updates.
+
+During a level transition, `GameScene` temporarily activates both the current and next level regions. This avoids visible popping while the camera/player moves between levels.
+
+Monsters are not handled by this system because `MonsterManager` already loads only the monsters for the current level.
 
 ---
 
@@ -748,9 +802,15 @@ Good candidates for later extraction are:
 - a cleaner game-flow state machine;
 - a narrower runtime object for level-owned systems.
 
+### Active regions must stay gameplay-neutral
+
+Active regions should remain an optimisation for animated decoration sprites, not a replacement for the Tiled map or level rules. The background layer stays loaded because player movement, key collection, traps, exits and transition paths still read from the full map.
+
+When changing active-region bounds, test level transitions carefully. During transitions, both the current and next level regions are intentionally active to avoid visual popping.
+
 ### Manual collisions are gameplay-critical
 
-Many movement and interaction rules use pixel probes and Tiled tile properties. Small changes can affect walking, jumping, landing, ladders, slides, conveyors, keys, exits, enemies and deadly falls.
+Many movement and interaction rules use tile-line probes and Tiled tile properties. Small changes can affect walking, jumping, landing, ladders, slides, conveyors, keys, exits, enemies and deadly falls.
 
 ### Timing should use elapsed time where possible
 
@@ -810,7 +870,9 @@ Before merging significant Phaser 4 changes, test at least:
 - return from help;
 - start a new game;
 - level reveal;
+- level reveal sound;
 - monster spawn explosions;
+- monster spawn start sound;
 - left/right movement;
 - jump;
 - fall;
@@ -821,10 +883,12 @@ Before merging significant Phaser 4 changes, test at least:
 - vanishing platforms;
 - wave platforms;
 - key collection;
+- key pickup sound;
 - deadly tile collision;
 - monster collision;
 - air depletion;
 - losing a life;
+- player death sound;
 - game-over screen after the last life;
 - `sobDebug.collectAllKeys()`;
 - `sobDebug.finishLevel()`;
