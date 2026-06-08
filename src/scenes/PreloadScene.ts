@@ -85,6 +85,9 @@ export class PreloadScene extends Scene
 
         this.load.image("title", "assets/sprites/title.png");
         this.load.image("game-over", "assets/sprites/game over.png");
+        this.load.image("touch-left-button", "assets/sprites/left button.png");
+        this.load.image("touch-right-button", "assets/sprites/right button.png");
+        this.load.image("touch-jump-button", "assets/sprites/up button.png");
         GameAudio.preload(this);
 
         this.load.spritesheet("vanishing-platform", "assets/sprites/vanishing platform.png", {
