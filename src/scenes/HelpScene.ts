@@ -1,9 +1,10 @@
 import { Scene } from "phaser";
+import { isTouchModeEnabled } from "../config/RuntimeMode";
 import { RetroHudText } from "../ui/RetroHudText";
 
 const FONT_TEXTURE_KEY = "blagger-font";
 
-const HELP_TEXT = "Players control Slippery Sid, who is an\n" +
+const BASE_HELP_TEXT = "Players control Slippery Sid, who is an\n" +
     "espionage agent and son of blagger.\n" +
     "Like the first game, the task is to \n" +
     "collect a series of keys scattered \n" +
@@ -16,16 +17,23 @@ const HELP_TEXT = "Players control Slippery Sid, who is an\n" +
     "has a limited time to perform this task,\n" +
     "and he loses one of his lives if he\n" +
     "falls long distances.\n" +
-    "\n" +
+    "\n";
+
+const KEYBOARD_HELP_TEXT = BASE_HELP_TEXT +
     "Controls : left and right arrows \n" +
     "to go left and right and space bar \n" +
     "to jump.";
+
+const TOUCH_HELP_TEXT = BASE_HELP_TEXT +
+    "Touch controls : left and right \n" +
+    "buttons to move, up button to jump.\n" +
+    "Tap this screen to return.";
 
 /**
  * Help screen shown from the title screen when the player presses H.
  *
  * The page uses the retro bitmap font for the short instruction text. Pressing
- * any key returns to the title screen.
+ * any key returns to the title screen; in touch mode a tap does the same.
  */
 export class HelpScene extends Scene
 {
@@ -43,11 +51,17 @@ export class HelpScene extends Scene
         // Extra line spacing is important here; without it the large bitmap
         // letters overlap and the help page looks crushed.
         const helpText = new RetroHudText(this, FONT_TEXTURE_KEY, 10, 10, 16, 16, 0xc0c0c0, 0, 6);
-        helpText.setText(HELP_TEXT);
+        helpText.setText(isTouchModeEnabled() ? TOUCH_HELP_TEXT : KEYBOARD_HELP_TEXT);
 
         this.input.keyboard?.once("keydown", () => {
             this.scene.start("TitleScene");
         });
+
+        if (isTouchModeEnabled()) {
+            this.input.once("pointerdown", () => {
+                this.scene.start("TitleScene");
+            });
+        }
     }
 
     private usePixelatedCanvasWhileActive(): void

@@ -8,18 +8,42 @@ The player controls Slippery Sid through scrolling maze-like levels. Each level 
 
 [Play Son of Blagger on GitHub Pages](https://egofree71.github.io/son-of-blagger-with-javascript/)
 
+Touch mode can also be tested online by adding `?touch=1` to the URL.
+
 ## Current stack
 
 - Phaser 4.1
 - TypeScript
 - Vite
 - Tiled JSON map and bitmap-style assets under `public/assets`
+- Optional touch-control runtime mode enabled with `?touch=1`
 
 ## Controls
+
+### Keyboard mode
 
 - Left / right arrows: move
 - Space: jump
 - `H` on the title screen: help screen
+- Any other key on the title screen: start a new game
+
+### Touch mode
+
+Launch the game with `?touch=1`, for example:
+
+```text
+http://localhost:5173/?touch=1
+```
+
+In touch mode:
+
+- tap the title screen to start;
+- use the on-screen left, right and up buttons during gameplay;
+- tap `HELP` on the title HUD to open the help screen;
+- tap the help or game-over screen to return;
+- tap `FULL` to request fullscreen mode, then `EXIT` to leave it again.
+
+Fullscreen must be triggered by a user action, so the game exposes it as a HUD button rather than enabling it automatically.
 
 ## Local development
 

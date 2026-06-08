@@ -21,6 +21,9 @@ import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
 import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { GameAudio } from "../audio/GameAudio";
+import { isTouchModeEnabled } from "../config/RuntimeMode";
+import type { PlayerInputControlChangedPayload, PlayerInputState } from "../input/PlayerInputState";
+import { createEmptyPlayerInputState, mergePlayerInputStates, readKeyboardPlayerInput, TOUCH_CONTROL_CHANGED_EVENT } from "../input/PlayerInputState";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { getLevelActiveRegions } from "../optimization/LevelActiveRegions";
 import { HUD_STATE_CHANGED_EVENT, EXIT_CHANGED_EVENT, KEYS_CHANGED_EVENT, PLAYER_KILLED_EVENT } from "./HUDScene";
@@ -63,6 +66,8 @@ export class GameScene extends Scene
     private debugPlayerControls?: DebugPlayerControls;
     private debugConsole?: DebugConsole;
     private cursors?: Types.Input.Keyboard.CursorKeys;
+    private touchInputState: PlayerInputState = createEmptyPlayerInputState();
+    private touchModeEnabled = false;
     private currentPlayerStart?: TiledObjectLike;
     private deathCount = 0;
     private gameOverActive = false;
@@ -82,6 +87,8 @@ export class GameScene extends Scene
 
         this.gameOverActive = false;
         this.endingScreenActive = false;
+        this.touchModeEnabled = isTouchModeEnabled();
+        this.touchInputState = createEmptyPlayerInputState();
 
         // The C64-style playfield uses a light grey stage background behind empty
         // map areas.
@@ -135,6 +142,9 @@ export class GameScene extends Scene
         }
 
         this.cursors = this.input.keyboard?.createCursorKeys();
+        this.game.events.on(TOUCH_CONTROL_CHANGED_EVENT, this.handleTouchControlChanged, this);
+        this.events.once("shutdown", () => this.removeTouchInputListeners());
+        this.events.once("destroy", () => this.removeTouchInputListeners());
 
         if (DebugPlayerControls.isEnabled()) {
             this.debugPlayerControls = new DebugPlayerControls();
@@ -149,6 +159,8 @@ export class GameScene extends Scene
 
         this.scene.launch("HUDScene", {
             debugModeEnabled: this.debugPlayerControls !== undefined,
+            touchModeEnabled: this.touchModeEnabled,
+            showTouchControls: this.touchModeEnabled,
             ...this.sessionState.toHUDState()
         });
 
@@ -157,7 +169,7 @@ export class GameScene extends Scene
 
     update(_time: number, delta: number): void
     {
-        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.levelTransitionSequence || !this.cursors) {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.animatedLadders || !this.animatedConveyors || !this.animatedWavePlatforms || !this.keyCollector || !this.deadlyTileDetector || !this.playerDeathSequence || !this.exitDetector || !this.monsterManager || !this.monsterSpawnSequence || !this.levelRevealSequence || !this.levelTransitionSequence) {
             return;
         }
 
@@ -210,7 +222,7 @@ export class GameScene extends Scene
         this.monsterManager.update();
 
         const movementResult = this.player.updateMovement(
-            this.cursors,
+            this.readPlayerInput(),
             this.map,
             this.collisionProbe,
             this.vanishingPlatforms
@@ -294,6 +306,8 @@ export class GameScene extends Scene
         this.endGameSequence?.stop();
         this.gameOverActive = false;
         this.endingScreenActive = false;
+        this.touchModeEnabled = isTouchModeEnabled();
+        this.touchInputState = createEmptyPlayerInputState();
         this.scene.stop("GameOverScene");
         this.scene.stop("EndingScene");
         this.startLevelStartSequences();
@@ -338,6 +352,28 @@ export class GameScene extends Scene
                 }
                 : null
         };
+    }
+
+    private readPlayerInput(): PlayerInputState
+    {
+        return mergePlayerInputStates(
+            readKeyboardPlayerInput(this.cursors),
+            this.touchInputState
+        );
+    }
+
+    private handleTouchControlChanged(payload: PlayerInputControlChangedPayload): void
+    {
+        this.touchInputState = {
+            ...this.touchInputState,
+            [payload.control]: payload.active
+        };
+    }
+
+    private removeTouchInputListeners(): void
+    {
+        this.game.events.off(TOUCH_CONTROL_CHANGED_EVENT, this.handleTouchControlChanged, this);
+        this.touchInputState = createEmptyPlayerInputState();
     }
 
     private consumeAirIfNeeded(deltaMs: number): boolean

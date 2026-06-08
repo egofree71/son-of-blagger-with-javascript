@@ -1,9 +1,10 @@
-import type { GameObjects, Scene, Tilemaps, Types } from "phaser";
+import type { GameObjects, Scene, Tilemaps } from "phaser";
 import { Data } from "../data/gameData";
 import type { JumpStep } from "../data/gameData";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import type { VanishingPlatforms } from "./VanishingPlatforms";
+import type { PlayerInputState } from "../input/PlayerInputState";
 
 // Local direction names for Sid's horizontal facing and movement.
 type FacingDirection = "left" | "right";
@@ -180,7 +181,7 @@ export class Player
      * walls, ladders, slides and conveyor tiles.
      */
     updateMovement(
-        cursors: Types.Input.Keyboard.CursorKeys,
+        inputState: PlayerInputState,
         map: Tilemaps.Tilemap,
         collisionProbe: TileCollisionProbe,
         vanishingPlatforms: VanishingPlatforms
@@ -203,7 +204,7 @@ export class Player
         const conveyorDirection = hasStandingSurface
             ? this.readConveyorDirectionBelow(collisionProbe)
             : null;
-        const requestedDirection = this.readHorizontalDirection(cursors);
+        const requestedDirection = this.readHorizontalDirection(inputState);
 
         if (hasStandingSurface || slideDirection) {
             // Stable ground should not inherit a delayed fall from the previous
@@ -229,7 +230,7 @@ export class Player
             this.ladderMovementAccumulator = 1;
         }
 
-        if ((hasStandingSurface || slideDirection) && this.isJumpRequested(cursors)) {
+        if ((hasStandingSurface || slideDirection) && this.isJumpRequested(inputState)) {
             this.startJump(requestedDirection);
             this.updateJumpWhenDue(map, collisionProbe, vanishingPlatforms);
             return Player.NO_MOVEMENT_DEATH;
@@ -452,22 +453,22 @@ export class Player
         this.stopWalk(false);
     }
 
-    private readHorizontalDirection(cursors: Types.Input.Keyboard.CursorKeys): FacingDirection | null
+    private readHorizontalDirection(inputState: PlayerInputState): FacingDirection | null
     {
-        if (cursors.left?.isDown) {
+        if (inputState.left) {
             return "left";
         }
 
-        if (cursors.right?.isDown) {
+        if (inputState.right) {
             return "right";
         }
 
         return null;
     }
 
-    private isJumpRequested(cursors: Types.Input.Keyboard.CursorKeys): boolean
+    private isJumpRequested(inputState: PlayerInputState): boolean
     {
-        return cursors.space?.isDown === true;
+        return inputState.jump;
     }
 
     private startJump(requestedDirection: FacingDirection | null): void
