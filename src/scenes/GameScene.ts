@@ -20,6 +20,7 @@ import { LevelRevealSequence } from "../entities/LevelRevealSequence";
 import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
 import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
+import { GameAudio } from "../audio/GameAudio";
 import { HUD_STATE_CHANGED_EVENT, EXIT_CHANGED_EVENT, KEYS_CHANGED_EVENT, PLAYER_KILLED_EVENT } from "./HUDScene";
 
 interface GameSceneData
@@ -375,6 +376,8 @@ export class GameScene extends Scene
             return false;
         }
 
+        GameAudio.stopGameplaySounds(this);
+        GameAudio.playPlayerDying(this);
         this.playerDeathSequence.start(this.player, () => this.finishPlayerDeath());
         return true;
     }
@@ -495,6 +498,7 @@ export class GameScene extends Scene
         // monster explosion reveal, then gameplay.
         this.monsterSpawnSequence?.stop();
         this.monsterManager.prepareForSpawnReveal();
+        GameAudio.playDisplayLevel(this);
         this.levelRevealSequence.start(() => this.startMonsterSpawnSequence());
     }
 
@@ -504,6 +508,7 @@ export class GameScene extends Scene
             return;
         }
 
+        GameAudio.playStartLevel(this);
         this.monsterSpawnSequence.start(() => {
             this.monsterManager?.activateAfterSpawnReveal();
         });
@@ -519,6 +524,7 @@ export class GameScene extends Scene
             return;
         }
 
+        GameAudio.playKey(this);
         this.sessionState.currentLevel.collectKey();
         this.sessionState.addKeyScore();
         this.emitHUDState();

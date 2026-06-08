@@ -1,4 +1,5 @@
 import { Scene } from "phaser";
+import { GameAudio } from "../audio/GameAudio";
 
 /**
  * Loads all assets required by the Phaser 4 runtime.
@@ -84,6 +85,7 @@ export class PreloadScene extends Scene
 
         this.load.image("title", "assets/sprites/title.png");
         this.load.image("game-over", "assets/sprites/game over.png");
+        GameAudio.preload(this);
 
         this.load.spritesheet("vanishing-platform", "assets/sprites/vanishing platform.png", {
             frameWidth: 16,
