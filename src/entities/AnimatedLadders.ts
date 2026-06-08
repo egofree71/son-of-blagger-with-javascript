@@ -1,4 +1,6 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
+import type { ActiveRegion } from "../optimization/LevelActiveRegions";
+import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
 /**
  * Draws animated ladder rungs above the static Tiled map.
@@ -17,6 +19,7 @@ export class AnimatedLadders
     private static readonly FRAME_DURATION_MS = 1000 / 30;
 
     private readonly sprites: GameObjects.Sprite[] = [];
+    private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
@@ -41,7 +44,7 @@ export class AnimatedLadders
      */
     update(deltaMs: number): void
     {
-        if (this.sprites.length === 0) {
+        if (this.activeSprites.length === 0) {
             return;
         }
 
@@ -57,8 +60,33 @@ export class AnimatedLadders
         this.elapsedFrameTimeMs %= AnimatedLadders.FRAME_DURATION_MS;
         this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedLadders.FRAME_COUNT;
 
-        for (const sprite of this.sprites) {
+        for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);
+        }
+    }
+
+    /**
+     * Keeps only the overlays belonging to the current level visible and updated.
+     */
+    setActiveRegions(activeRegions: readonly ActiveRegion[]): void
+    {
+        this.activeSprites = [];
+
+        for (const sprite of this.sprites) {
+            const active = overlapsActiveRegions(
+                sprite.x,
+                sprite.y,
+                this.layer.tilemap.tileWidth,
+                this.layer.tilemap.tileHeight,
+                activeRegions
+            );
+
+            sprite.setActive(active);
+            sprite.setVisible(active);
+
+            if (active) {
+                this.activeSprites.push(sprite);
+            }
         }
     }
 
@@ -85,6 +113,7 @@ export class AnimatedLadders
                 .setDepth(this.layer.depth + 1);
 
             this.sprites.push(sprite);
+            this.activeSprites.push(sprite);
 
             // Hide only the static artwork. The tile stays present so the ladder
             // probes can still detect it during player movement.

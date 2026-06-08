@@ -1,4 +1,6 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
+import type { ActiveRegion } from "../optimization/LevelActiveRegions";
+import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
 
 /**
  * Draws the animated conveyor belts above the static Tiled map.
@@ -15,6 +17,7 @@ export class AnimatedConveyors
     private static readonly FRAME_DURATION_MS = 1000 / 30;
 
     private readonly sprites: GameObjects.Sprite[] = [];
+    private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
@@ -39,7 +42,7 @@ export class AnimatedConveyors
      */
     update(deltaMs: number): void
     {
-        if (this.sprites.length === 0) {
+        if (this.activeSprites.length === 0) {
             return;
         }
 
@@ -59,8 +62,33 @@ export class AnimatedConveyors
         // eight-frame loop.
         this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedConveyors.FRAME_COUNT;
 
-        for (const sprite of this.sprites) {
+        for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);
+        }
+    }
+
+    /**
+     * Keeps only the overlays belonging to the current level visible and updated.
+     */
+    setActiveRegions(activeRegions: readonly ActiveRegion[]): void
+    {
+        this.activeSprites = [];
+
+        for (const sprite of this.sprites) {
+            const active = overlapsActiveRegions(
+                sprite.x,
+                sprite.y,
+                this.layer.tilemap.tileWidth,
+                this.layer.tilemap.tileHeight,
+                activeRegions
+            );
+
+            sprite.setActive(active);
+            sprite.setVisible(active);
+
+            if (active) {
+                this.activeSprites.push(sprite);
+            }
         }
     }
 
@@ -83,6 +111,7 @@ export class AnimatedConveyors
                 .setDepth(this.layer.depth + 1);
 
             this.sprites.push(sprite);
+            this.activeSprites.push(sprite);
 
             // Hide the static conveyor art, but keep the tile itself in the map:
             // its properties are still used to push Sid left or right.

@@ -1,4 +1,13 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
+import type { ActiveRegion } from "../optimization/LevelActiveRegions";
+import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
+
+interface VanishingPlatformEntry
+{
+    sprite: GameObjects.Sprite;
+    tileX: number;
+    tileY: number;
+}
 
 /**
  * Manages animated platforms that periodically stop supporting the player.
@@ -18,8 +27,10 @@ export class VanishingPlatforms
     // elapsed milliseconds keeps that speed stable on high-refresh displays.
     private static readonly FRAME_DURATION_MS = 500;
 
-    private readonly tileCoordinates = new Set<string>();
+    private readonly activeTileCoordinates = new Set<string>();
     private readonly sprites: GameObjects.Sprite[] = [];
+    private readonly platforms: VanishingPlatformEntry[] = [];
+    private activeSprites: GameObjects.Sprite[] = [];
     private frameIndex = 0;
     private elapsedFrameTimeMs = 0;
 
@@ -42,7 +53,7 @@ export class VanishingPlatforms
      */
     update(deltaMs: number): void
     {
-        if (this.sprites.length === 0) {
+        if (this.activeSprites.length === 0) {
             return;
         }
 
@@ -57,7 +68,7 @@ export class VanishingPlatforms
         this.elapsedFrameTimeMs %= VanishingPlatforms.FRAME_DURATION_MS;
         this.frameIndex = (this.frameIndex + 1) % VanishingPlatforms.FRAME_COUNT;
 
-        for (const sprite of this.sprites) {
+        for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);
         }
     }
@@ -88,12 +99,40 @@ export class VanishingPlatforms
         for (let x = start; x <= end; x += 1) {
             const tileX = Math.floor(x / this.layer.tilemap.tileWidth);
 
-            if (this.tileCoordinates.has(this.makeTileKey(tileX, tileY))) {
+            if (this.activeTileCoordinates.has(this.makeTileKey(tileX, tileY))) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Keeps only the current level's replacement platforms visible, updated and solid.
+     */
+    setActiveRegions(activeRegions: readonly ActiveRegion[]): void
+    {
+        this.activeSprites = [];
+        this.activeTileCoordinates.clear();
+
+        for (const platform of this.platforms) {
+            const sprite = platform.sprite;
+            const active = overlapsActiveRegions(
+                sprite.x,
+                sprite.y,
+                this.layer.tilemap.tileWidth,
+                this.layer.tilemap.tileHeight,
+                activeRegions
+            );
+
+            sprite.setActive(active);
+            sprite.setVisible(active);
+
+            if (active) {
+                this.activeSprites.push(sprite);
+                this.activeTileCoordinates.add(this.makeTileKey(platform.tileX, platform.tileY));
+            }
+        }
     }
 
     private createSpritesFromLayer(): void
@@ -103,7 +142,7 @@ export class VanishingPlatforms
                 return;
             }
 
-            this.tileCoordinates.add(this.makeTileKey(tile.x, tile.y));
+            this.activeTileCoordinates.add(this.makeTileKey(tile.x, tile.y));
 
             const sprite = this.scene.add.sprite(
                 tile.x * this.layer.tilemap.tileWidth,
@@ -115,6 +154,12 @@ export class VanishingPlatforms
                 .setDepth(this.layer.depth + 1);
 
             this.sprites.push(sprite);
+            this.activeSprites.push(sprite);
+            this.platforms.push({
+                sprite,
+                tileX: tile.x,
+                tileY: tile.y
+            });
 
             // Replace the static tile with a transparent tile. The sprite above
             // now owns the visual animation, while this class owns the collision.

@@ -21,6 +21,8 @@ import { LevelTransitionSequence } from "../entities/LevelTransitionSequence";
 import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { GameAudio } from "../audio/GameAudio";
+import type { ActiveRegion } from "../optimization/LevelActiveRegions";
+import { getLevelActiveRegions } from "../optimization/LevelActiveRegions";
 import { HUD_STATE_CHANGED_EVENT, EXIT_CHANGED_EVENT, KEYS_CHANGED_EVENT, PLAYER_KILLED_EVENT } from "./HUDScene";
 
 interface GameSceneData
@@ -115,6 +117,7 @@ export class GameScene extends Scene
         this.monsterManager = new MonsterManager(this, this.map, levelNumber);
         this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
         this.levelRevealSequence = new LevelRevealSequence(this, 640, GameScene.GAMEPLAY_VIEW_HEIGHT);
+        this.applyActiveRegionsForLevels(levelNumber);
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.createPlayerAtLevelStart(levelNumber);
@@ -572,6 +575,7 @@ export class GameScene extends Scene
 
         this.monsterSpawnSequence?.stop();
         this.levelRevealSequence?.stop();
+        this.applyActiveRegionsForLevels(this.sessionState.currentLevel.levelNumber, nextLevelNumber);
         this.levelTransitionSequence.start(Player.getTiledStartPosition(nextPlayerStart));
     }
 
@@ -631,6 +635,7 @@ export class GameScene extends Scene
         this.followPlayer(this.player);
         this.keyCollector.reset();
         this.exitDetector = this.createExitDetectorForLevel(levelNumber);
+        this.applyActiveRegionsForLevels(levelNumber);
         this.monsterManager = new MonsterManager(this, this.map, levelNumber);
         this.monsterSpawnSequence = new MonsterSpawnSequence(this, this.monsterManager, "explosion");
         this.levelTransitionSequence?.setMonsterManager(this.monsterManager);
@@ -640,6 +645,26 @@ export class GameScene extends Scene
         this.emitKeyState();
         this.emitExitState();
         this.startMonsterSpawnSequence();
+    }
+
+
+    /**
+     * Applies the GameMaker-style active regions to the animated decoration
+     * overlays. During a level transition we temporarily keep both levels active
+     * so the scrolling bridge does not pop sprites in and out.
+     */
+    private applyActiveRegionsForLevels(...levelNumbers: number[]): void
+    {
+        const activeRegions: ActiveRegion[] = [];
+
+        for (const levelNumber of levelNumbers) {
+            activeRegions.push(...getLevelActiveRegions(levelNumber));
+        }
+
+        this.vanishingPlatforms?.setActiveRegions(activeRegions);
+        this.animatedLadders?.setActiveRegions(activeRegions);
+        this.animatedConveyors?.setActiveRegions(activeRegions);
+        this.animatedWavePlatforms?.setActiveRegions(activeRegions);
     }
 
     private emitKeyState(): void
