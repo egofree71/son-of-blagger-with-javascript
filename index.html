@@ -43,13 +43,24 @@
             area around the camera. Keeping the page, container and canvas
             gutters black avoids a light strip at the left or right edge in
             landscape orientation.
+
+            Samsung Internet can still reserve the cutout as a safe-area strip
+            in installed PWAs. Extending the fixed game container by the safe
+            area insets lets the black gutters cover that strip too, matching
+            the browser fullscreen look without changing the game's 640x400
+            logical resolution.
         */
         #game-container {
             position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
+            top: calc(0px - env(safe-area-inset-top, 0px));
+            right: calc(0px - env(safe-area-inset-right, 0px));
+            bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+            left: calc(0px - env(safe-area-inset-left, 0px));
+            width: auto;
+            height: auto;
+            min-width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             touch-action: none;
             background: #000;
