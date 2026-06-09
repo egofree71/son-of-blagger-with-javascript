@@ -76,7 +76,9 @@ export class HUDScene extends Scene
         }
 
         this.refreshFullscreenText();
+        this.scheduleScaleRefresh();
     };
+    private readonly viewportChangeHandler = () => this.scheduleScaleRefresh();
 
     constructor()
     {
@@ -103,6 +105,8 @@ export class HUDScene extends Scene
 
         this.game.events.on(HUD_STATE_CHANGED_EVENT, this.applyStatePatch, this);
         document.addEventListener("fullscreenchange", this.fullscreenChangeHandler);
+        window.addEventListener("resize", this.viewportChangeHandler);
+        window.addEventListener("orientationchange", this.viewportChangeHandler);
 
         // Keep listening only while this overlay scene exists. Game-wide events
         // survive scene restarts, so leaked HUD listeners are otherwise painful.
@@ -291,6 +295,12 @@ export class HUDScene extends Scene
             .setInteractive({ useHandCursor: true })
             .on("pointerdown", (_pointer: PointerLike, _localX: number, _localY: number, event: InputEventLike) => {
                 event?.stopPropagation?.();
+            })
+            .on("pointerup", (_pointer: PointerLike, _localX: number, _localY: number, event: InputEventLike) => {
+                event?.stopPropagation?.();
+
+                // Mobile browsers are much more reliable when fullscreen is
+                // requested from pointerup rather than pointerdown.
                 onPressed();
             });
 
@@ -311,17 +321,21 @@ export class HUDScene extends Scene
             if (document.fullscreenElement) {
                 this.unlockOrientation();
                 await document.exitFullscreen();
+                await this.waitForViewportToSettle();
                 return;
             }
 
             await this.fullscreenTarget.requestFullscreen();
+            await this.waitForViewportToSettle();
             await this.lockLandscapeOrientation();
+            await this.waitForViewportToSettle();
         }
         catch (error) {
             console.warn("Fullscreen/orientation request failed.", error);
         }
         finally {
             this.refreshFullscreenText();
+            this.scheduleScaleRefresh();
         }
     }
 
@@ -362,6 +376,22 @@ export class HUDScene extends Scene
     private get fullscreenTarget(): HTMLElement
     {
         return this.game.canvas.parentElement ?? document.documentElement;
+    }
+
+    private async waitForViewportToSettle(): Promise<void>
+    {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+    }
+
+    private scheduleScaleRefresh(): void
+    {
+        // Mobile Chrome can resize the fullscreen viewport in several small
+        // steps while switching orientation. Refreshing Phaser a few times avoids
+        // keeping a stale portrait-sized canvas centered in a landscape screen.
+        for (const delayMs of [0, 100, 300, 600]) {
+            window.setTimeout(() => this.scale.refresh(), delayMs);
+        }
     }
 
     private refreshFullscreenText(): void
@@ -543,6 +573,8 @@ export class HUDScene extends Scene
         this.removeGameEventListeners();
         this.releaseAllTouchControls();
         document.removeEventListener("fullscreenchange", this.fullscreenChangeHandler);
+        window.removeEventListener("resize", this.viewportChangeHandler);
+        window.removeEventListener("orientationchange", this.viewportChangeHandler);
     }
 
     private removeGameEventListeners(): void
