@@ -24,14 +24,15 @@ export function isTouchModeEnabled(): boolean
  * Standalone PWAs already run outside the normal browser chrome. Requesting the
  * Fullscreen API from there can produce inconsistent viewport sizes on phones,
  * so touch UI code can use this helper to avoid offering a redundant fullscreen
- * toggle in that environment.
+ * toggle in that environment. Browser Fullscreen API sessions are deliberately
+ * not treated as installed PWA launches, otherwise the in-browser EXIT button
+ * would be disabled after entering fullscreen.
  */
 export function isInstalledPwaLaunch(): boolean
 {
     const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
 
     return window.matchMedia("(display-mode: standalone)").matches
-        || window.matchMedia("(display-mode: fullscreen)").matches
         || navigatorWithStandalone.standalone === true;
 }
 

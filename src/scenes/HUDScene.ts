@@ -213,12 +213,18 @@ export class HUDScene extends Scene
             this.createTouchControlButton("touch-jump-button", HudConstants.TOUCH_JUMP_BUTTON_X, "jump");
         }
 
-        if (!isInstalledPwaLaunch()) {
+        const installedPwaLaunch = isInstalledPwaLaunch();
+
+        if (!installedPwaLaunch) {
             this.createFullscreenButton();
         }
 
         if (this.showTouchIntroActions) {
-            this.createTouchActionButton("help", HudConstants.TOUCH_HELP_BUTTON_X, () => {
+            const helpButtonX = installedPwaLaunch
+                ? this.centeredTouchActionButtonX
+                : HudConstants.TOUCH_HELP_BUTTON_X;
+
+            this.createTouchActionButton("help", helpButtonX, () => {
                 this.game.events.emit(TOUCH_HELP_REQUESTED_EVENT);
             });
         }
@@ -246,6 +252,12 @@ export class HUDScene extends Scene
         });
         button.on("pointerout", (pointer: PointerLike) => this.setTouchControlPressed(control, pointer, false));
         button.on("pointerupoutside", (pointer: PointerLike) => this.setTouchControlPressed(control, pointer, false));
+    }
+
+    private get centeredTouchActionButtonX(): number
+    {
+        const buttonWidth = HudConstants.CHAR_WIDTH * HudConstants.TOUCH_ACTION_BUTTON_WIDTH_CHARS;
+        return (HudConstants.HUD_WIDTH - buttonWidth) / (2 * HudConstants.CHAR_WIDTH);
     }
 
     private createFullscreenButton(): void
