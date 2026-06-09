@@ -4,7 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Son of Blagger</title>
-    <link rel="icon" href="data:,">
+
+    <!--
+        PWA metadata. The relative paths keep the build installable when hosted
+        from a GitHub Pages project URL instead of the domain root.
+    -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Blagger" />
 
     <!--
         Phaser 4 is imported from npm by Vite through src/main.ts.
