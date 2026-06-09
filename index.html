@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <meta name="theme-color" content="#c0c0c0" />
+    <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Son of Blagger" />
@@ -28,7 +28,7 @@
             margin: 0;
             width: 100%;
             height: 100%;
-            background: #111;
+            background: #000;
         }
 
         body {
@@ -38,6 +38,12 @@
             touch-action: none;
         }
 
+        /*
+            In fullscreen PWA mode, Android may expose the cutout/status-bar
+            area around the camera. Keeping the page, container and canvas
+            gutters black avoids a light strip at the left or right edge in
+            landscape orientation.
+        */
         #game-container {
             position: fixed;
             inset: 0;
@@ -46,6 +52,12 @@
             height: 100dvh;
             overflow: hidden;
             touch-action: none;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: #c0c0c0;
         }
     </style>
 </head>
