@@ -1,4 +1,5 @@
 import { GameObjects, Scene } from "phaser";
+import { isInstalledPwaLaunch } from "../config/RuntimeMode";
 import { Data } from "../data/gameData";
 import type { PlayerInputControl, PlayerInputControlChangedPayload } from "../input/PlayerInputState";
 import { TOUCH_CONTROL_CHANGED_EVENT, TOUCH_HELP_REQUESTED_EVENT } from "../input/PlayerInputState";
@@ -212,7 +213,9 @@ export class HUDScene extends Scene
             this.createTouchControlButton("touch-jump-button", HudConstants.TOUCH_JUMP_BUTTON_X, "jump");
         }
 
-        this.createFullscreenButton();
+        if (!isInstalledPwaLaunch()) {
+            this.createFullscreenButton();
+        }
 
         if (this.showTouchIntroActions) {
             this.createTouchActionButton("help", HudConstants.TOUCH_HELP_BUTTON_X, () => {
@@ -288,6 +291,10 @@ export class HUDScene extends Scene
 
     private async toggleFullscreen(): Promise<void>
     {
+        if (isInstalledPwaLaunch()) {
+            return;
+        }
+
         try {
             if (document.fullscreenElement) {
                 this.unlockOrientation();

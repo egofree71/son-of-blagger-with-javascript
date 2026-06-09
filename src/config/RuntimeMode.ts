@@ -18,7 +18,15 @@ export function isTouchModeEnabled(): boolean
     return isInstalledPwaLaunch() && isTouchCapableDevice();
 }
 
-function isInstalledPwaLaunch(): boolean
+/**
+ * Detects launches from an installed web app window.
+ *
+ * Standalone PWAs already run outside the normal browser chrome. Requesting the
+ * Fullscreen API from there can produce inconsistent viewport sizes on phones,
+ * so touch UI code can use this helper to avoid offering a redundant fullscreen
+ * toggle in that environment.
+ */
+export function isInstalledPwaLaunch(): boolean
 {
     const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
 
