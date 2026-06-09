@@ -1,12 +1,34 @@
 /**
- * Reads runtime flags from the browser URL.
+ * Reads runtime flags from the browser environment.
  *
- * Touch controls are intentionally opt-in for now. Launching the game with
- * `?touch=1` makes the mobile HUD deterministic during development and avoids
- * guessing wrong on laptops that also expose a touch screen.
+ * The normal desktop game remains keyboard-first. Touch controls are enabled
+ * explicitly with `?touch=1`, or automatically when the installed PWA runs in
+ * standalone mode on a device that looks touch-capable. This keeps the regular
+ * GitHub Pages URL desktop-friendly while making the home-screen version useful
+ * on phones.
  */
 export function isTouchModeEnabled(): boolean
 {
     const searchParameters = new URLSearchParams(window.location.search);
-    return searchParameters.get("touch") === "1";
+
+    if (searchParameters.get("touch") === "1") {
+        return true;
+    }
+
+    return isInstalledPwaLaunch() && isTouchCapableDevice();
+}
+
+function isInstalledPwaLaunch(): boolean
+{
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+
+    return window.matchMedia("(display-mode: standalone)").matches
+        || window.matchMedia("(display-mode: fullscreen)").matches
+        || navigatorWithStandalone.standalone === true;
+}
+
+function isTouchCapableDevice(): boolean
+{
+    return navigator.maxTouchPoints > 0
+        || window.matchMedia("(pointer: coarse)").matches;
 }

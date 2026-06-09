@@ -1,15 +1,15 @@
 {
   "id": "./",
-  "name": "Son of Blagger Web Remake",
-  "short_name": "Blagger",
+  "name": "Son of Blagger",
+  "short_name": "Son of Blagger",
   "description": "A browser-based remake of the Commodore 64 platform game Son of Blagger.",
   "lang": "en",
-  "start_url": "./",
+  "start_url": "./?touch=1",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#c0c0c0",
+  "theme_color": "#c0c0c0",
   "icons": [
     {
       "src": "./icons/icon-192.png",
