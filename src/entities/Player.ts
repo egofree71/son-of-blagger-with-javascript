@@ -7,6 +7,7 @@ import type { VanishingPlatforms } from "./VanishingPlatforms";
 import type { PlayerInputState } from "../input/PlayerInputState";
 import { pixelsPerGameplayTick } from "../config/GameplayTiming";
 import { PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND } from "../config/GameplaySpeeds";
+import { PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME } from "../config/GameplayAnimation";
 
 // Local direction names for Sid's horizontal facing and movement.
 type FacingDirection = "left" | "right";
@@ -45,9 +46,6 @@ export class Player
 
     // Keep Sid above animated tile overlays such as vanishing platforms.
     private static readonly SPRITE_DEPTH = 10;
-
-    // Advance the walking animation only after a few accepted pixel moves.
-    private static readonly WALK_ANIMATION_TICK_INTERVAL = 5;
 
     // Horizontal foot probe: narrower than the sprite so edge landings feel fair.
     private static readonly FOOT_LEFT_OFFSET = 7;
@@ -110,7 +108,7 @@ export class Player
     private readonly deadlyFallTextureKey: string;
     private facingDirection: FacingDirection = "right";
     private animationFrameIndex = 0;
-    private animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
+    private animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
     private slideMovementAccumulator = 1;
@@ -159,7 +157,7 @@ export class Player
 
         this.facingDirection = "right";
         this.animationFrameIndex = 0;
-        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
+        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
@@ -589,7 +587,7 @@ export class Player
         // are separate frame ranges, not a mirrored sprite.
         this.facingDirection = direction;
         this.animationFrameIndex = 0;
-        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
+        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
         this.sprite.setFrame(this.firstFrameFor(direction));
     }
 
@@ -1047,7 +1045,7 @@ export class Player
 
         // Animation advances only after accepted pixel movement. This avoids the
         // legs spinning while a wall or the map edge blocks the sprite.
-        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
+        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
         this.animationFrameIndex = (this.animationFrameIndex + 1) % this.framesFor(this.facingDirection).length;
         this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }

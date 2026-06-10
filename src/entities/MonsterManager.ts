@@ -5,6 +5,8 @@ import { Monster } from "./Monster";
 import type { MonsterTileProperties } from "./Monster";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import { getTiledProperty } from "../tiled/tiledObjects";
+import { eventsPerGameplayTick } from "../config/GameplayTiming";
+import { MONSTER_ANIMATION_CHECKS_PER_SECOND } from "../config/GameplayAnimation";
 
 interface TiledMonsterObject extends TiledObjectLike
 {
@@ -29,14 +31,14 @@ export class MonsterManager
     private static readonly OBJECT_LAYER_NAME = "monsters";
     private static readonly TILESET_NAME = "monsters";
 
-    // Pace animation changes separately from movement so monsters do not flicker
-    // too quickly on different display refresh rates.
-    private static readonly ANIMATION_TICK_INTERVAL = 2;
+    // Pace animation changes separately from movement while using the fixed
+    // gameplay clock instead of browser render frames.
+    private static readonly ANIMATION_CHECKS_PER_TICK = eventsPerGameplayTick(MONSTER_ANIMATION_CHECKS_PER_SECOND);
 
     private readonly monsters: Monster[];
     private readonly animationCounterMax: number;
     private animationCounter: number;
-    private animationTickAccumulator = 1;
+    private animationCheckAccumulator = 1;
 
     /**
      * @param scene Gameplay scene that owns the monster sprites.
@@ -71,7 +73,7 @@ export class MonsterManager
     reset(): void
     {
         this.animationCounter = this.animationCounterMax;
-        this.animationTickAccumulator = 1;
+        this.animationCheckAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.reset();
@@ -84,7 +86,7 @@ export class MonsterManager
     prepareForSpawnReveal(): void
     {
         this.animationCounter = this.animationCounterMax;
-        this.animationTickAccumulator = 1;
+        this.animationCheckAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.prepareForSpawnReveal();
@@ -214,13 +216,13 @@ export class MonsterManager
 
     private shouldProcessAnimationThisTick(): boolean
     {
-        this.animationTickAccumulator += 1 / MonsterManager.ANIMATION_TICK_INTERVAL;
+        this.animationCheckAccumulator += MonsterManager.ANIMATION_CHECKS_PER_TICK;
 
-        if (this.animationTickAccumulator < 1) {
+        if (this.animationCheckAccumulator < 1) {
             return false;
         }
 
-        this.animationTickAccumulator -= 1;
+        this.animationCheckAccumulator -= 1;
         return true;
     }
 

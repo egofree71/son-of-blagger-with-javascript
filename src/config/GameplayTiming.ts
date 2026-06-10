@@ -22,3 +22,12 @@ export function pixelsPerGameplayTick(pixelsPerSecond: number): number
 {
     return pixelsPerSecond * GAMEPLAY_LOGICAL_STEP_SECONDS;
 }
+
+/**
+ * Converts a rate expressed as occurrences per second into the fractional
+ * amount that should be accumulated on each fixed gameplay tick.
+ */
+export function eventsPerGameplayTick(eventsPerSecond: number): number
+{
+    return eventsPerSecond * GAMEPLAY_LOGICAL_STEP_SECONDS;
+}

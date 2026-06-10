@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -154,6 +154,7 @@ src/
   RuntimeMode.ts
   GameplayTiming.ts
   GameplaySpeeds.ts
+  GameplayAnimation.ts
  scenes/
   PreloadScene.ts
   TitleScene.ts
@@ -535,7 +536,7 @@ show();
 
 The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/data/gameData.ts`. This is one of the most gameplay-sensitive pieces of the project.
 
-Sid's current one-pixel movement cadence is expressed as `PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND` in `src/config/GameplaySpeeds.ts`, then converted to a per-tick accumulator through the fixed gameplay clock. This keeps the design speed readable while preserving pixel-step collision behaviour.
+Sid's current one-pixel movement cadence is expressed as `PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND` in `src/config/GameplaySpeeds.ts`, then converted to a per-tick accumulator through the fixed gameplay clock. His walking animation cadence is named in `src/config/GameplayAnimation.ts` and advances only after accepted pixel steps, so blocked movement does not spin the legs. This keeps the design speed readable while preserving pixel-step collision behaviour.
 
 `Player` consumes a merged `PlayerInputState` rather than reading Phaser keyboard objects directly. That input state can contain keyboard commands, touch commands, or both.
 
@@ -584,7 +585,7 @@ Each monster:
 - reverses direction at the end of its path;
 - advances animation frames when requested by the manager.
 
-Monsters follow predefined paths. They do not chase the player. Their path movement speed is expressed as `MONSTER_PATH_SPEED_PX_PER_SECOND` and emitted as preserved half-pixel steps so old path timing and collision feel remain stable.
+Monsters follow predefined paths. They do not chase the player. Their path movement speed is expressed as `MONSTER_PATH_SPEED_PX_PER_SECOND` and emitted as preserved half-pixel steps so old path timing and collision feel remain stable. Their animation clock is named in `src/config/GameplayAnimation.ts`; the per-level animation counters still come from `Data.levels`.
 
 ### `MonsterManager`
 
@@ -893,7 +894,7 @@ Many movement and interaction rules use tile-line probes and Tiled tile properti
 
 ### Timing should stay independent from display refresh rate
 
-Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. This preserves deterministic movement while avoiding refresh-rate-dependent speed changes.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
 Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 
