@@ -1,6 +1,7 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
+import { LEVEL_OBJECT_ANIMATION_FRAME_COUNT, LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS } from "../config/LevelObjectAnimation";
 
 interface WavePlatformTileEntry
 {
@@ -21,8 +22,6 @@ export class AnimatedWavePlatforms
 {
     private static readonly LEFT_WAVE_TILE_INDEX = 31;
     private static readonly RIGHT_WAVE_TILE_INDEX = 32;
-    private static readonly FRAME_COUNT = 8;
-    private static readonly FRAME_DURATION_MS = 1000 / 30;
 
     private readonly entries: WavePlatformTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
@@ -56,15 +55,15 @@ export class AnimatedWavePlatforms
 
         this.elapsedFrameTimeMs += deltaMs;
 
-        if (this.elapsedFrameTimeMs < AnimatedWavePlatforms.FRAME_DURATION_MS) {
+        if (this.elapsedFrameTimeMs < LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS) {
             return;
         }
 
         // Consume every complete animation step since the previous update. This
         // keeps the visual loop stable when the browser misses a frame.
-        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedWavePlatforms.FRAME_DURATION_MS);
-        this.elapsedFrameTimeMs %= AnimatedWavePlatforms.FRAME_DURATION_MS;
-        this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedWavePlatforms.FRAME_COUNT;
+        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS);
+        this.elapsedFrameTimeMs %= LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS;
+        this.frameIndex = (this.frameIndex + framesToAdvance) % LEVEL_OBJECT_ANIMATION_FRAME_COUNT;
 
         for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);

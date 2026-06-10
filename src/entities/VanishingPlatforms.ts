@@ -1,6 +1,7 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
+import { VANISHING_PLATFORM_FRAME_COUNT, VANISHING_PLATFORM_FRAME_DURATION_MS, VANISHING_PLATFORM_NON_COLLIDING_FRAME } from "../config/LevelObjectAnimation";
 
 interface VanishingPlatformEntry
 {
@@ -23,11 +24,6 @@ export class VanishingPlatforms
     private static readonly TILE_NAME_VANISHING_PLATFORM = "vanishing platform";
     private static readonly TILED_PROPERTY_NAME = "name";
     private static readonly BLANK_TILE_INDEX = 30;
-    private static readonly FRAME_COUNT = 8;
-    private static readonly NON_COLLIDING_FRAME = 4;
-    // Two animation frames per second gives the platform its slow blink. Using
-    // elapsed milliseconds keeps that speed stable on high-refresh displays.
-    private static readonly FRAME_DURATION_MS = 500;
 
     private readonly activeTileCoordinates = new Set<string>();
     private readonly platforms: VanishingPlatformEntry[] = [];
@@ -60,14 +56,14 @@ export class VanishingPlatforms
 
         this.elapsedFrameTimeMs += deltaMs;
 
-        if (this.elapsedFrameTimeMs < VanishingPlatforms.FRAME_DURATION_MS) {
+        if (this.elapsedFrameTimeMs < VANISHING_PLATFORM_FRAME_DURATION_MS) {
             return;
         }
 
         // Preserve any extra elapsed time so the animation does not drift when
         // the browser delivers an occasional long frame.
-        this.elapsedFrameTimeMs %= VanishingPlatforms.FRAME_DURATION_MS;
-        this.frameIndex = (this.frameIndex + 1) % VanishingPlatforms.FRAME_COUNT;
+        this.elapsedFrameTimeMs %= VANISHING_PLATFORM_FRAME_DURATION_MS;
+        this.frameIndex = (this.frameIndex + 1) % VANISHING_PLATFORM_FRAME_COUNT;
 
         for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);
@@ -79,7 +75,7 @@ export class VanishingPlatforms
      */
     hasCollisionOnHorizontalLine(xStart: number, xEnd: number, y: number): boolean
     {
-        if (this.frameIndex === VanishingPlatforms.NON_COLLIDING_FRAME) {
+        if (this.frameIndex === VANISHING_PLATFORM_NON_COLLIDING_FRAME) {
             return false;
         }
 

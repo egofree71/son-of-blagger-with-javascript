@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -155,6 +155,7 @@ src/
   GameplayTiming.ts
   GameplaySpeeds.ts
   GameplayAnimation.ts
+  LevelObjectAnimation.ts
  scenes/
   PreloadScene.ts
   TitleScene.ts
@@ -617,7 +618,7 @@ When a level is completed, `LevelTransitionSequence` asks the monster system to 
 
 Stores conveyor tile positions from the Tiled layer and creates animated visual overlays only for the active level regions. The Tiled tiles remain in the map and still provide movement properties; only their static visuals are hidden.
 
-The frame timer uses `deltaMs` and can advance more than one frame if a browser frame is late. The accumulated remainder is kept so animation cadence remains stable.
+The shared level-object animation cadence lives in `src/config/LevelObjectAnimation.ts`. The frame timer uses `deltaMs` and can advance more than one frame if a browser frame is late. The accumulated remainder is kept so animation cadence remains stable.
 
 ### `AnimatedLadders`
 
@@ -631,7 +632,7 @@ Stores wave-platform tile positions and creates animated wave-platform overlays 
 
 Stores disappearing-platform tile positions, replaces the original static tiles with transparent tiles, and creates animated platform sprites only for the active level regions.
 
-This class also owns vanishing-platform collision. A platform outside the active regions has no sprite and no collision entry, so it cannot behave like an invisible solid tile.
+This class also owns vanishing-platform collision. Its collision-off animation frame is named in `src/config/LevelObjectAnimation.ts` because this visual cadence also affects gameplay. A platform outside the active regions has no sprite and no collision entry, so it cannot behave like an invisible solid tile.
 
 ---
 
@@ -894,7 +895,7 @@ Many movement and interaction rules use tile-line probes and Tiled tile properti
 
 ### Timing should stay independent from display refresh rate
 
-Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
 Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 
