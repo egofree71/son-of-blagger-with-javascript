@@ -1,4 +1,5 @@
 import { GameSessionConstants } from "../state/gameSessionConstants";
+import { SEQUENCE_LOGICAL_STEP_MS } from "../config/SequenceTiming";
 
 export interface EndGameSequenceResult
 {
@@ -20,11 +21,8 @@ type EndGameSequencePhase = "convert-air-to-score" | "show-message";
  */
 export class EndGameSequence
 {
-    private static readonly REFERENCE_FPS = 60;
-    private static readonly LOGICAL_FRAME_MS = 1000 / EndGameSequence.REFERENCE_FPS;
-
     private phase: EndGameSequencePhase = "convert-air-to-score";
-    private frameAccumulatorMs = 0;
+    private sequenceStepAccumulatorMs = 0;
     private playing = false;
 
     /**
@@ -33,7 +31,7 @@ export class EndGameSequence
     start(): void
     {
         this.phase = "convert-air-to-score";
-        this.frameAccumulatorMs = 0;
+        this.sequenceStepAccumulatorMs = 0;
         this.playing = true;
     }
 
@@ -43,11 +41,11 @@ export class EndGameSequence
     stop(): void
     {
         this.playing = false;
-        this.frameAccumulatorMs = 0;
+        this.sequenceStepAccumulatorMs = 0;
     }
 
     /**
-     * Advances the sequence and reports the state deltas to apply this frame.
+     * Advances the sequence and reports the state deltas to apply this update.
      */
     update(deltaMs: number, currentAirLevel: number): EndGameSequenceResult
     {
@@ -57,18 +55,18 @@ export class EndGameSequence
             return result;
         }
 
-        this.frameAccumulatorMs += deltaMs;
+        this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.frameAccumulatorMs >= EndGameSequence.LOGICAL_FRAME_MS) {
-            this.frameAccumulatorMs -= EndGameSequence.LOGICAL_FRAME_MS;
-            const frameResult = this.updateOneLogicalFrame(currentAirLevel);
-            result.scoreDelta += frameResult.scoreDelta;
-            result.airDelta += frameResult.airDelta;
-            result.airChanged = result.airChanged || frameResult.airChanged;
-            result.airCleared = result.airCleared || frameResult.airCleared;
-            result.messageReady = result.messageReady || frameResult.messageReady;
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+            const stepResult = this.updateOneSequenceStep(currentAirLevel);
+            result.scoreDelta += stepResult.scoreDelta;
+            result.airDelta += stepResult.airDelta;
+            result.airChanged = result.airChanged || stepResult.airChanged;
+            result.airCleared = result.airCleared || stepResult.airCleared;
+            result.messageReady = result.messageReady || stepResult.messageReady;
 
-            if (frameResult.airChanged || frameResult.airCleared || frameResult.messageReady || !this.playing) {
+            if (stepResult.airChanged || stepResult.airCleared || stepResult.messageReady || !this.playing) {
                 break;
             }
         }
@@ -84,7 +82,7 @@ export class EndGameSequence
         return this.playing;
     }
 
-    private updateOneLogicalFrame(currentAirLevel: number): EndGameSequenceResult
+    private updateOneSequenceStep(currentAirLevel: number): EndGameSequenceResult
     {
         if (this.phase === "show-message") {
             this.playing = false;

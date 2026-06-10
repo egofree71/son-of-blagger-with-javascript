@@ -3,6 +3,7 @@ import { MonsterManager } from "./MonsterManager";
 import { Player } from "./Player";
 import { GameSessionConstants } from "../state/gameSessionConstants";
 import { EXPLOSION_EFFECT_FRAME_COUNT, EXPLOSION_EFFECT_FRAME_DURATION_MS } from "../config/SequenceAnimation";
+import { LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS, LEVEL_TRANSITION_PLAYER_TILE_STEP_PX, SEQUENCE_LOGICAL_STEP_MS } from "../config/SequenceTiming";
 
 interface LevelTransitionTarget
 {
@@ -40,10 +41,6 @@ export class LevelTransitionSequence
 {
     private static readonly STAGE_COLOR_NORMAL = 0xc0c0c0;
     private static readonly STAGE_COLOR_TRANSITION = 0xff0000;
-    private static readonly REFERENCE_FPS = 60;
-    private static readonly LOGICAL_FRAME_MS = 1000 / LevelTransitionSequence.REFERENCE_FPS;
-    private static readonly MOVE_DELAY_FRAMES = 4;
-    private static readonly PLAYER_TILE_STEP = 16;
     private static readonly REVERSE_EXPLOSION_TEXTURE = "reverse-explosion";
     private static readonly REVERSE_EXPLOSION_DEPTH = 12;
 
@@ -53,8 +50,8 @@ export class LevelTransitionSequence
     private phase: LevelTransitionPhase = "hide-monsters";
     private playing = false;
     private nextPlayerPosition: LevelTransitionTarget = { x: 0, y: 0 };
-    private logicalFrameAccumulatorMs = 0;
-    private movementCounter = LevelTransitionSequence.MOVE_DELAY_FRAMES;
+    private sequenceStepAccumulatorMs = 0;
+    private movementCounter = LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS;
     private reverseExplosionFrameAccumulatorMs = 0;
     private reverseExplosionFrameIndex = 0;
     private readonly reverseExplosions: GameObjects.Sprite[] = [];
@@ -88,8 +85,8 @@ export class LevelTransitionSequence
         this.nextPlayerPosition = nextPlayerPosition;
         this.phase = "hide-monsters";
         this.playing = true;
-        this.logicalFrameAccumulatorMs = 0;
-        this.movementCounter = LevelTransitionSequence.MOVE_DELAY_FRAMES;
+        this.sequenceStepAccumulatorMs = 0;
+        this.movementCounter = LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS;
     }
 
     /**
@@ -104,18 +101,18 @@ export class LevelTransitionSequence
         }
 
         this.updateReverseExplosions(deltaMs);
-        this.logicalFrameAccumulatorMs += deltaMs;
+        this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.logicalFrameAccumulatorMs >= LevelTransitionSequence.LOGICAL_FRAME_MS) {
-            this.logicalFrameAccumulatorMs -= LevelTransitionSequence.LOGICAL_FRAME_MS;
-            const frameResult = this.updateOneLogicalFrame(currentAirLevel);
-            result.scoreDelta += frameResult.scoreDelta;
-            result.airDelta += frameResult.airDelta;
-            result.airChanged = result.airChanged || frameResult.airChanged;
-            result.airCleared = result.airCleared || frameResult.airCleared;
-            result.nextLevelReady = result.nextLevelReady || frameResult.nextLevelReady;
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+            const stepResult = this.updateOneSequenceStep(currentAirLevel);
+            result.scoreDelta += stepResult.scoreDelta;
+            result.airDelta += stepResult.airDelta;
+            result.airChanged = result.airChanged || stepResult.airChanged;
+            result.airCleared = result.airCleared || stepResult.airCleared;
+            result.nextLevelReady = result.nextLevelReady || stepResult.nextLevelReady;
 
-            if (frameResult.nextLevelReady || frameResult.airChanged || frameResult.airCleared || !this.playing) {
+            if (stepResult.nextLevelReady || stepResult.airChanged || stepResult.airCleared || !this.playing) {
                 break;
             }
         }
@@ -129,8 +126,8 @@ export class LevelTransitionSequence
     stop(): void
     {
         this.playing = false;
-        this.logicalFrameAccumulatorMs = 0;
-        this.movementCounter = LevelTransitionSequence.MOVE_DELAY_FRAMES;
+        this.sequenceStepAccumulatorMs = 0;
+        this.movementCounter = LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS;
         this.scene.cameras.main.setBackgroundColor(LevelTransitionSequence.STAGE_COLOR_NORMAL);
         this.destroyReverseExplosions();
     }
@@ -143,7 +140,7 @@ export class LevelTransitionSequence
         return this.playing;
     }
 
-    private updateOneLogicalFrame(currentAirLevel: number): LevelTransitionResult
+    private updateOneSequenceStep(currentAirLevel: number): LevelTransitionResult
     {
         switch (this.phase) {
             case "hide-monsters":
@@ -214,7 +211,7 @@ export class LevelTransitionSequence
     private convertAirToScore(currentAirLevel: number): LevelTransitionResult
     {
         if (currentAirLevel > 0) {
-            this.movementCounter = LevelTransitionSequence.MOVE_DELAY_FRAMES;
+            this.movementCounter = LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS;
             return {
                 ...this.createResult(),
                 scoreDelta: GameSessionConstants.END_LEVEL_SCORE_STEP,
@@ -238,7 +235,7 @@ export class LevelTransitionSequence
             return;
         }
 
-        this.movementCounter = LevelTransitionSequence.MOVE_DELAY_FRAMES;
+        this.movementCounter = LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS;
 
         const horizontalDistance = this.player.getHorizontalDistanceFrom(this.nextPlayerPosition.x);
         const verticalDistance = this.player.getVerticalDistanceFrom(this.nextPlayerPosition.y);
@@ -258,28 +255,28 @@ export class LevelTransitionSequence
 
     private movePlayerHorizontallyTowardTarget(horizontalDistance: number): void
     {
-        if (Math.abs(horizontalDistance) < LevelTransitionSequence.PLAYER_TILE_STEP) {
+        if (Math.abs(horizontalDistance) < LEVEL_TRANSITION_PLAYER_TILE_STEP_PX) {
             this.player.setBodyX(this.nextPlayerPosition.x);
             this.phase = "refill-air";
             return;
         }
 
         this.player.moveBodyX(horizontalDistance > 0
-            ? -LevelTransitionSequence.PLAYER_TILE_STEP
-            : LevelTransitionSequence.PLAYER_TILE_STEP);
+            ? -LEVEL_TRANSITION_PLAYER_TILE_STEP_PX
+            : LEVEL_TRANSITION_PLAYER_TILE_STEP_PX);
     }
 
     private movePlayerVerticallyTowardTarget(verticalDistance: number): void
     {
-        if (Math.abs(verticalDistance) < LevelTransitionSequence.PLAYER_TILE_STEP) {
+        if (Math.abs(verticalDistance) < LEVEL_TRANSITION_PLAYER_TILE_STEP_PX) {
             this.player.setBodyY(this.nextPlayerPosition.y);
             this.phase = "refill-air";
             return;
         }
 
         this.player.moveBodyY(verticalDistance > 0
-            ? -LevelTransitionSequence.PLAYER_TILE_STEP
-            : LevelTransitionSequence.PLAYER_TILE_STEP);
+            ? -LEVEL_TRANSITION_PLAYER_TILE_STEP_PX
+            : LEVEL_TRANSITION_PLAYER_TILE_STEP_PX);
     }
 
     private refillAir(currentAirLevel: number): LevelTransitionResult
