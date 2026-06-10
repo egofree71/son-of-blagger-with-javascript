@@ -1,3 +1,5 @@
+const BONUS_MAN_TINT_REFERENCE_FPS = 60;
+
 /**
  * Coordinates and timings for the HUD.
  *
@@ -12,8 +14,9 @@ export const HudConstants = {
     CHAR_WIDTH: 16,
     FONT_CHAR_WIDTH: 16,
     FONT_CHAR_HEIGHT: 16,
-    REFERENCE_FPS: 60,
-    LOGICAL_FRAME_MS: 1000 / 60,
+
+    BONUS_MAN_TINT_REFERENCE_FPS,
+    BONUS_MAN_TINT_STEP_MS: 1000 / BONUS_MAN_TINT_REFERENCE_FPS,
 
     COLOR_BLACK: 0x000000,
     COLOR_WHITE: 0xffffff,
@@ -29,7 +32,7 @@ export const HudConstants = {
     AIR_GRADIENT_START_COLOR: "red",
     AIR_GRADIENT_END_COLOR: "#399aff",
 
-    BONUS_MAN_COLOR_DELAY: 3,
+    BONUS_MAN_TINT_STEPS_PER_COLOR: 3,
     BONUS_MAN_MIN_COLOR_INDEX: 0,
     BONUS_MAN_MAX_COLOR_INDEX: 3,
 

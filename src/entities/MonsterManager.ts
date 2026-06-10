@@ -5,6 +5,8 @@ import { Monster } from "./Monster";
 import type { MonsterTileProperties } from "./Monster";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import { getTiledProperty } from "../tiled/tiledObjects";
+import { eventsPerGameplayTick } from "../config/GameplayTiming";
+import { MONSTER_ANIMATION_CHECKS_PER_SECOND } from "../config/GameplayAnimation";
 
 interface TiledMonsterObject extends TiledObjectLike
 {
@@ -29,14 +31,15 @@ export class MonsterManager
     private static readonly OBJECT_LAYER_NAME = "monsters";
     private static readonly TILESET_NAME = "monsters";
 
-    // Pace animation changes separately from movement so monsters do not flicker
-    // too quickly on high-refresh displays.
-    private static readonly ANIMATION_FRAME_INTERVAL = 2;
+    // Pace sprite-frame changes separately from monster movement. The fixed
+    // gameplay clock decides when animation checks happen; each level then
+    // chooses how many checks are needed before the next sprite frame.
+    private static readonly ANIMATION_CHECKS_PER_TICK = eventsPerGameplayTick(MONSTER_ANIMATION_CHECKS_PER_SECOND);
 
     private readonly monsters: Monster[];
-    private readonly animationCounterMax: number;
-    private animationCounter: number;
-    private animationFrameAccumulator = 1;
+    private readonly animationIntervalChecks: number;
+    private animationCheckCountdown: number;
+    private animationCheckAccumulator = 1;
 
     /**
      * @param scene Gameplay scene that owns the monster sprites.
@@ -46,21 +49,21 @@ export class MonsterManager
     constructor(scene: Scene, map: Tilemaps.Tilemap, levelNumber: number)
     {
         this.monsters = this.loadMonsters(scene, map, levelNumber);
-        this.animationCounterMax = this.readAnimationCounterMax(levelNumber);
-        this.animationCounter = this.animationCounterMax;
+        this.animationIntervalChecks = this.readAnimationIntervalChecks(levelNumber);
+        this.animationCheckCountdown = this.animationIntervalChecks;
     }
 
     /**
-     * Moves all active monsters and advances their animation when needed.
+     * Moves all active monsters and advances their sprite animation when needed.
      */
     update(): void
     {
-        const canAdvanceAnimationThisFrame = this.shouldProcessAnimationThisFrame();
+        const canAdvanceAnimationThisTick = this.shouldProcessAnimationThisTick();
 
         for (const monster of this.monsters) {
-            // The shared counter is consumed per monster, which keeps identical
+            // The shared countdown is consumed per monster, which keeps identical
             // monsters from looking perfectly synchronized.
-            const advanceAnimation = canAdvanceAnimationThisFrame && this.shouldAdvanceMonsterAnimation();
+            const advanceAnimation = canAdvanceAnimationThisTick && this.shouldAdvanceMonsterAnimation();
             monster.update(advanceAnimation);
         }
     }
@@ -70,8 +73,8 @@ export class MonsterManager
      */
     reset(): void
     {
-        this.animationCounter = this.animationCounterMax;
-        this.animationFrameAccumulator = 1;
+        this.animationCheckCountdown = this.animationIntervalChecks;
+        this.animationCheckAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.reset();
@@ -83,8 +86,8 @@ export class MonsterManager
      */
     prepareForSpawnReveal(): void
     {
-        this.animationCounter = this.animationCounterMax;
-        this.animationFrameAccumulator = 1;
+        this.animationCheckCountdown = this.animationIntervalChecks;
+        this.animationCheckAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.prepareForSpawnReveal();
@@ -205,34 +208,39 @@ export class MonsterManager
         return monsterObject.type;
     }
 
-    private readAnimationCounterMax(levelNumber: number): number
+    private readAnimationIntervalChecks(levelNumber: number): number
     {
         const levelDefinition = Data.levels[levelNumber - 1];
 
-        return levelDefinition?.[1] ?? 1;
+        if (!levelDefinition) {
+            return 1;
+        }
+
+        const [, monsterAnimationIntervalChecks] = levelDefinition;
+        return monsterAnimationIntervalChecks;
     }
 
-    private shouldProcessAnimationThisFrame(): boolean
+    private shouldProcessAnimationThisTick(): boolean
     {
-        this.animationFrameAccumulator += 1 / MonsterManager.ANIMATION_FRAME_INTERVAL;
+        this.animationCheckAccumulator += MonsterManager.ANIMATION_CHECKS_PER_TICK;
 
-        if (this.animationFrameAccumulator < 1) {
+        if (this.animationCheckAccumulator < 1) {
             return false;
         }
 
-        this.animationFrameAccumulator -= 1;
+        this.animationCheckAccumulator -= 1;
         return true;
     }
 
     private shouldAdvanceMonsterAnimation(): boolean
     {
-        this.animationCounter -= 1;
+        this.animationCheckCountdown -= 1;
 
-        if (this.animationCounter !== 0) {
+        if (this.animationCheckCountdown !== 0) {
             return false;
         }
 
-        this.animationCounter = this.animationCounterMax;
+        this.animationCheckCountdown = this.animationIntervalChecks;
         return true;
     }
 }

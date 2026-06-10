@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts, per-level monster animation intervals and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, air depletion timing lives in `src/config/AirTiming.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings live in `src/config/SequenceTiming.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -152,6 +152,13 @@ src/
  main.ts
  config/
   RuntimeMode.ts
+  GameplayTiming.ts
+  GameplaySpeeds.ts
+  GameplayAnimation.ts
+  AirTiming.ts
+  LevelObjectAnimation.ts
+  SequenceTiming.ts
+  SequenceAnimation.ts
  scenes/
   PreloadScene.ts
   TitleScene.ts
@@ -412,7 +419,7 @@ enableBonusMan();
 consumeBonusMan();
 ```
 
-Air depletion is based on elapsed milliseconds rather than raw update counts, so the rate stays stable on high-refresh-rate screens.
+Air depletion is based on elapsed milliseconds rather than raw update counts, so the rate stays stable on high-refresh-rate screens. The depletion rhythm is named in `src/config/AirTiming.ts`, which keeps the old 60 FPS reference cadence but converts it to milliseconds.
 
 ### `gameSessionConstants.ts`
 
@@ -422,7 +429,6 @@ Contains shared gameplay values such as:
 - level count;
 - initial lives;
 - default air level;
-- air-decrease rhythm;
 - score increments;
 - air-to-score conversion steps.
 
@@ -477,11 +483,18 @@ While the level reveal or monster spawn sequence is active:
 During normal gameplay, `GameScene.update()` approximately does this:
 
 ```text
-update active animated decoration sprites
-update death sequence
+update active animated decoration sprites with deltaMs
+update death sequence with deltaMs
 stop if game-over / ending / reveal / spawn / transition is active
-apply debug free-move if enabled
-consume air if due
+apply debug free-move with deltaMs if enabled
+consume air if due with deltaMs
+accumulate elapsed time for the fixed gameplay clock
+run zero or more fixed gameplay ticks
+```
+
+Each fixed gameplay tick runs the gameplay-sensitive systems in this order:
+
+```text
 update monsters
 update player movement
 kill player after deadly fall if needed
@@ -525,6 +538,8 @@ show();
 ```
 
 The jump trajectory is data-driven and comes from `Data.jumpPath` in `src/data/gameData.ts`. This is one of the most gameplay-sensitive pieces of the project.
+
+Sid's current one-pixel movement cadence is expressed as `PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND` in `src/config/GameplaySpeeds.ts`, then converted to a per-tick accumulator through the fixed gameplay clock. His walking animation cadence is named in `src/config/GameplayAnimation.ts` and advances only after accepted pixel steps, so blocked movement does not spin the legs. This keeps the design speed readable while preserving pixel-step collision behaviour.
 
 `Player` consumes a merged `PlayerInputState` rather than reading Phaser keyboard objects directly. That input state can contain keyboard commands, touch commands, or both.
 
@@ -571,9 +586,9 @@ Each monster:
 - reads its collision hitbox from monster tileset properties;
 - moves horizontally or vertically;
 - reverses direction at the end of its path;
-- advances animation frames when requested by the manager.
+- advances sprite animation frames when requested by the manager.
 
-Monsters follow predefined paths. They do not chase the player.
+Monsters follow predefined paths. They do not chase the player. Their path movement speed is expressed as `MONSTER_PATH_SPEED_PX_PER_SECOND` and emitted as preserved half-pixel steps so old path timing and collision feel remain stable. Their animation clock is named in `src/config/GameplayAnimation.ts`; the per-level sprite-frame interval checks still come from `Data.levels`.
 
 ### `MonsterManager`
 
@@ -584,18 +599,18 @@ Responsibilities:
 - load monsters for the current level;
 - prepare monsters for spawn reveal;
 - activate monsters after reveal;
-- update movement and animation;
+- update movement and sprite animation;
 - test player/monster collision;
 - destroy monsters when changing level;
 - expose monster positions to transition and reveal sequences.
 
 ### `MonsterSpawnSequence`
 
-Plays the explosion effect at each monster position before monsters become visible and dangerous.
+Plays the explosion effect at each monster position before monsters become visible and dangerous. The explosion frame cadence is shared with the reverse-explosion effect through `src/config/SequenceAnimation.ts`.
 
 ### Reverse explosions during level transition
 
-When a level is completed, `LevelTransitionSequence` asks the monster system to hide the current monsters with reverse-explosion effects before moving to the next level.
+When a level is completed, `LevelTransitionSequence` asks the monster system to hide the current monsters with reverse-explosion effects before moving to the next level. The reverse explosion uses the same effect timing constants as the monster spawn reveal.
 
 ---
 
@@ -605,7 +620,7 @@ When a level is completed, `LevelTransitionSequence` asks the monster system to 
 
 Stores conveyor tile positions from the Tiled layer and creates animated visual overlays only for the active level regions. The Tiled tiles remain in the map and still provide movement properties; only their static visuals are hidden.
 
-The frame timer uses `deltaMs` and can advance more than one frame if a browser frame is late. The accumulated remainder is kept so animation cadence remains stable.
+The shared level-object animation cadence lives in `src/config/LevelObjectAnimation.ts`. The frame timer uses `deltaMs` and can advance more than one frame if a browser frame is late. The accumulated remainder is kept so animation cadence remains stable.
 
 ### `AnimatedLadders`
 
@@ -619,7 +634,7 @@ Stores wave-platform tile positions and creates animated wave-platform overlays 
 
 Stores disappearing-platform tile positions, replaces the original static tiles with transparent tiles, and creates animated platform sprites only for the active level regions.
 
-This class also owns vanishing-platform collision. A platform outside the active regions has no sprite and no collision entry, so it cannot behave like an invisible solid tile.
+This class also owns vanishing-platform collision. Its collision-off animation frame is named in `src/config/LevelObjectAnimation.ts` because this visual cadence also affects gameplay. A platform outside the active regions has no sprite and no collision entry, so it cannot behave like an invisible solid tile.
 
 ---
 
@@ -673,7 +688,7 @@ Draws the lower black HUD panel and updates it from `HUDState` events.
 
 The air bar is rendered as a red-to-blue gradient image with a black mask over it. The mask width is based on the current air value.
 
-The bonus man is shown when `HUDState.hasBonusMan` is true and is tinted through the color table in `Data.bonusManColors`. The tint animation is driven by elapsed time, not raw browser update count.
+The bonus man is shown when `HUDState.hasBonusMan` is true and is tinted through the color table in `Data.bonusManColors`. Its tint timing is named in `HudConstants` and driven by elapsed time, not raw browser update count.
 
 In touch mode, the same scene also draws the virtual control layer. Gameplay HUD uses left, right and jump buttons plus a fullscreen toggle. Title HUD uses centered `FULL` and `HELP` action buttons. The fullscreen label changes to `EXIT` while the document is fullscreen, and the browser or operating system can also leave fullscreen through its own gesture or control.
 
@@ -731,7 +746,7 @@ The gameplay camera continues to follow the player while the transition moves hi
 
 When the final level exit is reached, `GameScene` starts `EndGameSequence`.
 
-`EndGameSequence` converts remaining air into score and returns a small result object to `GameScene` each frame. `GameScene` applies score and air changes to `GameSessionState` / `LevelState` and updates the HUD.
+`EndGameSequence` converts remaining air into score and returns a small result object to `GameScene` as its elapsed-time accumulator advances through fixed sequence steps. `GameScene` applies score and air changes to `GameSessionState` / `LevelState` and updates the HUD.
 
 When the sequence says the final message is ready:
 
@@ -761,7 +776,7 @@ Simplified flow:
 GameScene.startPlayerDeath()
  -> PlayerDeathSequence.start(...)
     -> hide normal player sprite
-    -> play death animation
+    -> play death animation using timing from `src/config/SequenceAnimation.ts`
     -> callback into GameScene.finishPlayerDeath()
        -> consume bonus man if present, otherwise lose one life
        -> update hi-score if needed
@@ -880,11 +895,11 @@ When changing active-region bounds, test level transitions carefully. During tra
 
 Many movement and interaction rules use tile-line probes and Tiled tile properties. Small changes can affect walking, jumping, landing, ladders, slides, conveyors, keys, exits, enemies and deadly falls.
 
-### Timing should use elapsed time where possible
+### Timing should stay independent from display refresh rate
 
-Animation and gameplay timings should generally use `deltaMs` instead of raw update counts so behaviour remains stable on 60 Hz, 120 Hz and 144 Hz displays.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; air depletion timing is named in `src/config/AirTiming.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings are named in `src/config/SequenceTiming.ts`, blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`, and HUD-only tint rhythms are named in `src/ui/hudConstants.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
-Current systems already using elapsed-time accumulation include:
+Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 
 - air depletion;
 - bonus-man tint animation;
@@ -921,7 +936,7 @@ Use short `//` comments for:
 
 - gameplay-sensitive offsets;
 - tile probes;
-- frame accumulators;
+- sprite-frame and fixed-tick accumulators;
 - clamps;
 - non-obvious timing rules;
 - deliberate rendering choices.

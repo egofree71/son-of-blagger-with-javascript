@@ -22,6 +22,7 @@ import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { GameAudio } from "../audio/GameAudio";
 import { isTouchModeEnabled } from "../config/RuntimeMode";
+import { GAMEPLAY_LOGICAL_STEP_MS, MAX_GAMEPLAY_ACCUMULATED_MS, MAX_GAMEPLAY_STEPS_PER_RENDER } from "../config/GameplayTiming";
 import type { PlayerInputControlChangedPayload, PlayerInputState } from "../input/PlayerInputState";
 import { createEmptyPlayerInputState, mergePlayerInputStates, readKeyboardPlayerInput, TOUCH_CONTROL_CHANGED_EVENT } from "../input/PlayerInputState";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
@@ -72,6 +73,7 @@ export class GameScene extends Scene
     private deathCount = 0;
     private gameOverActive = false;
     private endingScreenActive = false;
+    private gameplayStepAccumulatorMs = 0;
 
     constructor()
     {
@@ -87,6 +89,7 @@ export class GameScene extends Scene
 
         this.gameOverActive = false;
         this.endingScreenActive = false;
+        this.resetGameplayStepAccumulator();
         this.touchModeEnabled = isTouchModeEnabled();
         this.touchInputState = createEmptyPlayerInputState();
 
@@ -217,28 +220,7 @@ export class GameScene extends Scene
             return;
         }
 
-        // Monsters move before Sid resolves this frame's interaction checks, so
-        // collisions are tested against their latest visible positions.
-        this.monsterManager.update();
-
-        const movementResult = this.player.updateMovement(
-            this.readPlayerInput(),
-            this.map,
-            this.collisionProbe,
-            this.vanishingPlatforms
-        );
-
-        if (movementResult.playerKilledByDeadlyFall) {
-            this.startPlayerDeath();
-            return;
-        }
-
-        if (this.killPlayerIfNeeded()) {
-            return;
-        }
-
-        this.collectKeyIfNeeded();
-        this.checkExitIfNeeded();
+        this.runFixedGameplaySteps(delta);
     }
 
     /**
@@ -300,6 +282,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
         this.sessionState.currentLevel.resetRun();
@@ -393,6 +376,83 @@ export class GameScene extends Scene
         return this.startPlayerDeath();
     }
 
+    /**
+     * Runs frame-based gameplay through a stable logical clock. The browser may
+     * render at 60, 120 or another refresh rate, but player movement, monsters
+     * and gameplay collision checks should keep the same cadence.
+     */
+    private runFixedGameplaySteps(deltaMs: number): void
+    {
+        this.gameplayStepAccumulatorMs += Math.min(deltaMs, MAX_GAMEPLAY_ACCUMULATED_MS);
+
+        let steps = 0;
+
+        while (
+            this.gameplayStepAccumulatorMs >= GAMEPLAY_LOGICAL_STEP_MS
+            && steps < MAX_GAMEPLAY_STEPS_PER_RENDER
+        ) {
+            this.gameplayStepAccumulatorMs -= GAMEPLAY_LOGICAL_STEP_MS;
+            steps += 1;
+
+            if (this.runGameplayLogicTick()) {
+                this.resetGameplayStepAccumulator();
+                break;
+            }
+        }
+
+        if (steps >= MAX_GAMEPLAY_STEPS_PER_RENDER) {
+            // Drop a large backlog instead of letting a browser freeze trigger
+            // many delayed gameplay ticks on the next rendered frames.
+            this.gameplayStepAccumulatorMs = Math.min(
+                this.gameplayStepAccumulatorMs,
+                GAMEPLAY_LOGICAL_STEP_MS
+            );
+        }
+    }
+
+    /**
+     * Executes one deterministic gameplay tick. Returning true means the tick
+     * started a blocking flow such as player death, level transition or ending.
+     */
+    private runGameplayLogicTick(): boolean
+    {
+        if (!this.map || !this.player || !this.collisionProbe || !this.vanishingPlatforms || !this.monsterManager) {
+            return true;
+        }
+
+        // Monsters move before Sid resolves this tick's interaction checks, so
+        // collisions are tested against their latest visible positions.
+        this.monsterManager.update();
+
+        const movementResult = this.player.updateMovement(
+            this.readPlayerInput(),
+            this.map,
+            this.collisionProbe,
+            this.vanishingPlatforms
+        );
+
+        if (movementResult.playerKilledByDeadlyFall) {
+            return this.startPlayerDeath();
+        }
+
+        if (this.killPlayerIfNeeded()) {
+            return true;
+        }
+
+        this.collectKeyIfNeeded();
+        this.checkExitIfNeeded();
+
+        return this.playerDeathSequence?.isPlaying()
+            || this.levelTransitionSequence?.isPlaying()
+            || this.endGameSequence?.isPlaying()
+            || false;
+    }
+
+    private resetGameplayStepAccumulator(): void
+    {
+        this.gameplayStepAccumulatorMs = 0;
+    }
+
     private killPlayerIfNeeded(): boolean
     {
         if (!this.player || !this.deadlyTileDetector || !this.monsterManager || !this.playerDeathSequence) {
@@ -415,6 +475,7 @@ export class GameScene extends Scene
             return false;
         }
 
+        this.resetGameplayStepAccumulator();
         GameAudio.stopGameplaySounds(this);
         GameAudio.playPlayerDying(this);
         this.playerDeathSequence.start(this.player, () => this.finishPlayerDeath());
@@ -440,6 +501,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.sessionState.currentLevel.resetRun();
         this.player.resetToTiledStart(this.currentPlayerStart);
         this.keyCollector.reset();
@@ -461,6 +523,7 @@ export class GameScene extends Scene
         this.levelRevealSequence?.stop();
         this.levelTransitionSequence?.stop();
         this.endGameSequence?.stop();
+        this.resetGameplayStepAccumulator();
         this.sessionState.resetForNewGame();
         this.gameOverActive = true;
 
@@ -476,6 +539,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.monsterSpawnSequence?.stop();
         this.levelRevealSequence?.stop();
         this.levelTransitionSequence?.stop();
@@ -518,6 +582,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.endGameSequence?.stop();
         this.sessionState.currentLevel.resetAirLevel();
         this.sessionState.updateHiScoreIfNeeded();
@@ -532,6 +597,8 @@ export class GameScene extends Scene
         if (!this.monsterManager || !this.levelRevealSequence) {
             return;
         }
+
+        this.resetGameplayStepAccumulator();
 
         // Keep monsters hidden while the map opens: level reveal first, then
         // monster explosion reveal, then gameplay.
@@ -609,6 +676,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.monsterSpawnSequence?.stop();
         this.levelRevealSequence?.stop();
         this.applyActiveRegionsForLevels(this.sessionState.currentLevel.levelNumber, nextLevelNumber);
@@ -666,6 +734,7 @@ export class GameScene extends Scene
             return;
         }
 
+        this.resetGameplayStepAccumulator();
         this.currentPlayerStart = playerStart;
         this.player.resetToTiledStart(playerStart);
         this.followPlayer(this.player);

@@ -1,4 +1,5 @@
 import { Data } from "../data/gameData";
+import { AIR_DEPLETION_AMOUNT, AIR_DEPLETION_INTERVAL_MS } from "../config/AirTiming";
 import { GameSessionConstants } from "./gameSessionConstants";
 
 /**
@@ -107,9 +108,8 @@ export class LevelState
     /**
      * Advances the air timer and consumes air when due.
      *
-     * The air delay is defined in logical 60 FPS frames but applied with elapsed
-     * milliseconds, so the air bar drains at the same speed on high-refresh
-     * displays.
+     * The historical 60 FPS reference rhythm is converted to milliseconds in
+     * AirTiming, so the air bar drains at the same speed on every display.
      */
     consumeAirWhenDue(deltaMs: number): boolean
     {
@@ -117,16 +117,15 @@ export class LevelState
             return false;
         }
 
-        const intervalMs = GameSessionConstants.AIR_DECREASE_DELAY * 1000 / GameSessionConstants.AIR_REFERENCE_FPS;
         this.airDecreaseAccumulatorMs += deltaMs;
 
-        if (this.airDecreaseAccumulatorMs < intervalMs) {
+        if (this.airDecreaseAccumulatorMs < AIR_DEPLETION_INTERVAL_MS) {
             return false;
         }
 
-        const decreaseSteps = Math.floor(this.airDecreaseAccumulatorMs / intervalMs);
-        this.airDecreaseAccumulatorMs -= decreaseSteps * intervalMs;
-        this.decreaseAir(decreaseSteps * GameSessionConstants.AIR_DECREASE_AMOUNT);
+        const decreaseSteps = Math.floor(this.airDecreaseAccumulatorMs / AIR_DEPLETION_INTERVAL_MS);
+        this.airDecreaseAccumulatorMs -= decreaseSteps * AIR_DEPLETION_INTERVAL_MS;
+        this.decreaseAir(decreaseSteps * AIR_DEPLETION_AMOUNT);
         return true;
     }
 
@@ -141,7 +140,7 @@ export class LevelState
     }
 
     /**
-     * Restores the full air bar and its frame counter.
+     * Restores the full air bar and clears its elapsed-time accumulator.
      */
     resetAirLevel(): void
     {

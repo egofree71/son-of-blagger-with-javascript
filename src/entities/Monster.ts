@@ -2,6 +2,8 @@ import type { GameObjects, Scene } from "phaser";
 import type { PlayerProbeRectangle } from "./Player";
 import type { TiledObjectLike } from "../tiled/tiledObjects";
 import { getTiledProperty } from "../tiled/tiledObjects";
+import { pixelsPerGameplayTick } from "../config/GameplayTiming";
+import { MONSTER_PATH_SPEED_PX_PER_SECOND, MONSTER_PATH_STEP_DISTANCE_PX } from "../config/GameplaySpeeds";
 
 export type MonsterDirection = "left" | "right" | "up" | "down";
 
@@ -30,13 +32,13 @@ interface TiledMonsterObject extends TiledObjectLike
 export class Monster
 {
     private static readonly TILED_Y_OFFSET = 42;
-    private static readonly DEFAULT_SPEED = 0.5;
     private static readonly ANIMATION_FRAMES: readonly number[] = [0, 1];
     private static readonly SPRITE_DEPTH = 9;
 
-    // Monsters move by half-pixel steps, but not on every update. The interval
-    // keeps their apparent speed close to Sid's current movement speed.
-    private static readonly MOVEMENT_FRAME_INTERVAL = 2;
+    // Keep the existing half-pixel monster steps, but drive their cadence from an
+    // explicit path speed instead of an update-count interval.
+    private static readonly PATH_STEP_DISTANCE_PX = MONSTER_PATH_STEP_DISTANCE_PX;
+    private static readonly PATH_PIXELS_PER_TICK = pixelsPerGameplayTick(MONSTER_PATH_SPEED_PX_PER_SECOND);
 
     private readonly sprite: GameObjects.Sprite;
     private readonly firstPositionX: number;
@@ -51,7 +53,7 @@ export class Monster
     private direction: MonsterDirection;
     private distanceFromOrigin = 0;
     private animationFrameIndex = 0;
-    private movementAccumulator = 1;
+    private movementAccumulator = Monster.PATH_STEP_DISTANCE_PX;
     private active = true;
 
     /**
@@ -79,7 +81,7 @@ export class Monster
     }
 
     /**
-     * Moves the monster for one gameplay frame.
+     * Moves the monster for one gameplay tick.
      */
     update(advanceAnimation: boolean): void
     {
@@ -91,11 +93,11 @@ export class Monster
             this.advanceAnimationFrame();
         }
 
-        if (!this.shouldMoveThisFrame()) {
+        if (!this.shouldMoveThisTick()) {
             return;
         }
 
-        const movement = this.resolveMovementForFrame();
+        const movement = this.resolveMovementForStep();
         this.sprite.x += movement.x;
         this.sprite.y += movement.y;
     }
@@ -109,7 +111,7 @@ export class Monster
         this.direction = this.initialDirection;
         this.distanceFromOrigin = 0;
         this.animationFrameIndex = 0;
-        this.movementAccumulator = 1;
+        this.movementAccumulator = Monster.PATH_STEP_DISTANCE_PX;
         this.sprite.setFrame(Monster.ANIMATION_FRAMES[0]);
         this.sprite.setVisible(this.active);
     }
@@ -192,7 +194,7 @@ export class Monster
             playerBounds.yEnd > monsterTop;
     }
 
-    private resolveMovementForFrame(): { x: number; y: number }
+    private resolveMovementForStep(): { x: number; y: number }
     {
         let horizontalSpeed = 0;
         let verticalSpeed = 0;
@@ -200,8 +202,8 @@ export class Monster
         switch (this.direction) {
             case "right":
                 if (this.distanceFromOrigin <= this.maxDistance) {
-                    this.distanceFromOrigin += Monster.DEFAULT_SPEED;
-                    horizontalSpeed = Monster.DEFAULT_SPEED;
+                    this.distanceFromOrigin += Monster.PATH_STEP_DISTANCE_PX;
+                    horizontalSpeed = Monster.PATH_STEP_DISTANCE_PX;
                 }
                 else {
                     this.direction = "left";
@@ -210,8 +212,8 @@ export class Monster
 
             case "left":
                 if (this.distanceFromOrigin >= 0) {
-                    this.distanceFromOrigin -= Monster.DEFAULT_SPEED;
-                    horizontalSpeed = -Monster.DEFAULT_SPEED;
+                    this.distanceFromOrigin -= Monster.PATH_STEP_DISTANCE_PX;
+                    horizontalSpeed = -Monster.PATH_STEP_DISTANCE_PX;
                 }
                 else {
                     this.direction = "right";
@@ -220,8 +222,8 @@ export class Monster
 
             case "down":
                 if (this.distanceFromOrigin <= this.maxDistance) {
-                    this.distanceFromOrigin += Monster.DEFAULT_SPEED;
-                    verticalSpeed = Monster.DEFAULT_SPEED;
+                    this.distanceFromOrigin += Monster.PATH_STEP_DISTANCE_PX;
+                    verticalSpeed = Monster.PATH_STEP_DISTANCE_PX;
                 }
                 else {
                     this.direction = "up";
@@ -230,8 +232,8 @@ export class Monster
 
             case "up":
                 if (this.distanceFromOrigin >= 0) {
-                    this.distanceFromOrigin -= Monster.DEFAULT_SPEED;
-                    verticalSpeed = -Monster.DEFAULT_SPEED;
+                    this.distanceFromOrigin -= Monster.PATH_STEP_DISTANCE_PX;
+                    verticalSpeed = -Monster.PATH_STEP_DISTANCE_PX;
                 }
                 else {
                     this.direction = "down";
@@ -242,17 +244,17 @@ export class Monster
         return { x: horizontalSpeed, y: verticalSpeed };
     }
 
-    private shouldMoveThisFrame(): boolean
+    private shouldMoveThisTick(): boolean
     {
-        // Accumulate fractional movement permission so the monster can keep its
-        // tiny 0.5px step without moving on every browser update.
-        this.movementAccumulator += 1 / Monster.MOVEMENT_FRAME_INTERVAL;
+        // Accumulate path distance from the fixed gameplay clock. Movement is
+        // emitted only when enough distance exists for the preserved 0.5px step.
+        this.movementAccumulator += Monster.PATH_PIXELS_PER_TICK;
 
-        if (this.movementAccumulator < 1) {
+        if (this.movementAccumulator < Monster.PATH_STEP_DISTANCE_PX) {
             return false;
         }
 
-        this.movementAccumulator -= 1;
+        this.movementAccumulator -= Monster.PATH_STEP_DISTANCE_PX;
         return true;
     }
 

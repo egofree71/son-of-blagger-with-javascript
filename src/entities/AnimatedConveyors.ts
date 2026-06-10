@@ -1,6 +1,7 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
+import { LEVEL_OBJECT_ANIMATION_FRAME_COUNT, LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS } from "../config/LevelObjectAnimation";
 
 interface ConveyorTileEntry
 {
@@ -21,8 +22,6 @@ export class AnimatedConveyors
 {
     private static readonly LEFT_CONVEYOR_TILE_INDEX = 16;
     private static readonly RIGHT_CONVEYOR_TILE_INDEX = 17;
-    private static readonly FRAME_COUNT = 8;
-    private static readonly FRAME_DURATION_MS = 1000 / 30;
 
     private readonly entries: ConveyorTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
@@ -56,19 +55,19 @@ export class AnimatedConveyors
 
         this.elapsedFrameTimeMs += deltaMs;
 
-        if (this.elapsedFrameTimeMs < AnimatedConveyors.FRAME_DURATION_MS) {
+        if (this.elapsedFrameTimeMs < LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS) {
             return;
         }
 
         // A browser frame can be longer than one animation frame. Advance by the
         // full number of elapsed conveyor frames and keep the leftover time so
         // the belt animation stays smooth and does not drift.
-        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedConveyors.FRAME_DURATION_MS);
-        this.elapsedFrameTimeMs %= AnimatedConveyors.FRAME_DURATION_MS;
+        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS);
+        this.elapsedFrameTimeMs %= LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS;
 
         // Wrap the shared frame index because all conveyor sprites use the same
         // eight-frame loop.
-        this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedConveyors.FRAME_COUNT;
+        this.frameIndex = (this.frameIndex + framesToAdvance) % LEVEL_OBJECT_ANIMATION_FRAME_COUNT;
 
         for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);

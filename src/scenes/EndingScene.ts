@@ -1,14 +1,15 @@
 import { Scene } from "phaser";
 import { RetroHudText } from "../ui/RetroHudText";
+import {
+    ENDING_MESSAGE_INITIAL_SCALE,
+    ENDING_MESSAGE_MAX_SCALE,
+    ENDING_MESSAGE_SCALE_INCREMENT_PER_STEP,
+    ENDING_WAIT_STEPS,
+    SEQUENCE_LOGICAL_STEP_MS
+} from "../config/SequenceTiming";
 
 const FONT_TEXTURE_KEY = "blagger-font";
 const END_GAME_MESSAGE_TEXT = "Congratulations !\n      you\nfinished the game";
-const INITIAL_SCALE = 0.1;
-const SCALE_INCREMENT = 0.005;
-const MAX_SCALE = 1.8;
-const WAIT_COUNTER = 220;
-const REFERENCE_FPS = 60;
-const LOGICAL_FRAME_MS = 1000 / REFERENCE_FPS;
 const CHARACTER_SPACING = 1;
 const LINE_SPACING = 18;
 
@@ -24,9 +25,9 @@ export class EndingScene extends Scene
 {
     private message?: RetroHudText;
     private phase: EndingPhase = "scale-message";
-    private messageScale = INITIAL_SCALE;
-    private waitCounter = WAIT_COUNTER;
-    private frameAccumulatorMs = 0;
+    private messageScale = ENDING_MESSAGE_INITIAL_SCALE;
+    private waitCounter = ENDING_WAIT_STEPS;
+    private sequenceStepAccumulatorMs = 0;
 
     constructor()
     {
@@ -57,11 +58,11 @@ export class EndingScene extends Scene
 
     update(_time: number, deltaMs: number): void
     {
-        this.frameAccumulatorMs += deltaMs;
+        this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.frameAccumulatorMs >= LOGICAL_FRAME_MS) {
-            this.frameAccumulatorMs -= LOGICAL_FRAME_MS;
-            this.updateOneLogicalFrame();
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+            this.updateOneSequenceStep();
         }
     }
 
@@ -80,13 +81,13 @@ export class EndingScene extends Scene
         });
     }
 
-    private updateOneLogicalFrame(): void
+    private updateOneSequenceStep(): void
     {
         if (this.phase === "scale-message") {
-            this.messageScale += SCALE_INCREMENT;
+            this.messageScale += ENDING_MESSAGE_SCALE_INCREMENT_PER_STEP;
             this.message?.setScale(this.messageScale);
 
-            if (this.messageScale > MAX_SCALE) {
+            if (this.messageScale > ENDING_MESSAGE_MAX_SCALE) {
                 this.phase = "wait-then-title";
             }
 

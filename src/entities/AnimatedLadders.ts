@@ -1,6 +1,7 @@
 import type { GameObjects, Scene, Tilemaps } from "phaser";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
 import { overlapsActiveRegions } from "../optimization/LevelActiveRegions";
+import { LEVEL_OBJECT_ANIMATION_FRAME_COUNT, LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS } from "../config/LevelObjectAnimation";
 
 interface LadderTileEntry
 {
@@ -23,8 +24,6 @@ export class AnimatedLadders
     private static readonly TILED_PROPERTY_NAME = "name";
     private static readonly LEFT_LADDER_TILE_INDEX = 28;
     private static readonly RIGHT_LADDER_TILE_INDEX = 29;
-    private static readonly FRAME_COUNT = 8;
-    private static readonly FRAME_DURATION_MS = 1000 / 30;
 
     private readonly entries: LadderTileEntry[] = [];
     private activeSprites: GameObjects.Sprite[] = [];
@@ -58,15 +57,15 @@ export class AnimatedLadders
 
         this.elapsedFrameTimeMs += deltaMs;
 
-        if (this.elapsedFrameTimeMs < AnimatedLadders.FRAME_DURATION_MS) {
+        if (this.elapsedFrameTimeMs < LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS) {
             return;
         }
 
         // Long browser frames can cover several ladder animation frames. Consume
         // all complete frames and keep the remainder for the next update.
-        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / AnimatedLadders.FRAME_DURATION_MS);
-        this.elapsedFrameTimeMs %= AnimatedLadders.FRAME_DURATION_MS;
-        this.frameIndex = (this.frameIndex + framesToAdvance) % AnimatedLadders.FRAME_COUNT;
+        const framesToAdvance = Math.floor(this.elapsedFrameTimeMs / LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS);
+        this.elapsedFrameTimeMs %= LEVEL_OBJECT_ANIMATION_FRAME_DURATION_MS;
+        this.frameIndex = (this.frameIndex + framesToAdvance) % LEVEL_OBJECT_ANIMATION_FRAME_COUNT;
 
         for (const sprite of this.activeSprites) {
             sprite.setFrame(this.frameIndex);

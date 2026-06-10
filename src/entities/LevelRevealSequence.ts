@@ -1,4 +1,5 @@
 import type { GameObjects, Scene } from "phaser";
+import { LEVEL_REVEAL_HEIGHT_STEP_PX, LEVEL_REVEAL_STEP_INTERVAL_MS } from "../config/SequenceTiming";
 
 /**
  * Opens a level by revealing the gameplay viewport from the center outward.
@@ -10,11 +11,7 @@ import type { GameObjects, Scene } from "phaser";
 export class LevelRevealSequence
 {
     private static readonly BLACK_COLOR = 0x000000;
-    private static readonly REFERENCE_FPS = 60;
-    private static readonly COUNTER_RESET_FRAMES = 2;
-    private static readonly HEIGHT_STEP = 2;
     private static readonly OVERLAY_DEPTH = 100;
-    private static readonly STEP_INTERVAL_MS = LevelRevealSequence.COUNTER_RESET_FRAMES * 1000 / LevelRevealSequence.REFERENCE_FPS;
 
     private readonly scene: Scene;
     private readonly viewportWidth: number;
@@ -63,9 +60,9 @@ export class LevelRevealSequence
 
         this.elapsedStepTimeMs += deltaMs;
 
-        while (this.elapsedStepTimeMs >= LevelRevealSequence.STEP_INTERVAL_MS) {
-            this.elapsedStepTimeMs -= LevelRevealSequence.STEP_INTERVAL_MS;
-            this.rectangleHeight -= LevelRevealSequence.HEIGHT_STEP;
+        while (this.elapsedStepTimeMs >= LEVEL_REVEAL_STEP_INTERVAL_MS) {
+            this.elapsedStepTimeMs -= LEVEL_REVEAL_STEP_INTERVAL_MS;
+            this.rectangleHeight -= LEVEL_REVEAL_HEIGHT_STEP_PX;
 
             if (this.rectangleHeight <= 0) {
                 this.finish();

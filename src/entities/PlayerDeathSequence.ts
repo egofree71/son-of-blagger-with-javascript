@@ -1,5 +1,6 @@
 import type { GameObjects, Scene } from "phaser";
 import type { Player } from "./Player";
+import { PLAYER_DEATH_ANIMATION_FRAME_COUNT, PLAYER_DEATH_ANIMATION_FRAME_DURATION_MS } from "../config/SequenceAnimation";
 
 /**
  * Plays Sid's short visual death animation.
@@ -12,9 +13,6 @@ export class PlayerDeathSequence
 {
     private static readonly DYING_SPRITE_Y_OFFSET = 1;
     private static readonly SPRITE_DEPTH = 11;
-    private static readonly FRAME_COUNT = 8;
-    private static readonly FRAME_RATE = 6;
-    private static readonly FRAME_DURATION_MS = 1000 / PlayerDeathSequence.FRAME_RATE;
 
     private dyingSprite?: GameObjects.Sprite;
     private elapsedMs = 0;
@@ -81,11 +79,11 @@ export class PlayerDeathSequence
 
         this.elapsedMs += deltaMs;
 
-        while (this.elapsedMs >= PlayerDeathSequence.FRAME_DURATION_MS) {
-            this.elapsedMs -= PlayerDeathSequence.FRAME_DURATION_MS;
+        while (this.elapsedMs >= PLAYER_DEATH_ANIMATION_FRAME_DURATION_MS) {
+            this.elapsedMs -= PLAYER_DEATH_ANIMATION_FRAME_DURATION_MS;
             this.frameIndex += 1;
 
-            if (this.frameIndex >= PlayerDeathSequence.FRAME_COUNT) {
+            if (this.frameIndex >= PLAYER_DEATH_ANIMATION_FRAME_COUNT) {
                 this.finish();
                 return;
             }

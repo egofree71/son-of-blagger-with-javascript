@@ -1,6 +1,6 @@
 export type JumpVerticalDirection = "UP" | "DOWN" | null;
 export type JumpStep = [allowHorizontalMovement: boolean, verticalDirection: JumpVerticalDirection];
-export type LevelDefinition = [keyCount: number, monsterAnimationCounter: number];
+export type LevelDefinition = [requiredKeyCount: number, monsterAnimationIntervalChecks: number];
 export type BonusManColor = number;
 
 interface GameData {
@@ -33,7 +33,7 @@ export const Data: GameData =
     [false,"DOWN"],[false,"DOWN"],[false,"DOWN"],[false,"DOWN"],[false,"DOWN"],[false,"DOWN"],
     [false,"DOWN"],[false,"DOWN"]],
 
-    // Each element of the array contains the number of keys needed to go the next level and a counter used for monsters animation
+    // Each level stores the required key count and the number of animation checks between monster sprite-frame advances.
     levels : [[6, 39], [6, 39], [6, 39], [6, 39], [6, 39], [6, 39], [6,39], [6, 39] , [6, 41], [6, 44] , [6, 39], [6, 41]],
 
     // Contains the colors used to display the 'bonus man' sprite
