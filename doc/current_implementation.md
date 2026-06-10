@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings live in `src/config/SequenceTiming.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, air depletion timing lives in `src/config/AirTiming.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings live in `src/config/SequenceTiming.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -155,6 +155,7 @@ src/
   GameplayTiming.ts
   GameplaySpeeds.ts
   GameplayAnimation.ts
+  AirTiming.ts
   LevelObjectAnimation.ts
   SequenceTiming.ts
   SequenceAnimation.ts
@@ -418,7 +419,7 @@ enableBonusMan();
 consumeBonusMan();
 ```
 
-Air depletion is based on elapsed milliseconds rather than raw update counts, so the rate stays stable on high-refresh-rate screens.
+Air depletion is based on elapsed milliseconds rather than raw update counts, so the rate stays stable on high-refresh-rate screens. The depletion rhythm is named in `src/config/AirTiming.ts`, which keeps the old 60 FPS reference cadence but converts it to milliseconds.
 
 ### `gameSessionConstants.ts`
 
@@ -428,7 +429,6 @@ Contains shared gameplay values such as:
 - level count;
 - initial lives;
 - default air level;
-- air-decrease rhythm;
 - score increments;
 - air-to-score conversion steps.
 
@@ -897,7 +897,7 @@ Many movement and interaction rules use tile-line probes and Tiled tile properti
 
 ### Timing should stay independent from display refresh rate
 
-Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings are named in `src/config/SequenceTiming.ts`, blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`, and HUD-only tint rhythms are named in `src/ui/hudConstants.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; air depletion timing is named in `src/config/AirTiming.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings are named in `src/config/SequenceTiming.ts`, blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`, and HUD-only tint rhythms are named in `src/ui/hudConstants.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
 Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 
