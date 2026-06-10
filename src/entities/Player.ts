@@ -5,6 +5,8 @@ import type { TiledObjectLike } from "../tiled/tiledObjects";
 import type { TileCollisionProbe } from "../tiled/tileCollisionProbe";
 import type { VanishingPlatforms } from "./VanishingPlatforms";
 import type { PlayerInputState } from "../input/PlayerInputState";
+import { pixelsPerGameplayTick } from "../config/GameplayTiming";
+import { PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND } from "../config/GameplaySpeeds";
 
 // Local direction names for Sid's horizontal facing and movement.
 type FacingDirection = "left" | "right";
@@ -93,10 +95,9 @@ export class Player
     // A fall becomes deadly after 72 pixels.
     private static readonly FALL_LIMIT = 72;
 
-    // Most manual movement advances one pixel every other update tick. Separate
-    // accumulators below keep walking, falling, jumping, slides and ladders from
-    // stealing cadence from each other.
-    private static readonly MOVE_TICK_INTERVAL = 2;
+    // Sid's one-pixel movement systems share one design speed, converted to the
+    // fixed gameplay tick so the same feel is preserved on every refresh rate.
+    private static readonly MOVE_PIXELS_PER_TICK = pixelsPerGameplayTick(PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND);
 
     private static readonly LEFT_FRAMES: readonly number[] = [0, 1, 2, 3, 4, 5];
     private static readonly RIGHT_FRAMES: readonly number[] = [6, 7, 8, 9, 10, 11];
@@ -174,7 +175,7 @@ export class Player
     }
 
     /**
-     * Runs Sid's walking, falling, jumping and environment movement for one frame.
+     * Runs Sid's walking, falling, jumping and environment movement for one gameplay tick.
      *
      * Movement stays manual instead of using Arcade Physics. Every step is tested
      * through tile probes so the same sprite can interact precisely with narrow
@@ -969,7 +970,7 @@ export class Player
     {
         // Keep walking slower than one pixel every logical tick. The accumulator also
         // makes the cadence independent from other movement systems.
-        this.horizontalMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
+        this.horizontalMovementAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.horizontalMovementAccumulator < 1) {
             return false;
@@ -983,7 +984,7 @@ export class Player
     {
         // Use the same accumulator pattern as horizontal movement so falling and
         // walking stay visually comparable.
-        this.verticalMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
+        this.verticalMovementAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.verticalMovementAccumulator < 1) {
             return false;
@@ -998,7 +999,7 @@ export class Player
         // Use one shared timer for the forced diagonal slope movement. The two
         // axes should move together instead of competing through separate walking
         // and falling accumulators.
-        this.slideMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
+        this.slideMovementAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.slideMovementAccumulator < 1) {
             return false;
@@ -1013,7 +1014,7 @@ export class Player
         // Ladders move Sid automatically, but not every logical tick. Keeping a separate
         // timer avoids the previous bug where the ladder reset the fall timer and
         // climbed at full frame speed.
-        this.ladderMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
+        this.ladderMovementAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.ladderMovementAccumulator < 1) {
             return false;
@@ -1026,7 +1027,7 @@ export class Player
     private shouldAdvanceJumpThisTick(): boolean
     {
         // Jump steps use the same movement cadence as walking and falling.
-        this.jumpStepAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
+        this.jumpStepAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.jumpStepAccumulator < 1) {
             return false;
