@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -152,6 +152,7 @@ src/
  main.ts
  config/
   RuntimeMode.ts
+  GameplayTiming.ts
  scenes/
   PreloadScene.ts
   TitleScene.ts
@@ -477,11 +478,18 @@ While the level reveal or monster spawn sequence is active:
 During normal gameplay, `GameScene.update()` approximately does this:
 
 ```text
-update active animated decoration sprites
-update death sequence
+update active animated decoration sprites with deltaMs
+update death sequence with deltaMs
 stop if game-over / ending / reveal / spawn / transition is active
-apply debug free-move if enabled
-consume air if due
+apply debug free-move with deltaMs if enabled
+consume air if due with deltaMs
+accumulate elapsed time for the fixed gameplay clock
+run zero or more fixed gameplay ticks
+```
+
+Each fixed gameplay tick runs the gameplay-sensitive systems in this order:
+
+```text
 update monsters
 update player movement
 kill player after deadly fall if needed
@@ -880,11 +888,11 @@ When changing active-region bounds, test level transitions carefully. During tra
 
 Many movement and interaction rules use tile-line probes and Tiled tile properties. Small changes can affect walking, jumping, landing, ladders, slides, conveyors, keys, exits, enemies and deadly falls.
 
-### Timing should use elapsed time where possible
+### Timing should stay independent from display refresh rate
 
-Animation and gameplay timings should generally use `deltaMs` instead of raw update counts so behaviour remains stable on 60 Hz, 120 Hz and 144 Hz displays.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. This preserves deterministic movement while avoiding refresh-rate-dependent speed changes.
 
-Current systems already using elapsed-time accumulation include:
+Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 
 - air depletion;
 - bonus-man tint animation;

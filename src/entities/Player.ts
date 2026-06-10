@@ -44,8 +44,8 @@ export class Player
     // Keep Sid above animated tile overlays such as vanishing platforms.
     private static readonly SPRITE_DEPTH = 10;
 
-    // Advance the walking frame only after a few accepted pixel moves.
-    private static readonly WALK_ANIMATION_FRAME_INTERVAL = 5;
+    // Advance the walking animation only after a few accepted pixel moves.
+    private static readonly WALK_ANIMATION_TICK_INTERVAL = 5;
 
     // Horizontal foot probe: narrower than the sprite so edge landings feel fair.
     private static readonly FOOT_LEFT_OFFSET = 7;
@@ -96,7 +96,7 @@ export class Player
     // Most manual movement advances one pixel every other update tick. Separate
     // accumulators below keep walking, falling, jumping, slides and ladders from
     // stealing cadence from each other.
-    private static readonly MOVE_FRAME_INTERVAL = 2;
+    private static readonly MOVE_TICK_INTERVAL = 2;
 
     private static readonly LEFT_FRAMES: readonly number[] = [0, 1, 2, 3, 4, 5];
     private static readonly RIGHT_FRAMES: readonly number[] = [6, 7, 8, 9, 10, 11];
@@ -109,7 +109,7 @@ export class Player
     private readonly deadlyFallTextureKey: string;
     private facingDirection: FacingDirection = "right";
     private animationFrameIndex = 0;
-    private animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
+    private animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
     private slideMovementAccumulator = 1;
@@ -158,7 +158,7 @@ export class Player
 
         this.facingDirection = "right";
         this.animationFrameIndex = 0;
-        this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
+        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
@@ -492,7 +492,7 @@ export class Player
         vanishingPlatforms: VanishingPlatforms
     ): void
     {
-        if (!this.shouldAdvanceJumpThisFrame()) {
+        if (!this.shouldAdvanceJumpThisTick()) {
             return;
         }
 
@@ -588,7 +588,7 @@ export class Player
         // are separate frame ranges, not a mirrored sprite.
         this.facingDirection = direction;
         this.animationFrameIndex = 0;
-        this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
+        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
         this.sprite.setFrame(this.firstFrameFor(direction));
     }
 
@@ -598,7 +598,7 @@ export class Player
         collisionProbe: TileCollisionProbe
     ): boolean
     {
-        if (!this.shouldMoveHorizontallyThisFrame()) {
+        if (!this.shouldMoveHorizontallyThisTick()) {
             return false;
         }
 
@@ -619,7 +619,7 @@ export class Player
             this.applyDirectionChange(requestedDirection);
         }
 
-        if (!this.shouldMoveOnSlideThisFrame()) {
+        if (!this.shouldMoveOnSlideThisTick()) {
             return;
         }
 
@@ -646,7 +646,7 @@ export class Player
             this.applyDirectionChange(requestedDirection);
         }
 
-        if (!this.shouldMoveHorizontallyThisFrame()) {
+        if (!this.shouldMoveHorizontallyThisTick()) {
             return;
         }
 
@@ -719,7 +719,7 @@ export class Player
 
     private moveDownWhileFallingWhenDue(map: Tilemaps.Tilemap): boolean
     {
-        if (!this.shouldMoveVerticallyThisFrame()) {
+        if (!this.shouldMoveVerticallyThisTick()) {
             return false;
         }
 
@@ -735,7 +735,7 @@ export class Player
             return true;
         }
 
-        if (!this.shouldMoveVerticallyThisFrame()) {
+        if (!this.shouldMoveVerticallyThisTick()) {
             return false;
         }
 
@@ -745,7 +745,7 @@ export class Player
 
     private moveDownWhenDue(map: Tilemaps.Tilemap): boolean
     {
-        if (!this.shouldMoveVerticallyThisFrame()) {
+        if (!this.shouldMoveVerticallyThisTick()) {
             return false;
         }
 
@@ -754,7 +754,7 @@ export class Player
 
     private moveUpWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
     {
-        if (!this.shouldMoveVerticallyThisFrame()) {
+        if (!this.shouldMoveVerticallyThisTick()) {
             return false;
         }
 
@@ -763,7 +763,7 @@ export class Player
 
     private moveUpOnLadderWhenDue(map: Tilemaps.Tilemap, collisionProbe: TileCollisionProbe): boolean
     {
-        if (!this.shouldMoveOnLadderThisFrame()) {
+        if (!this.shouldMoveOnLadderThisTick()) {
             return false;
         }
 
@@ -965,11 +965,11 @@ export class Player
         this.sprite.setTexture(this.deadlyFallTextureKey, this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }
 
-    private shouldMoveHorizontallyThisFrame(): boolean
+    private shouldMoveHorizontallyThisTick(): boolean
     {
-        // Keep walking slower than one pixel every update. The accumulator also
+        // Keep walking slower than one pixel every logical tick. The accumulator also
         // makes the cadence independent from other movement systems.
-        this.horizontalMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
+        this.horizontalMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
 
         if (this.horizontalMovementAccumulator < 1) {
             return false;
@@ -979,11 +979,11 @@ export class Player
         return true;
     }
 
-    private shouldMoveVerticallyThisFrame(): boolean
+    private shouldMoveVerticallyThisTick(): boolean
     {
         // Use the same accumulator pattern as horizontal movement so falling and
         // walking stay visually comparable.
-        this.verticalMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
+        this.verticalMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
 
         if (this.verticalMovementAccumulator < 1) {
             return false;
@@ -993,12 +993,12 @@ export class Player
         return true;
     }
 
-    private shouldMoveOnSlideThisFrame(): boolean
+    private shouldMoveOnSlideThisTick(): boolean
     {
         // Use one shared timer for the forced diagonal slope movement. The two
         // axes should move together instead of competing through separate walking
         // and falling accumulators.
-        this.slideMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
+        this.slideMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
 
         if (this.slideMovementAccumulator < 1) {
             return false;
@@ -1008,12 +1008,12 @@ export class Player
         return true;
     }
 
-    private shouldMoveOnLadderThisFrame(): boolean
+    private shouldMoveOnLadderThisTick(): boolean
     {
-        // Ladders move Sid automatically, but not every update. Keeping a separate
+        // Ladders move Sid automatically, but not every logical tick. Keeping a separate
         // timer avoids the previous bug where the ladder reset the fall timer and
         // climbed at full frame speed.
-        this.ladderMovementAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
+        this.ladderMovementAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
 
         if (this.ladderMovementAccumulator < 1) {
             return false;
@@ -1023,10 +1023,10 @@ export class Player
         return true;
     }
 
-    private shouldAdvanceJumpThisFrame(): boolean
+    private shouldAdvanceJumpThisTick(): boolean
     {
         // Jump steps use the same movement cadence as walking and falling.
-        this.jumpStepAccumulator += 1 / Player.MOVE_FRAME_INTERVAL;
+        this.jumpStepAccumulator += 1 / Player.MOVE_TICK_INTERVAL;
 
         if (this.jumpStepAccumulator < 1) {
             return false;
@@ -1046,7 +1046,7 @@ export class Player
 
         // Animation advances only after accepted pixel movement. This avoids the
         // legs spinning while a wall or the map edge blocks the sprite.
-        this.animationFrameCounter = Player.WALK_ANIMATION_FRAME_INTERVAL;
+        this.animationFrameCounter = Player.WALK_ANIMATION_TICK_INTERVAL;
         this.animationFrameIndex = (this.animationFrameIndex + 1) % this.framesFor(this.facingDirection).length;
         this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);
     }

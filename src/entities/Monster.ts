@@ -34,9 +34,9 @@ export class Monster
     private static readonly ANIMATION_FRAMES: readonly number[] = [0, 1];
     private static readonly SPRITE_DEPTH = 9;
 
-    // Monsters move by half-pixel steps, but not on every update. The interval
+    // Monsters move by half-pixel steps, but not on every logical tick. The interval
     // keeps their apparent speed close to Sid's current movement speed.
-    private static readonly MOVEMENT_FRAME_INTERVAL = 2;
+    private static readonly MOVEMENT_TICK_INTERVAL = 2;
 
     private readonly sprite: GameObjects.Sprite;
     private readonly firstPositionX: number;
@@ -91,7 +91,7 @@ export class Monster
             this.advanceAnimationFrame();
         }
 
-        if (!this.shouldMoveThisFrame()) {
+        if (!this.shouldMoveThisTick()) {
             return;
         }
 
@@ -242,11 +242,11 @@ export class Monster
         return { x: horizontalSpeed, y: verticalSpeed };
     }
 
-    private shouldMoveThisFrame(): boolean
+    private shouldMoveThisTick(): boolean
     {
         // Accumulate fractional movement permission so the monster can keep its
-        // tiny 0.5px step without moving on every browser update.
-        this.movementAccumulator += 1 / Monster.MOVEMENT_FRAME_INTERVAL;
+        // tiny 0.5px step without moving on every logical tick.
+        this.movementAccumulator += 1 / Monster.MOVEMENT_TICK_INTERVAL;
 
         if (this.movementAccumulator < 1) {
             return false;

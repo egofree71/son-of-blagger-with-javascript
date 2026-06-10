@@ -22,6 +22,7 @@ import { EndGameSequence } from "../entities/EndGameSequence";
 import { GameSessionState } from "../state/GameSessionState";
 import { GameAudio } from "../audio/GameAudio";
 import { isTouchModeEnabled } from "../config/RuntimeMode";
+import { GAMEPLAY_LOGICAL_STEP_MS, MAX_GAMEPLAY_ACCUMULATED_MS, MAX_GAMEPLAY_STEPS_PER_RENDER } from "../config/GameplayTiming";
 import type { PlayerInputControlChangedPayload, PlayerInputState } from "../input/PlayerInputState";
 import { createEmptyPlayerInputState, mergePlayerInputStates, readKeyboardPlayerInput, TOUCH_CONTROL_CHANGED_EVENT } from "../input/PlayerInputState";
 import type { ActiveRegion } from "../optimization/LevelActiveRegions";
@@ -45,10 +46,6 @@ export class GameScene extends Scene
 {
     private static readonly GAMEPLAY_VIEW_HEIGHT = 200;
     private static readonly STAGE_BACKGROUND_COLOR = 0xc0c0c0;
-    private static readonly GAMEPLAY_LOGICAL_FPS = 120;
-    private static readonly GAMEPLAY_LOGICAL_STEP_MS = 1000 / GameScene.GAMEPLAY_LOGICAL_FPS;
-    private static readonly MAX_GAMEPLAY_ACCUMULATED_MS = 100;
-    private static readonly MAX_GAMEPLAY_STEPS_PER_RENDER = 4;
 
     private readonly sessionState = new GameSessionState();
     private map?: Tilemaps.Tilemap;
@@ -386,15 +383,15 @@ export class GameScene extends Scene
      */
     private runFixedGameplaySteps(deltaMs: number): void
     {
-        this.gameplayStepAccumulatorMs += Math.min(deltaMs, GameScene.MAX_GAMEPLAY_ACCUMULATED_MS);
+        this.gameplayStepAccumulatorMs += Math.min(deltaMs, MAX_GAMEPLAY_ACCUMULATED_MS);
 
         let steps = 0;
 
         while (
-            this.gameplayStepAccumulatorMs >= GameScene.GAMEPLAY_LOGICAL_STEP_MS
-            && steps < GameScene.MAX_GAMEPLAY_STEPS_PER_RENDER
+            this.gameplayStepAccumulatorMs >= GAMEPLAY_LOGICAL_STEP_MS
+            && steps < MAX_GAMEPLAY_STEPS_PER_RENDER
         ) {
-            this.gameplayStepAccumulatorMs -= GameScene.GAMEPLAY_LOGICAL_STEP_MS;
+            this.gameplayStepAccumulatorMs -= GAMEPLAY_LOGICAL_STEP_MS;
             steps += 1;
 
             if (this.runGameplayLogicTick()) {
@@ -403,12 +400,12 @@ export class GameScene extends Scene
             }
         }
 
-        if (steps >= GameScene.MAX_GAMEPLAY_STEPS_PER_RENDER) {
+        if (steps >= MAX_GAMEPLAY_STEPS_PER_RENDER) {
             // Drop a large backlog instead of letting a browser freeze trigger
             // many delayed gameplay ticks on the next rendered frames.
             this.gameplayStepAccumulatorMs = Math.min(
                 this.gameplayStepAccumulatorMs,
-                GameScene.GAMEPLAY_LOGICAL_STEP_MS
+                GAMEPLAY_LOGICAL_STEP_MS
             );
         }
     }

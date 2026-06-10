@@ -30,13 +30,13 @@ export class MonsterManager
     private static readonly TILESET_NAME = "monsters";
 
     // Pace animation changes separately from movement so monsters do not flicker
-    // too quickly on high-refresh displays.
-    private static readonly ANIMATION_FRAME_INTERVAL = 2;
+    // too quickly on different display refresh rates.
+    private static readonly ANIMATION_TICK_INTERVAL = 2;
 
     private readonly monsters: Monster[];
     private readonly animationCounterMax: number;
     private animationCounter: number;
-    private animationFrameAccumulator = 1;
+    private animationTickAccumulator = 1;
 
     /**
      * @param scene Gameplay scene that owns the monster sprites.
@@ -55,12 +55,12 @@ export class MonsterManager
      */
     update(): void
     {
-        const canAdvanceAnimationThisFrame = this.shouldProcessAnimationThisFrame();
+        const canAdvanceAnimationThisTick = this.shouldProcessAnimationThisTick();
 
         for (const monster of this.monsters) {
             // The shared counter is consumed per monster, which keeps identical
             // monsters from looking perfectly synchronized.
-            const advanceAnimation = canAdvanceAnimationThisFrame && this.shouldAdvanceMonsterAnimation();
+            const advanceAnimation = canAdvanceAnimationThisTick && this.shouldAdvanceMonsterAnimation();
             monster.update(advanceAnimation);
         }
     }
@@ -71,7 +71,7 @@ export class MonsterManager
     reset(): void
     {
         this.animationCounter = this.animationCounterMax;
-        this.animationFrameAccumulator = 1;
+        this.animationTickAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.reset();
@@ -84,7 +84,7 @@ export class MonsterManager
     prepareForSpawnReveal(): void
     {
         this.animationCounter = this.animationCounterMax;
-        this.animationFrameAccumulator = 1;
+        this.animationTickAccumulator = 1;
 
         for (const monster of this.monsters) {
             monster.prepareForSpawnReveal();
@@ -212,15 +212,15 @@ export class MonsterManager
         return levelDefinition?.[1] ?? 1;
     }
 
-    private shouldProcessAnimationThisFrame(): boolean
+    private shouldProcessAnimationThisTick(): boolean
     {
-        this.animationFrameAccumulator += 1 / MonsterManager.ANIMATION_FRAME_INTERVAL;
+        this.animationTickAccumulator += 1 / MonsterManager.ANIMATION_TICK_INTERVAL;
 
-        if (this.animationFrameAccumulator < 1) {
+        if (this.animationTickAccumulator < 1) {
             return false;
         }
 
-        this.animationFrameAccumulator -= 1;
+        this.animationTickAccumulator -= 1;
         return true;
     }
 
