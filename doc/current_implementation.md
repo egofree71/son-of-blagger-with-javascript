@@ -688,7 +688,7 @@ Draws the lower black HUD panel and updates it from `HUDState` events.
 
 The air bar is rendered as a red-to-blue gradient image with a black mask over it. The mask width is based on the current air value.
 
-The bonus man is shown when `HUDState.hasBonusMan` is true and is tinted through the color table in `Data.bonusManColors`. The tint animation is driven by elapsed time, not raw browser update count.
+The bonus man is shown when `HUDState.hasBonusMan` is true and is tinted through the color table in `Data.bonusManColors`. Its tint timing is named in `HudConstants` and driven by elapsed time, not raw browser update count.
 
 In touch mode, the same scene also draws the virtual control layer. Gameplay HUD uses left, right and jump buttons plus a fullscreen toggle. Title HUD uses centered `FULL` and `HELP` action buttons. The fullscreen label changes to `EXIT` while the document is fullscreen, and the browser or operating system can also leave fullscreen through its own gesture or control.
 
@@ -897,7 +897,7 @@ Many movement and interaction rules use tile-line probes and Tiled tile properti
 
 ### Timing should stay independent from display refresh rate
 
-Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings are named in `src/config/SequenceTiming.ts`, and blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings are named in `src/config/SequenceTiming.ts`, blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`, and HUD-only tint rhythms are named in `src/ui/hudConstants.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
 Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 

@@ -61,10 +61,10 @@ export class HUDScene extends Scene
     private touchModeEnabled = false;
     private showTouchControls = false;
     private showTouchIntroActions = false;
-    private colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+    private bonusManTintStepCounter = HudConstants.BONUS_MAN_TINT_STEPS_PER_COLOR;
     private colorIndex = HudConstants.BONUS_MAN_MIN_COLOR_INDEX;
     private increaseColorIndex = true;
-    private bonusManFrameAccumulatorMs = 0;
+    private bonusManTintStepAccumulatorMs = 0;
     private readonly pressedTouchPointers: Record<PlayerInputControl, Set<number>> = {
         left: new Set<number>(),
         right: new Set<number>(),
@@ -474,14 +474,14 @@ export class HUDScene extends Scene
     private updateBonusManColor(deltaMs: number): void
     {
         if (!this.state.hasBonusMan || !this.bonusManSprite) {
-            this.bonusManFrameAccumulatorMs = 0;
+            this.bonusManTintStepAccumulatorMs = 0;
             return;
         }
 
-        this.bonusManFrameAccumulatorMs += deltaMs;
+        this.bonusManTintStepAccumulatorMs += deltaMs;
 
-        while (this.bonusManFrameAccumulatorMs >= HudConstants.LOGICAL_FRAME_MS) {
-            this.bonusManFrameAccumulatorMs -= HudConstants.LOGICAL_FRAME_MS;
+        while (this.bonusManTintStepAccumulatorMs >= HudConstants.BONUS_MAN_TINT_STEP_MS) {
+            this.bonusManTintStepAccumulatorMs -= HudConstants.BONUS_MAN_TINT_STEP_MS;
             this.advanceBonusManOneFrame();
         }
 
@@ -490,13 +490,13 @@ export class HUDScene extends Scene
 
     private advanceBonusManOneFrame(): void
     {
-        this.colorCounter -= 1;
+        this.bonusManTintStepCounter -= 1;
 
-        if (this.colorCounter !== 0) {
+        if (this.bonusManTintStepCounter !== 0) {
             return;
         }
 
-        this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+        this.bonusManTintStepCounter = HudConstants.BONUS_MAN_TINT_STEPS_PER_COLOR;
 
         if (this.increaseColorIndex) {
             this.colorIndex += 1;
@@ -516,8 +516,8 @@ export class HUDScene extends Scene
 
     private hideBonusMan(): void
     {
-        this.bonusManFrameAccumulatorMs = 0;
-        this.colorCounter = HudConstants.BONUS_MAN_COLOR_DELAY;
+        this.bonusManTintStepAccumulatorMs = 0;
+        this.bonusManTintStepCounter = HudConstants.BONUS_MAN_TINT_STEPS_PER_COLOR;
         this.colorIndex = HudConstants.BONUS_MAN_MIN_COLOR_INDEX;
         this.increaseColorIndex = true;
         this.bonusManSprite?.setTint(HudConstants.COLOR_BLACK);
