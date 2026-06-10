@@ -1,5 +1,5 @@
 import { GameSessionConstants } from "../state/gameSessionConstants";
-import { SEQUENCE_LOGICAL_STEP_MS } from "../config/SequenceTiming";
+import { SEQUENCE_REFERENCE_STEP_MS } from "../config/SequenceTiming";
 
 export interface EndGameSequenceResult
 {
@@ -57,8 +57,8 @@ export class EndGameSequence
 
         this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
-            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_REFERENCE_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_REFERENCE_STEP_MS;
             const stepResult = this.updateOneSequenceStep(currentAirLevel);
             result.scoreDelta += stepResult.scoreDelta;
             result.airDelta += stepResult.airDelta;

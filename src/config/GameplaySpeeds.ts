@@ -3,8 +3,8 @@
  *
  * These values describe how fast entities should move in the game world, not
  * how often the browser renders. Runtime code converts them through the fixed
- * gameplay clock so Sid and the monsters keep the same speed on 60 Hz, 120 Hz
- * and mobile displays.
+ * gameplay tick clock so Sid and the monsters keep the same speed on displays
+ * with different refresh rates.
  */
 export const PLAYER_PIXEL_STEP_SPEED_PX_PER_SECOND = 60;
 export const MONSTER_PATH_SPEED_PX_PER_SECOND = 30;

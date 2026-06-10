@@ -5,7 +5,7 @@ import {
     ENDING_MESSAGE_MAX_SCALE,
     ENDING_MESSAGE_SCALE_INCREMENT_PER_STEP,
     ENDING_WAIT_STEPS,
-    SEQUENCE_LOGICAL_STEP_MS
+    SEQUENCE_REFERENCE_STEP_MS
 } from "../config/SequenceTiming";
 
 const FONT_TEXTURE_KEY = "blagger-font";
@@ -60,8 +60,8 @@ export class EndingScene extends Scene
     {
         this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
-            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_REFERENCE_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_REFERENCE_STEP_MS;
             this.updateOneSequenceStep();
         }
     }

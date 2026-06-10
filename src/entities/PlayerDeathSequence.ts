@@ -69,7 +69,7 @@ export class PlayerDeathSequence
     }
 
     /**
-     * Advances the frame-based death animation.
+     * Advances the sprite-frame death animation from elapsed milliseconds.
      */
     update(deltaMs: number): void
     {
