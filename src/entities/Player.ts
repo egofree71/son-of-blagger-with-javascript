@@ -107,8 +107,8 @@ export class Player
     private readonly normalTextureKey: string;
     private readonly deadlyFallTextureKey: string;
     private facingDirection: FacingDirection = "right";
-    private animationFrameIndex = 0;
-    private animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
+    private walkingSpriteFrameIndex = 0;
+    private walkingSpriteFrameStepCountdown = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
     private horizontalMovementAccumulator = 1;
     private verticalMovementAccumulator = 1;
     private slideMovementAccumulator = 1;
@@ -129,7 +129,7 @@ export class Player
     {
         this.normalTextureKey = textureKey;
         this.deadlyFallTextureKey = deadlyFallTextureKey;
-        this.sprite = scene.add.sprite(0, 0, textureKey, this.firstFrameFor("right"))
+        this.sprite = scene.add.sprite(0, 0, textureKey, this.firstSpriteFrameFor("right"))
             .setOrigin(0, 0)
             .setDepth(Player.SPRITE_DEPTH)
             .setVisible(false);
@@ -156,8 +156,8 @@ export class Player
         this.sprite.setPosition(startPosition.x, startPosition.y);
 
         this.facingDirection = "right";
-        this.animationFrameIndex = 0;
-        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
+        this.walkingSpriteFrameIndex = 0;
+        this.walkingSpriteFrameStepCountdown = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
         this.horizontalMovementAccumulator = 1;
         this.verticalMovementAccumulator = 1;
         this.slideMovementAccumulator = 1;
@@ -168,7 +168,7 @@ export class Player
         this.jumpHorizontalDirection = null;
         this.fallHeight = 0;
         this.deadlyFall = false;
-        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
+        this.sprite.setTexture(this.normalTextureKey, this.firstSpriteFrameFor(this.facingDirection));
         this.sprite.setVisible(true);
     }
 
@@ -207,7 +207,7 @@ export class Player
 
         if (hasStandingSurface || slideDirection) {
             // Stable ground should not inherit a delayed fall from the previous
-            // frame. Ladders use their own timer below so they do not climb too fast.
+            // gameplay tick. Ladders use their own timer below so they do not climb too fast.
             this.verticalMovementAccumulator = 1;
             this.jumpStepAccumulator = 1;
             this.fallHeight = 0;
@@ -270,7 +270,7 @@ export class Player
         const moved = this.moveHorizontallyWhenDue(requestedDirection, map, collisionProbe);
 
         if (moved) {
-            this.advanceWalkingFrameWhenDue();
+            this.advanceWalkingSpriteFrameWhenDue();
         }
 
         return Player.NO_MOVEMENT_DEATH;
@@ -448,7 +448,7 @@ export class Player
         this.jumpHorizontalDirection = null;
         this.fallHeight = 0;
         this.deadlyFall = false;
-        this.sprite.setTexture(this.normalTextureKey, this.firstFrameFor(this.facingDirection));
+        this.sprite.setTexture(this.normalTextureKey, this.firstSpriteFrameFor(this.facingDirection));
         this.stopWalk(false);
     }
 
@@ -530,7 +530,7 @@ export class Player
             // During a jump the original animation keeps running even when a
             // wall blocks horizontal movement. The blocked wall changes position,
             // not the remembered jump effort or the leg animation.
-            this.advanceWalkingFrameWhenDue();
+            this.advanceWalkingSpriteFrameWhenDue();
         }
 
         if (verticalDirection === "UP") {
@@ -573,7 +573,7 @@ export class Player
             this.fallHeight = 0;
         }
 
-        // Landing keeps the current visual frame instead of snapping to idle.
+        // Landing keeps the current walking sprite frame instead of snapping to idle.
         this.stopWalk(false);
     }
 
@@ -583,12 +583,12 @@ export class Player
             return;
         }
 
-        // Restart the frame sequence when the player turns around. Left and right
-        // are separate frame ranges, not a mirrored sprite.
+        // Restart the walking sprite-frame sequence when the player turns around.
+        // Left and right use separate sprite-frame ranges, not a mirrored sprite.
         this.facingDirection = direction;
-        this.animationFrameIndex = 0;
-        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
-        this.sprite.setFrame(this.firstFrameFor(direction));
+        this.walkingSpriteFrameIndex = 0;
+        this.walkingSpriteFrameStepCountdown = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
+        this.sprite.setFrame(this.firstSpriteFrameFor(direction));
     }
 
     private moveHorizontallyWhenDue(
@@ -628,9 +628,9 @@ export class Player
         this.moveDownByOnePixel(map);
 
         if (requestedDirection) {
-            // Standing on a slide without input should keep Sid's current frame;
+            // Standing on a slide without input should keep Sid's current sprite frame;
             // pressing left/right animates exactly like normal walking.
-            this.advanceWalkingFrameWhenDue();
+            this.advanceWalkingSpriteFrameWhenDue();
         }
     }
 
@@ -660,8 +660,8 @@ export class Player
         if (requestedDirection) {
             // Automatic belt movement alone does not animate Sid. Left/right
             // input still shows the normal walking animation, even when the belt
-            // cancels the resulting horizontal move for that frame.
-            this.advanceWalkingFrameWhenDue();
+            // cancels the resulting horizontal move for that movement step.
+            this.advanceWalkingSpriteFrameWhenDue();
         }
     }
 
@@ -675,7 +675,7 @@ export class Player
 
         if (!requestedDirection) {
             // Ladders move Sid upward automatically, but the player animation
-            // stays on its current frame unless left/right input is also held.
+            // stays on its current sprite frame unless left/right input is also held.
             return;
         }
 
@@ -684,8 +684,8 @@ export class Player
 
         if (movedHorizontally) {
             // Match normal walking cadence while Sid crosses a ladder. Vertical
-            // ladder movement alone must not spin the walking frames.
-            this.advanceWalkingFrameWhenDue();
+            // ladder movement alone must not spin the walking sprite frames.
+            this.advanceWalkingSpriteFrameWhenDue();
         }
     }
 
@@ -961,7 +961,7 @@ export class Player
 
         // The normal sprite turns white during the uncontrollable falling part,
         // then the death sequence switches to the white dying spritesheet.
-        this.sprite.setTexture(this.deadlyFallTextureKey, this.framesFor(this.facingDirection)[this.animationFrameIndex]);
+        this.sprite.setTexture(this.deadlyFallTextureKey, this.spriteFramesFor(this.facingDirection)[this.walkingSpriteFrameIndex]);
     }
 
     private shouldMoveHorizontallyThisTick(): boolean
@@ -1011,7 +1011,7 @@ export class Player
     {
         // Ladders move Sid automatically, but not every logical tick. Keeping a separate
         // timer avoids the previous bug where the ladder reset the fall timer and
-        // climbed at full frame speed.
+        // climbed at full tick speed.
         this.ladderMovementAccumulator += Player.MOVE_PIXELS_PER_TICK;
 
         if (this.ladderMovementAccumulator < 1) {
@@ -1035,19 +1035,19 @@ export class Player
         return true;
     }
 
-    private advanceWalkingFrameWhenDue(): void
+    private advanceWalkingSpriteFrameWhenDue(): void
     {
-        this.animationFrameCounter -= 1;
+        this.walkingSpriteFrameStepCountdown -= 1;
 
-        if (this.animationFrameCounter > 0) {
+        if (this.walkingSpriteFrameStepCountdown > 0) {
             return;
         }
 
         // Animation advances only after accepted pixel movement. This avoids the
         // legs spinning while a wall or the map edge blocks the sprite.
-        this.animationFrameCounter = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
-        this.animationFrameIndex = (this.animationFrameIndex + 1) % this.framesFor(this.facingDirection).length;
-        this.sprite.setFrame(this.framesFor(this.facingDirection)[this.animationFrameIndex]);
+        this.walkingSpriteFrameStepCountdown = PLAYER_WALK_ACCEPTED_STEPS_PER_ANIMATION_FRAME;
+        this.walkingSpriteFrameIndex = (this.walkingSpriteFrameIndex + 1) % this.spriteFramesFor(this.facingDirection).length;
+        this.sprite.setFrame(this.spriteFramesFor(this.facingDirection)[this.walkingSpriteFrameIndex]);
     }
 
     private stopWalk(resetHorizontalMovement = true): void
@@ -1056,16 +1056,16 @@ export class Player
             this.horizontalMovementAccumulator = 1;
         }
 
-        // Do not reset to an idle frame here: stopping movement keeps the last
-        // walking frame visible.
+        // Do not reset to an idle sprite frame here: stopping movement keeps the last
+        // walking sprite frame visible.
     }
 
-    private firstFrameFor(direction: FacingDirection): number
+    private firstSpriteFrameFor(direction: FacingDirection): number
     {
-        return this.framesFor(direction)[0];
+        return this.spriteFramesFor(direction)[0];
     }
 
-    private framesFor(direction: FacingDirection): readonly number[]
+    private spriteFramesFor(direction: FacingDirection): readonly number[]
     {
         return direction === "right"
             ? Player.RIGHT_FRAMES

@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, air depletion timing lives in `src/config/AirTiming.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings live in `src/config/SequenceTiming.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts, per-level monster animation intervals and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, air depletion timing lives in `src/config/AirTiming.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence flow timings live in `src/config/SequenceTiming.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -586,9 +586,9 @@ Each monster:
 - reads its collision hitbox from monster tileset properties;
 - moves horizontally or vertically;
 - reverses direction at the end of its path;
-- advances animation frames when requested by the manager.
+- advances sprite animation frames when requested by the manager.
 
-Monsters follow predefined paths. They do not chase the player. Their path movement speed is expressed as `MONSTER_PATH_SPEED_PX_PER_SECOND` and emitted as preserved half-pixel steps so old path timing and collision feel remain stable. Their animation clock is named in `src/config/GameplayAnimation.ts`; the per-level animation counters still come from `Data.levels`.
+Monsters follow predefined paths. They do not chase the player. Their path movement speed is expressed as `MONSTER_PATH_SPEED_PX_PER_SECOND` and emitted as preserved half-pixel steps so old path timing and collision feel remain stable. Their animation clock is named in `src/config/GameplayAnimation.ts`; the per-level sprite-frame interval checks still come from `Data.levels`.
 
 ### `MonsterManager`
 
@@ -599,7 +599,7 @@ Responsibilities:
 - load monsters for the current level;
 - prepare monsters for spawn reveal;
 - activate monsters after reveal;
-- update movement and animation;
+- update movement and sprite animation;
 - test player/monster collision;
 - destroy monsters when changing level;
 - expose monster positions to transition and reveal sequences.
@@ -936,7 +936,7 @@ Use short `//` comments for:
 
 - gameplay-sensitive offsets;
 - tile probes;
-- frame accumulators;
+- sprite-frame and fixed-tick accumulators;
 - clamps;
 - non-obvious timing rules;
 - deliberate rendering choices.
