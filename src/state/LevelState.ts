@@ -108,7 +108,7 @@ export class LevelState
     /**
      * Advances the air timer and consumes air when due.
      *
-     * The historical 60 FPS reference rhythm is converted to milliseconds in
+     * The historical 60 reference steps-per-second rhythm is converted to milliseconds in
      * AirTiming, so the air bar drains at the same speed on every display.
      */
     consumeAirWhenDue(deltaMs: number): boolean

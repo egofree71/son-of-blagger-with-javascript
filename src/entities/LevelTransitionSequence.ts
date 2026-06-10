@@ -3,7 +3,7 @@ import { MonsterManager } from "./MonsterManager";
 import { Player } from "./Player";
 import { GameSessionConstants } from "../state/gameSessionConstants";
 import { EXPLOSION_EFFECT_FRAME_COUNT, EXPLOSION_EFFECT_FRAME_DURATION_MS } from "../config/SequenceAnimation";
-import { LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS, LEVEL_TRANSITION_PLAYER_TILE_STEP_PX, SEQUENCE_LOGICAL_STEP_MS } from "../config/SequenceTiming";
+import { LEVEL_TRANSITION_PLAYER_MOVE_DELAY_STEPS, LEVEL_TRANSITION_PLAYER_TILE_STEP_PX, SEQUENCE_REFERENCE_STEP_MS } from "../config/SequenceTiming";
 
 interface LevelTransitionTarget
 {
@@ -103,8 +103,8 @@ export class LevelTransitionSequence
         this.updateReverseExplosions(deltaMs);
         this.sequenceStepAccumulatorMs += deltaMs;
 
-        while (this.sequenceStepAccumulatorMs >= SEQUENCE_LOGICAL_STEP_MS) {
-            this.sequenceStepAccumulatorMs -= SEQUENCE_LOGICAL_STEP_MS;
+        while (this.sequenceStepAccumulatorMs >= SEQUENCE_REFERENCE_STEP_MS) {
+            this.sequenceStepAccumulatorMs -= SEQUENCE_REFERENCE_STEP_MS;
             const stepResult = this.updateOneSequenceStep(currentAirLevel);
             result.scoreDelta += stepResult.scoreDelta;
             result.airDelta += stepResult.airDelta;
