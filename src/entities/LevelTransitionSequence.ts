@@ -2,6 +2,7 @@ import type { GameObjects, Scene } from "phaser";
 import { MonsterManager } from "./MonsterManager";
 import { Player } from "./Player";
 import { GameSessionConstants } from "../state/gameSessionConstants";
+import { EXPLOSION_EFFECT_FRAME_COUNT, EXPLOSION_EFFECT_FRAME_DURATION_MS } from "../config/SequenceAnimation";
 
 interface LevelTransitionTarget
 {
@@ -44,10 +45,7 @@ export class LevelTransitionSequence
     private static readonly MOVE_DELAY_FRAMES = 4;
     private static readonly PLAYER_TILE_STEP = 16;
     private static readonly REVERSE_EXPLOSION_TEXTURE = "reverse-explosion";
-    private static readonly REVERSE_EXPLOSION_FRAME_RATE = 18;
-    private static readonly REVERSE_EXPLOSION_FRAME_COUNT = 15;
     private static readonly REVERSE_EXPLOSION_DEPTH = 12;
-    private static readonly REVERSE_EXPLOSION_FRAME_MS = 1000 / LevelTransitionSequence.REVERSE_EXPLOSION_FRAME_RATE;
 
     private readonly scene: Scene;
     private readonly player: Player;
@@ -322,11 +320,11 @@ export class LevelTransitionSequence
 
         this.reverseExplosionFrameAccumulatorMs += deltaMs;
 
-        while (this.reverseExplosionFrameAccumulatorMs >= LevelTransitionSequence.REVERSE_EXPLOSION_FRAME_MS) {
-            this.reverseExplosionFrameAccumulatorMs -= LevelTransitionSequence.REVERSE_EXPLOSION_FRAME_MS;
+        while (this.reverseExplosionFrameAccumulatorMs >= EXPLOSION_EFFECT_FRAME_DURATION_MS) {
+            this.reverseExplosionFrameAccumulatorMs -= EXPLOSION_EFFECT_FRAME_DURATION_MS;
             this.reverseExplosionFrameIndex += 1;
 
-            if (this.reverseExplosionFrameIndex >= LevelTransitionSequence.REVERSE_EXPLOSION_FRAME_COUNT) {
+            if (this.reverseExplosionFrameIndex >= EXPLOSION_EFFECT_FRAME_COUNT) {
                 this.destroyReverseExplosions();
                 return;
             }

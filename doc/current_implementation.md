@@ -52,7 +52,7 @@ src/debug/
 src/optimization/
 ```
 
-Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
+Static gameplay tables such as jump paths, level key counts and bonus-man colors live in `src/data/gameData.ts`. Runtime URL flags are centralized in `src/config/RuntimeMode.ts`, fixed gameplay timing values live in `src/config/GameplayTiming.ts`, explicit actor movement speeds live in `src/config/GameplaySpeeds.ts`, actor animation cadences live in `src/config/GameplayAnimation.ts`, level-object animation cadences live in `src/config/LevelObjectAnimation.ts`, blocking sequence effect timings live in `src/config/SequenceAnimation.ts`, shared keyboard/touch input state lives in `src/input/PlayerInputState.ts`, restored one-shot sound effects are centralized in `src/audio/GameAudio.ts`, and GameMaker-style active-region data lives in `src/optimization/LevelActiveRegions.ts`.
 
 ---
 
@@ -604,11 +604,11 @@ Responsibilities:
 
 ### `MonsterSpawnSequence`
 
-Plays the explosion effect at each monster position before monsters become visible and dangerous.
+Plays the explosion effect at each monster position before monsters become visible and dangerous. The explosion frame cadence is shared with the reverse-explosion effect through `src/config/SequenceAnimation.ts`.
 
 ### Reverse explosions during level transition
 
-When a level is completed, `LevelTransitionSequence` asks the monster system to hide the current monsters with reverse-explosion effects before moving to the next level.
+When a level is completed, `LevelTransitionSequence` asks the monster system to hide the current monsters with reverse-explosion effects before moving to the next level. The reverse explosion uses the same effect timing constants as the monster spawn reveal.
 
 ---
 
@@ -774,7 +774,7 @@ Simplified flow:
 GameScene.startPlayerDeath()
  -> PlayerDeathSequence.start(...)
     -> hide normal player sprite
-    -> play death animation
+    -> play death animation using timing from `src/config/SequenceAnimation.ts`
     -> callback into GameScene.finishPlayerDeath()
        -> consume bonus man if present, otherwise lose one life
        -> update hi-score if needed
@@ -895,7 +895,7 @@ Many movement and interaction rules use tile-line probes and Tiled tile properti
 
 ### Timing should stay independent from display refresh rate
 
-Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
+Browser rendering may run at 60 Hz, 120 Hz or another display refresh rate. Gameplay systems that still depend on small pixel/tile steps are driven by the fixed logical clock defined in `src/config/GameplayTiming.ts`, currently 120 gameplay ticks per second. Actor movement speeds are named in pixels per second in `src/config/GameplaySpeeds.ts`, then converted to fixed-tick accumulators. Actor animation cadences that belong to gameplay entities are named in `src/config/GameplayAnimation.ts`; elapsed-time animation cadences for level-object overlays are named in `src/config/LevelObjectAnimation.ts`, and blocking sequence effect timings are named in `src/config/SequenceAnimation.ts`. This preserves deterministic movement and animation rhythms while avoiding refresh-rate-dependent speed changes.
 
 Systems that represent real elapsed time should keep using `deltaMs` accumulation instead of raw update counts. Current delta-based systems include:
 

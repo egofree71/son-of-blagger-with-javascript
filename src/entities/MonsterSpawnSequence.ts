@@ -1,5 +1,6 @@
 import type { GameObjects, Scene } from "phaser";
 import { MonsterManager, type MonsterSpawnPoint } from "./MonsterManager";
+import { EXPLOSION_EFFECT_FRAME_COUNT, EXPLOSION_EFFECT_FRAME_DURATION_MS } from "../config/SequenceAnimation";
 
 /**
  * Reveals monsters with an explosion effect before gameplay starts.
@@ -10,10 +11,7 @@ import { MonsterManager, type MonsterSpawnPoint } from "./MonsterManager";
  */
 export class MonsterSpawnSequence
 {
-    private static readonly FRAME_RATE = 18;
-    private static readonly FRAME_COUNT = 15;
     private static readonly SPRITE_DEPTH = 12;
-    private static readonly FRAME_DURATION_MS = 1000 / MonsterSpawnSequence.FRAME_RATE;
 
     private readonly scene: Scene;
     private readonly monsterManager: MonsterManager;
@@ -69,11 +67,11 @@ export class MonsterSpawnSequence
 
         this.elapsedFrameTimeMs += deltaMs;
 
-        while (this.elapsedFrameTimeMs >= MonsterSpawnSequence.FRAME_DURATION_MS) {
-            this.elapsedFrameTimeMs -= MonsterSpawnSequence.FRAME_DURATION_MS;
+        while (this.elapsedFrameTimeMs >= EXPLOSION_EFFECT_FRAME_DURATION_MS) {
+            this.elapsedFrameTimeMs -= EXPLOSION_EFFECT_FRAME_DURATION_MS;
             this.frameIndex += 1;
 
-            if (this.frameIndex >= MonsterSpawnSequence.FRAME_COUNT) {
+            if (this.frameIndex >= EXPLOSION_EFFECT_FRAME_COUNT) {
                 this.finish();
                 return;
             }
